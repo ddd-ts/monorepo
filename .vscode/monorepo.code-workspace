@@ -1,0 +1,13 @@
+{
+  "folders": [
+    {
+      "path": "..",
+      "name": "@ddd-ts/monorepo"
+    },
+    {
+      "name": "@ddd-ts/event-sourcing",
+      "path": "../packages/event-sourcing"
+    }
+  ],
+  "settings": {}
+}
