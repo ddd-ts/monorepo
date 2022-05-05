@@ -1,15 +1,15 @@
 import { Constructor } from "../es-aggregate-store/event-store/event-store";
 import { Change, Event, Fact } from "../event/event";
 
-export class EsAggregate<
-  Id extends { toString(): string } = { toString(): string },
+export type EsAggregateId = { toString(): string };
+
+export abstract class EsAggregate<
+  Id extends EsAggregateId = EsAggregateId,
   E extends Event = Event
 > {
   acknowledgedRevision = -1n;
 
-  changes: E[] = [];
-
-  balance = 0;
+  changes: Change<E>[] = [];
 
   constructor(public readonly id: Id) {}
 
@@ -77,7 +77,7 @@ export class EsAggregate<
   }
 
   static on<E extends Event>(event: new (...args: any[]) => E) {
-    return <A extends EsAggregate<any, E>>(
+    return <A extends EsAggregate<any, any>>(
       target: A,
       key: string,
       descriptor: TypedPropertyDescriptor<(event: E) => any>

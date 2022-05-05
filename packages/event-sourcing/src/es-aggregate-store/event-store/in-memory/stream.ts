@@ -1,17 +1,20 @@
-import { Event, Fact } from "../../../event/event";
-import { Deposited } from "../../../test";
+import { EsEvent, EsFact } from "../event-store";
 
-type DatedFact<T extends Event> = Fact<T> & { occuredAt: Date };
+type DatedFact = EsFact & { occuredAt: Date };
 
 export class Stream {
-  facts: DatedFact<Deposited>[] = [];
+  facts: DatedFact[] = [];
 
-  subscribers = new Set<(fact: DatedFact<Deposited>) => void>();
+  subscribers = new Set<(fact: DatedFact) => void>();
 
-  append(change: Deposited) {
+  append(change: EsEvent) {
     const revision = BigInt(this.facts.length);
     const occuredAt = new Date();
-    const datedFact = { ...change, revision, occuredAt };
+    const datedFact = {
+      ...change,
+      revision,
+      occuredAt,
+    };
 
     this.facts.push(datedFact);
     for (const subscriber of this.subscribers) {
@@ -19,7 +22,7 @@ export class Stream {
     }
   }
 
-  subscribe(subscriber: (fact: DatedFact<Deposited>) => void) {
+  subscribe(subscriber: (fact: DatedFact) => void) {
     this.subscribers.add(subscriber);
     return () => {
       this.subscribers.delete(subscriber);

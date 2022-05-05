@@ -1,5 +1,5 @@
 export async function* map<T, U>(
-  iterable: AsyncIterableIterator<T>,
+  iterable: AsyncIterable<T>,
   fn: (value: T) => U
 ) {
   for await (const value of iterable) {

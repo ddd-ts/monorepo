@@ -1,4 +1,5 @@
-import { Account, Deposited } from "../test";
+import { Account } from "../test/app/domain/account/account";
+import { Deposited } from "../test/app/domain/account/deposited.event";
 
 describe("EsAggregate", () => {
   describe("when creating an aggregate", () => {

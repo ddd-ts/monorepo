@@ -1,16 +1,16 @@
-import { Account, AccountId, Deposited } from "../../../test";
-import { Constructor, EventStore } from "../event-store";
+import { EsAggregate } from "../../../es-aggregate/es-aggregate";
+import { Change } from "../../../event/event";
+import { Constructor, EsChange, EventStore } from "../event-store";
 import { ProjectedStream } from "./projected-stream";
 import { Stream } from "./stream";
-
 
 /**
  * EventStore -> Stream[]
  * EventStore -> ProjectedStreams[]
- * 
+ *
  * eventStore.follow(PS) -> ProjectedStream.follow()
  * eventStore.follow(PS) -> same projectestream.follow()
- * 
+ *
  */
 
 export class InMemoryEventStore extends EventStore {
@@ -21,16 +21,19 @@ export class InMemoryEventStore extends EventStore {
 
   clear() {
     this.streams.clear();
+    for (const [key, value] of this.projectedStreams) {
+      value.onCloseCallbacks.forEach((callback) => callback());
+    }
     this.projectedStreams.clear();
   }
 
-  async appendToAggregateStream(
-    AGGREGATE: Constructor<Account>,
-    accountId: AccountId,
-    changes: Deposited[],
+  async appendToAggregateStream<A extends EsAggregate>(
+    AGGREGATE: Constructor<A>,
+    accountId: A extends EsAggregate<infer Id> ? Id : never,
+    changes: EsChange[],
     expectedRevision?: bigint
   ) {
-    const streamName = `${AGGREGATE.name}-${accountId.serialize()}`;
+    const streamName = `${AGGREGATE.name}-${accountId.toString()}`;
 
     if (!this.streams.has(streamName)) {
       const stream = new Stream();
@@ -54,12 +57,12 @@ export class InMemoryEventStore extends EventStore {
     }
   }
 
-  async *readAggregateStream(
-    AGGREGATE: Constructor<Account>,
-    accountId: AccountId,
+  async *readAggregateStream<A extends EsAggregate>(
+    AGGREGATE: Constructor<A>,
+    accountId: A extends EsAggregate<infer Id> ? Id : never,
     from = 0n
   ) {
-    const streamName = `${AGGREGATE.name}-${accountId.serialize()}`;
+    const streamName = `${AGGREGATE.name}-${accountId.toString()}`;
 
     const stream = this.streams.get(streamName);
     if (!stream) {
@@ -71,7 +74,9 @@ export class InMemoryEventStore extends EventStore {
     }
   }
 
-  private getProjectedStream(AGGREGATE: Constructor<Account>): ProjectedStream {
+  private getProjectedStream(
+    AGGREGATE: Constructor<EsAggregate>
+  ): ProjectedStream {
     const streamName = `${AGGREGATE.name}`;
 
     if (this.projectedStreams.has(streamName)) {
@@ -97,6 +102,7 @@ export class InMemoryEventStore extends EventStore {
     for (const stream of correspondingStreams) {
       const unsubscribe = stream.subscribe((fact) => {
         projectedStream.append(fact);
+        projectedStream.onClose(unsubscribe);
       });
       // here we need to unsubscribe
     }
@@ -106,6 +112,7 @@ export class InMemoryEventStore extends EventStore {
       const unsubscribe = stream.subscribe((fact) => {
         projectedStream.append(fact);
       });
+      projectedStream.onClose(unsubscribe);
       // here we need to unsubscribe
     });
 
@@ -113,20 +120,20 @@ export class InMemoryEventStore extends EventStore {
     return projectedStream;
   }
 
-  async *readProjectedStream(AGGREGATE: Constructor<Account>, from = 0n) {
+  async *readProjectedStream(AGGREGATE: Constructor<EsAggregate>, from = 0n) {
     const projectedStream = this.getProjectedStream(AGGREGATE);
 
     yield* projectedStream.read(from);
   }
 
-  async followProjectedStream(AGGREGATE: Constructor<Account>, from = 0n) {
+  async followProjectedStream(AGGREGATE: Constructor<EsAggregate>, from = 0n) {
     const projectedStream = this.getProjectedStream(AGGREGATE);
 
     return projectedStream.follow(from);
   }
 
   async competeForProjectedStream(
-    AGGREGATE: Constructor<Account>,
+    AGGREGATE: Constructor<EsAggregate>,
     competition: string
   ) {
     const projectedStream = this.getProjectedStream(AGGREGATE);

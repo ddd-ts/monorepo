@@ -1,29 +1,40 @@
 import { EsAggregate } from "../../es-aggregate/es-aggregate";
-import { Fact } from "../../event/event";
-import { Account, AccountId, Deposited } from "../../test";
+import { Serializable } from "../../event/event";
 
-export type Follower = AsyncIterable<Fact<Deposited>> & { close: () => void };
+export type Follower = AsyncIterable<EsFact> & { close: () => void };
 
 export type Constructor<T, Params extends any[] = any[]> = new (
   ...args: Params
 ) => T;
 
-export type Attempt<T extends Fact<any>> = {
+export type Attempt<T extends EsFact> = {
   fact: T;
   succeed: () => void;
   retry: () => void;
   skip: () => void;
 };
 
-export type Competitor = AsyncIterable<Attempt<Fact<Deposited>>> & {
+export type Competitor = AsyncIterable<Attempt<EsFact>> & {
   close: () => void;
 };
+
+export interface EsEvent {
+  id: string;
+  type: string;
+  payload: Serializable;
+  revision?: bigint;
+}
+
+export type EsFact = EsEvent & { revision: bigint };
+export type EsChange = EsEvent & { revision: undefined };
+
+export type ProjectedStreamConfiguration = Constructor<EsAggregate>;
 
 export abstract class EventStore {
   abstract appendToAggregateStream(
     AGGREGATE: Constructor<EsAggregate>,
     id: EsAggregate["id"],
-    changes: EsAggregate["changes"],
+    changes: EsChange[],
     expectedRevision?: bigint
   ): Promise<void>;
 
@@ -31,20 +42,20 @@ export abstract class EventStore {
     AGGREGATE: Constructor<EsAggregate>,
     id: EsAggregate["id"],
     from?: bigint
-  ): AsyncIterable<Fact<Deposited>>;
+  ): AsyncIterable<EsFact>;
 
   abstract readProjectedStream(
-    AGGREGATE: Constructor<EsAggregate>,
+    AGGREGATE: ProjectedStreamConfiguration,
     from?: bigint
-  ): AsyncIterable<Fact<Deposited>>;
+  ): AsyncIterable<EsFact>;
 
   abstract followProjectedStream(
-    AGGREGATE: Constructor<EsAggregate>,
+    AGGREGATE: ProjectedStreamConfiguration,
     from?: bigint
   ): Promise<Follower>;
 
   abstract competeForProjectedStream(
-    AGGREGATE: Constructor<EsAggregate>,
+    AGGREGATE: ProjectedStreamConfiguration,
     competitionName: string
   ): Promise<Competitor>;
 }

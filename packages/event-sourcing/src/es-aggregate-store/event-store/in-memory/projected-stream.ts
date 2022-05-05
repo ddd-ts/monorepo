@@ -1,12 +1,14 @@
 import { Fact } from "../../../event/event";
-import { Deposited } from "../../../test";
 import { closeable, map } from "../../tools/iterator";
+import { EsFact } from "../event-store";
 import { Queue } from "./queue";
 import { Stream } from "./stream";
 
 export class ProjectedStream extends Stream {
-  followers = new Set<Queue<Fact<Deposited>>>();
-  competitions = new Map<string, Queue<Fact<Deposited>>>();
+  followers = new Set<Queue<EsFact>>();
+  competitions = new Map<string, Queue<EsFact>>();
+
+  onCloseCallbacks: any[] = [];
 
   async *read(from = 0n) {
     for await (const datedFact of super.readRaw(from)) {
@@ -15,8 +17,12 @@ export class ProjectedStream extends Stream {
     }
   }
 
+  onClose(callback: any) {
+    this.onCloseCallbacks.push(callback);
+  }
+
   async follow(from = 0n) {
-    const follower = new Queue<Fact<Deposited>>();
+    const follower = new Queue<EsFact>();
     this.followers.add(follower);
 
     for await (const fact of this.read(from)) {
@@ -32,9 +38,9 @@ export class ProjectedStream extends Stream {
     return follower;
   }
 
-  compete(competitionName: string) {
+  private getCompetition(competitionName: string) {
     if (!this.competitions.has(competitionName)) {
-      const competition = new Queue<Fact<Deposited>>();
+      const competition = new Queue<EsFact>();
       const unsubscribe = this.subscribe((datedFact) => {
         const { occuredAt, ...fact } = datedFact;
         competition.push(fact);
@@ -42,18 +48,23 @@ export class ProjectedStream extends Stream {
       competition.onClose(unsubscribe);
       this.competitions.set(competitionName, competition);
     }
+    return this.competitions.get(competitionName)!;
+  }
 
-    const competition = this.competitions.get(competitionName)!;
+  async compete(competitionName: string) {
+    const competition = this.getCompetition(competitionName);
 
     return closeable(
       map(competition[Symbol.asyncIterator](), (fact) => ({
         fact,
-        retry: () => competition.push(fact),
+        retry: () => setImmediate(() => competition.push(fact)),
         succeed: () => {},
         skip: () => {},
       })),
       async () => {
-        console.log("closed");
+        // competition.close();
+        // this.competitions.delete(competitionName);
+        console.log("closing competitor");
       }
     );
   }
