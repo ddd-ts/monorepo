@@ -4,6 +4,10 @@
       "path": "..",
       "name": "@ddd-ts/monorepo"
     },
+    {
+      "path": "../packages/value",
+      "name": "@ddd-ts/value"
+    }
   ],
   "settings": {}
 }
