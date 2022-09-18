@@ -110,7 +110,7 @@ export class ESDBEventStore extends EventStore {
       if (!event.link) {
         throw new Error("no link");
       }
-      console.log(event);
+      // console.log(event);
 
       yield {
         id: event.event.id,
@@ -136,7 +136,6 @@ export class ESDBEventStore extends EventStore {
     });
 
     const mapped = map(stream, (e) => {
-      console.log("mapping", e);
       if (!e.event) {
         throw new Error("no event");
       }

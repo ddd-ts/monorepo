@@ -37,9 +37,6 @@ export class Account extends EsAggregate<
     });
   }
 
-  // @EsAggregate.on("Withdrawn") // should work
-  // onWithdrawn(withdrawn: { amount: number }) {}
-
   static new() {
     return new Account(AccountId.generate());
   }

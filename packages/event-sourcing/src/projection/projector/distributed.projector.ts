@@ -28,8 +28,8 @@ export class DistributedProjector implements Projector {
   ) {}
 
   logger = {
-    info: (a: any, b: any) => console.log(a),
-    warn: (a: any, b: any) => console.warn(a),
+    info: (a: any, b: any) => {}, //console.log(a),
+    warn: (a: any, b: any) => {}, //console.warn(a),
   };
 
   get logs() {

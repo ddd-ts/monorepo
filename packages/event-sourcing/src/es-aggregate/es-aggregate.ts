@@ -2,6 +2,7 @@ import { Constructor } from "../es-aggregate-store/event-store/event-store";
 import { Change, Event, Fact } from "../event/event";
 
 export type EsAggregateId = { toString(): string };
+export type EsAggregateIdOf<A extends EsAggregate> = A["id"];
 
 export abstract class EsAggregate<
   Id extends EsAggregateId = EsAggregateId,
@@ -58,7 +59,7 @@ export abstract class EsAggregate<
 
   static instanciate<T extends Constructor<EsAggregate<any>>>(
     this: T,
-    id: T extends Constructor<EsAggregate<infer U>> ? U : never
+    id: EsAggregateIdOf<InstanceType<T>>
   ) {
     return new this(id) as InstanceType<T>;
   }

@@ -11,7 +11,7 @@ import { IsolatedProjector } from "./isolated.projector";
 
 describe("Isolated implementation of projector", () => {
   const es = new InMemoryEventStore();
-  const persistor = new EsAggregatePersistor(es);
+  const persistor = new (EsAggregatePersistor.for(Account))(es);
   const reader = new EsProjectedStreamReader(es);
 
   const transaction = new InMemoryTransactionPerformer();

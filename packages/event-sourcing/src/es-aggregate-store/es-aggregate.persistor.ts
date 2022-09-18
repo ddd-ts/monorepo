@@ -1,12 +1,16 @@
-import { EsAggregate } from "../es-aggregate/es-aggregate";
+import { EsAggregate, EsAggregateIdOf } from "../es-aggregate/es-aggregate";
 import { Account } from "../test/app/domain/account/account";
 import { AccountId } from "../test/app/domain/account/account-id";
 import { Constructor, EventStore } from "./event-store/event-store";
 
-export abstract class EsAggregatePersistor<A extends EsAggregate> {
-  constructor(private eventStore: EventStore) {}
+type EsConstructor<A extends EsAggregate> = Constructor<A> & {
+  instanciate: (id: EsAggregateIdOf<A>) => A;
+};
 
-  abstract AGGREGATE: Constructor<A> & { instanciate: (id: A["id"]) => A };
+export abstract class EsAggregatePersistor<A extends EsAggregate> {
+  constructor(public eventStore: EventStore) {}
+
+  abstract AGGREGATE: EsConstructor<A>;
 
   async persist(aggregate: A) {
     await this.eventStore.appendToAggregateStream(
@@ -29,10 +33,8 @@ export abstract class EsAggregatePersistor<A extends EsAggregate> {
     return account;
   }
 
-  static for<A extends EsAggregate>(
-    AGGREGATE: Constructor<A> & { instanciate: (id: A["id"]) => A }
-  ) {
-    return class extends EsAggregatePersistor<A> {
+  static for<A extends EsConstructor<any>>(AGGREGATE: A) {
+    return class I extends EsAggregatePersistor<InstanceType<A>> {
       AGGREGATE = AGGREGATE;
     };
   }

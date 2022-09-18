@@ -15,7 +15,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 describe("Distributed implementation of Projector", () => {
   const es = new ESDBEventStore();
   const reader = new EsProjectedStreamReader(es);
-  const persistor = new EsAggregatePersistor(es);
+  const persistor = new (EsAggregatePersistor.for(Account))(es);
   const store = new InMemoryCashflowStore();
   const projection = new CashFlowProjection(store);
   const checkpoint = new InMemoryCheckpoint();
@@ -72,9 +72,9 @@ describe("Distributed implementation of Projector", () => {
     jest
       .spyOn(store, "save")
       .mockImplementationOnce(async (view: any, trx: any) => {
-        console.log("waiting 50");
+        // console.log("waiting 50");
         await wait(50);
-        console.log("waited 50");
+        // console.log("waited 50");
         return store.save(view, trx);
       });
 

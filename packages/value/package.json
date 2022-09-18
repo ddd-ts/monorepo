@@ -1,16 +1,14 @@
 {
-  "name": "@ddd-ts/event-sourcing",
+  "name": "@ddd-ts/value",
   "version": "1.0.0",
   "main": "./dist/index.js",
   "license": "MIT",
   "scripts": {
     "test": "jest",
-    "build": "tsc",
-    "esdb:up": "docker-compose -f docker/docker-compose.yml up"
+    "build": "tsc"
   },
   "dependencies": {
-    "@ddd-ts/value": ".",
-    "@ddd-ts/event": ".",
+    "@ddd-ts/value": "^0.0.6",
     "@eventstore/db-client": "^3.3.1",
     "uuid": "^8.3.2"
   },

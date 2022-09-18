@@ -1,0 +1,22 @@
+<mxfile host="65bd71144e">
+    <diagram id="r88g4ZT_aRSuY93ezFZd" name="Page-1">
+        <mxGraphModel dx="1501" dy="433" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="@ddd-ts/event-sourcing" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="80" y="120" width="160" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="@ddd-ts/value" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="280" y="120" width="160" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="@ddd-ts/es-value" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="280" y="200" width="160" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="@ddd-ts/cqrs" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="480" y="120" width="160" height="40" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
