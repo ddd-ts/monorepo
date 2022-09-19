@@ -1,6 +1,20 @@
 import { Value } from "./value";
 
 describe("Value", () => {
+  describe("Behavior", () => {
+    it("should allow to access the serialized type", () => {
+      class Money extends Value(Number) {}
+
+      function getRawMoney(amount: Money["serialized"]) {
+        return amount;
+      }
+
+      getRawMoney(2);
+
+      expect(true).toBe(true);
+    });
+  });
+
   describe("Primitive", () => {
     class Money extends Value(Number) {
       add(addend: Money) {
