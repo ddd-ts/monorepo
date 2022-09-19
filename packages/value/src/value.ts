@@ -11,6 +11,7 @@ type ValueConstructor<S> = (new (
 type ValueInstance<S> = {
   value: RuntimeShape<S>;
   serialize(): SerializedShape<S>;
+  serialized: SerializedShape<S>;
 };
 
 export type SerializedShape<S> = S extends NumberConstructor
@@ -125,6 +126,10 @@ export function Value<S>(shape: S): ValueConstructor<S> {
   class Intermediate implements ValueInstance<S> {
     static shape = shape;
     constructor(public readonly value: RuntimeShape<S>) {}
+
+    get serialized() {
+      return this.serialize();
+    }
 
     serialize(): SerializedShape<S> {
       return serialize(shape, this.value);
