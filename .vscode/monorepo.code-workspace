@@ -11,7 +11,10 @@
     {
       "path": "../packages/cqrs",
       "name": "@ddd-ts/cqrs"
-    }
+    },
+    {
+      "path": "../app/explicit-task",
+      "name": "explicit-task"
+    },
   ],
-  "settings": {}
 }
