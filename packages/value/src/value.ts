@@ -14,6 +14,14 @@ type ValueInstance<S> = {
   serialized: SerializedShape<S>;
 };
 
+export type Shape =
+  | NumberConstructor
+  | StringConstructor
+  | BooleanConstructor
+  | ValueConstructor<any>
+  | Array<Shape>
+  | { [p: string]: Shape };
+
 export type SerializedShape<S> = S extends NumberConstructor
   ? number
   : S extends StringConstructor
@@ -30,7 +38,7 @@ export type SerializedShape<S> = S extends NumberConstructor
   ? { [K in keyof S]: SerializedShape<S[K]> }
   : never;
 
-type RuntimeShape<S> = S extends NumberConstructor
+export type RuntimeShape<S> = S extends NumberConstructor
   ? number
   : S extends StringConstructor
   ? string
@@ -46,7 +54,7 @@ type RuntimeShape<S> = S extends NumberConstructor
   ? { [K in keyof S]: RuntimeShape<S[K]> }
   : never;
 
-function serialize<S extends any>(
+export function serialize<S>(
   shape: S,
   runtime: RuntimeShape<S>
 ): SerializedShape<S> {
@@ -62,7 +70,7 @@ function serialize<S extends any>(
     return runtime as any;
   }
 
-  if ("serialize" in (runtime as any)) {
+  if ("serialize" in runtime) {
     return (runtime as any).serialize();
   }
 
@@ -84,7 +92,7 @@ function serialize<S extends any>(
   return serialized;
 }
 
-function deserialize<S extends any>(
+export function deserialize<S extends any>(
   shape: S,
   serialized: SerializedShape<S>
 ): RuntimeShape<S> {
