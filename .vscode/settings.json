@@ -1,5 +1,5 @@
 {
   "jest.testExplorer": {
-    "enabled": false
+    "enabled": true,
   }
 }
