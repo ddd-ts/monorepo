@@ -1,0 +1,13 @@
+# Cache
+.turbo
+
+# Sources
+src
+
+# Configs
+jest.config.js
+tsconfig.json
+yarn.lock
+
+# Reports
+yarn-error.log

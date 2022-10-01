@@ -7,6 +7,10 @@
     {
       "path": "../packages/value",
       "name": "@ddd-ts/value"
+    },
+    {
+      "path": "../packages/cqrs",
+      "name": "@ddd-ts/cqrs"
     }
   ],
   "settings": {}
