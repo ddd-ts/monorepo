@@ -12,6 +12,7 @@ import { InMemoryUserStore } from "./modules/user/infrastructure/in-memory.user.
 import { SignUpCommandHandler } from "./modules/user/application/sign-up.command";
 import { PasswordSerializer } from "./modules/user/infrastructure/password.serializer";
 import { UserSerializer } from "./modules/user/infrastructure/user.serializer";
+import { JwtTokenManager } from "./modules/user/infrastructure/jwt.token-manager";
 
 function boot() {
   let commandBus = new StaticCommandBus();
@@ -26,10 +27,12 @@ function boot() {
       new UserSerializer(new EmailSerializer(), new PasswordSerializer())
     );
 
+  const tokenManager = new JwtTokenManager();
+
   const taskStore = new InMemoryTaskStore(serialization.get(Task));
   const userStore = new InMemoryUserStore(serialization.get(User));
 
   commandBus
     .register(new AddTaskCommandHandler(taskStore))
-    .register(new SignUpCommandHandler(userStore));
+    .register(new SignUpCommandHandler(userStore, tokenManager));
 }
