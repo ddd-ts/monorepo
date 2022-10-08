@@ -13,6 +13,7 @@ import { SignUpCommandHandler } from "./modules/user/application/sign-up.command
 import { PasswordSerializer } from "./modules/user/infrastructure/password.serializer";
 import { UserSerializer } from "./modules/user/infrastructure/user.serializer";
 import { JwtTokenManager } from "./modules/user/infrastructure/jwt.token-manager";
+import { AuthCommand } from "./modules/actor/actor";
 
 function boot() {
   let commandBus = new StaticCommandBus();
@@ -34,5 +35,13 @@ function boot() {
 
   commandBus
     .register(new AddTaskCommandHandler(taskStore))
-    .register(new SignUpCommandHandler(userStore, tokenManager));
+    // .register(new SignUpCommandHandler(userStore, tokenManager))
+    .use((command, handler, next) => {
+        command satisfies AuthCommand;
+        const result = handler?.authenticate(command.actor);
+        if (result !== true) {
+          throw new Error("Unauthorized");
+        }
+        handler.execute(command);
+    });
 }

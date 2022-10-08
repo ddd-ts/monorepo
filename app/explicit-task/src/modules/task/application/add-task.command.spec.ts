@@ -3,6 +3,7 @@ import { InMemoryTaskStore } from "../infrastructure/in-memory.task.store";
 import { TaskSerializer } from "../infrastructure/task.serializer";
 import { TaskIdSerializer } from "../infrastructure/task-id.serializer";
 import { Task, TaskId, TaskName } from "../domain/task";
+import { Actor } from "../../actor/actor";
 
 describe("AddTaskCommand", () => {
   function createHandler() {
@@ -16,7 +17,7 @@ describe("AddTaskCommand", () => {
   it("adds a task", async () => {
     const { handler, store } = createHandler();
     const name = new TaskName("test");
-    await handler.execute(new AddTaskCommand(name));
+    await handler.execute(new AddTaskCommand(name, new Actor("User", "1")));
 
     const tasks = await store.loadAll();
     expect(tasks).toEqual([new Task(new TaskId(expect.any(String)), name)]);
