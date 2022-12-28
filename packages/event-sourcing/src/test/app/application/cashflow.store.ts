@@ -1,4 +1,4 @@
-import { Transaction } from "../../../projection/transaction/transaction";
+import { Transaction } from "../../../projection/transaction/transaction.old";
 import { Cashflow } from "../domain/cashflow/cashflow";
 
 export abstract class CashflowStore {

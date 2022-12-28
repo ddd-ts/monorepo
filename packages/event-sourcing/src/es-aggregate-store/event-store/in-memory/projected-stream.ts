@@ -1,7 +1,6 @@
-import { Fact } from "../../../event/event";
 import { closeable, map } from "../../tools/iterator";
 import { EsFact } from "../event-store";
-import { Queue } from "./queue";
+import { Queue } from "../../tools/queue";
 import { Stream } from "./stream";
 
 export class ProjectedStream extends Stream {
@@ -64,7 +63,7 @@ export class ProjectedStream extends Stream {
       async () => {
         // competition.close();
         // this.competitions.delete(competitionName);
-        console.log("closing competitor");
+        // console.log("closing competitor");
       }
     );
   }

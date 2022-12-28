@@ -1,39 +1,38 @@
 import { EsAggregate } from "../es-aggregate/es-aggregate";
-import { Account } from "../test/app/domain/account/account";
-import { AccountId } from "../test/app/domain/account/account-id";
 import { Constructor, EventStore } from "./event-store/event-store";
 
-export abstract class EsAggregatePersistor<A extends EsAggregate> {
-  constructor(private eventStore: EventStore) {}
+type EsAggregateType<A extends EsAggregate> = Constructor<A> & {
+  instanciate: (id: A["id"]) => A;
+};
 
-  abstract AGGREGATE: Constructor<A> & { instanciate: (id: A["id"]) => A };
+export function EsAggregatePersistor<A extends EsAggregateType<any>>(
+  AGGREGATE: A
+) {
+  return class {
+    constructor(public eventStore: EventStore) {}
 
-  async persist(aggregate: A) {
-    await this.eventStore.appendToAggregateStream(
-      aggregate.constructor as Constructor<A>,
-      aggregate.id,
-      aggregate.changes,
-      aggregate.acknowledgedRevision
-    );
-    aggregate.acknowledgeChanges();
-  }
-
-  async load(aggregateId: A["id"]): Promise<A> {
-    const account = this.AGGREGATE.instanciate(aggregateId);
-    const stream = this.eventStore.readAggregateStream(Account, aggregateId);
-
-    for await (const fact of stream) {
-      account.load(fact as any);
+    async persist(aggregate: InstanceType<A>) {
+      await this.eventStore.appendToAggregateStream(
+        AGGREGATE,
+        aggregate.id,
+        aggregate.changes,
+        aggregate.acknowledgedRevision
+      );
+      aggregate.acknowledgeChanges();
     }
 
-    return account;
-  }
+    async load(aggregateId: InstanceType<A>["id"]): Promise<InstanceType<A>> {
+      const instance = AGGREGATE.instanciate(aggregateId);
+      const stream = this.eventStore.readAggregateStream(
+        AGGREGATE,
+        aggregateId
+      );
 
-  static for<A extends EsAggregate>(
-    AGGREGATE: Constructor<A> & { instanciate: (id: A["id"]) => A }
-  ) {
-    return class extends EsAggregatePersistor<A> {
-      AGGREGATE = AGGREGATE;
-    };
-  }
+      for await (const fact of stream) {
+        instance.load(fact as any);
+      }
+
+      return instance;
+    }
+  };
 }

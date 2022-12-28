@@ -35,7 +35,7 @@ export abstract class EventStore {
     AGGREGATE: Constructor<EsAggregate>,
     id: EsAggregate["id"],
     changes: EsChange[],
-    expectedRevision?: bigint
+    expectedRevision: bigint
   ): Promise<void>;
 
   abstract readAggregateStream(

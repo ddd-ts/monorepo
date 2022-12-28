@@ -16,7 +16,7 @@ export class Account extends EsAggregate<
   balance = 0;
 
   constructor(public id: AccountId) {
-    super(id);
+    super();
   }
 
   deposit(amount: number) {

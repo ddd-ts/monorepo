@@ -3,7 +3,7 @@ import { Follower } from "../../es-aggregate-store/event-store/event-store";
 import { ProjectedStream } from "../../es-aggregate-store/event-store/in-memory/projected-stream";
 import { Checkpoint } from "../checkpoint/checkpoint";
 import { Projection } from "../projection";
-import { TransactionPerformer } from "../transaction/transaction";
+import { TransactionPerformer } from "../transaction/transaction.old";
 import { Projector } from "./projector";
 
 /**

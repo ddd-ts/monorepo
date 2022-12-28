@@ -5,10 +5,12 @@ import {
   jsonEvent,
   persistentSubscriptionToStreamSettingsFromDefaults,
 } from "@eventstore/db-client";
-import { EsAggregate } from "../../../es-aggregate/es-aggregate";
-import { Event, Serializable } from "../../../event/event";
-import { closeable, map } from "../../tools/iterator";
 import {
+  EsAggregate,
+  Event,
+  Serializable,
+  closeable,
+  map,
   Competitor,
   Constructor,
   EsChange,
@@ -16,7 +18,7 @@ import {
   EventStore,
   Follower,
   ProjectedStreamConfiguration,
-} from "../event-store";
+} from "@ddd-ts/event-sourcing";
 
 export class ESDBEventStore extends EventStore {
   client: EventStoreDBClient;
@@ -50,7 +52,7 @@ export class ESDBEventStore extends EventStore {
     AGGREGATE: Constructor<EsAggregate>,
     id: { toString(): string },
     changes: EsChange[],
-    expectedRevision?: bigint
+    expectedRevision: bigint
   ): Promise<void> {
     const r = expectedRevision === -1n ? "no_stream" : expectedRevision;
 
@@ -110,7 +112,7 @@ export class ESDBEventStore extends EventStore {
       if (!event.link) {
         throw new Error("no link");
       }
-      console.log(event);
+      //console.log(event);
 
       yield {
         id: event.event.id,
@@ -136,7 +138,7 @@ export class ESDBEventStore extends EventStore {
     });
 
     const mapped = map(stream, (e) => {
-      console.log("mapping", e);
+      // console.log("mapping", e);
       if (!e.event) {
         throw new Error("no event");
       }

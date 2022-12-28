@@ -7,6 +7,14 @@
     {
       "name": "@ddd-ts/event-sourcing",
       "path": "../packages/event-sourcing"
+    },
+    {
+      "name": "@ddd-ts/event-sourcing-esdb",
+      "path": "../packages/event-sourcing-esdb"
+    },
+    {
+      "name": "@ddd-ts/event-sourcing-firestore",
+      "path": "../packages/event-sourcing-firestore"
     }
   ],
   "settings": {}

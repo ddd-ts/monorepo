@@ -1,6 +1,6 @@
 import { Fact } from "../../../event/event";
 import { Projection } from "../../../projection/projection";
-import { Transaction } from "../../../projection/transaction/transaction";
+import { Transaction } from "../../../projection/transaction/transaction.old";
 import { Account } from "../domain/account/account";
 import { Deposited } from "../domain/account/deposited.event";
 import { CashflowStore } from "./cashflow.store";

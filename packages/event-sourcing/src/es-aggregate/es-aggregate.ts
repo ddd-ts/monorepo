@@ -11,7 +11,7 @@ export abstract class EsAggregate<
 
   changes: Change<E>[] = [];
 
-  constructor(public readonly id: Id) {}
+  abstract id: Id;
 
   load(fact: Fact<E>) {
     if (typeof fact.revision !== "bigint") {

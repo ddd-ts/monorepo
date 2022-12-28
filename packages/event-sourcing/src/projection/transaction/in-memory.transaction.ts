@@ -2,7 +2,7 @@ import {
   Transaction,
   TransactionPerformer,
   TransactionEffect,
-} from "./transaction";
+} from "./transaction.old";
 
 export class InMemoryTransactionPerformer extends TransactionPerformer {
   async perform<T>(
@@ -20,7 +20,7 @@ export class InMemoryTransactionPerformer extends TransactionPerformer {
   }
 }
 
-export class InMemoryTransaction extends Transaction {
+export class InMemoryTransaction implements Transaction {
   id = Math.random().toString();
 
   rollbackEffects: TransactionEffect[] = [];

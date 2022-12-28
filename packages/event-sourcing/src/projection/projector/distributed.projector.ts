@@ -6,7 +6,7 @@ import {
 import { Event } from "../../event/event";
 import { Checkpoint } from "../checkpoint/checkpoint";
 import { Projection } from "../projection";
-import { TransactionPerformer } from "../transaction/transaction";
+import { TransactionPerformer } from "../transaction/transaction.old";
 import { Projector } from "./projector";
 
 /**
@@ -28,8 +28,12 @@ export class DistributedProjector implements Projector {
   ) {}
 
   logger = {
-    info: (a: any, b: any) => console.log(a),
-    warn: (a: any, b: any) => console.warn(a),
+    info: (a: any, b: any) => {
+      //console.log(a)
+    },
+    warn: (a: any, b: any) => {
+      //console.warn(a);
+    },
   };
 
   get logs() {

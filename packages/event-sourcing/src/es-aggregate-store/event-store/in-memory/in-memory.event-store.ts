@@ -1,23 +1,17 @@
 import { EsAggregate } from "../../../es-aggregate/es-aggregate";
-import { Change } from "../../../event/event";
 import { Constructor, EsChange, EventStore } from "../event-store";
 import { ProjectedStream } from "./projected-stream";
 import { Stream } from "./stream";
-
-/**
- * EventStore -> Stream[]
- * EventStore -> ProjectedStreams[]
- *
- * eventStore.follow(PS) -> ProjectedStream.follow()
- * eventStore.follow(PS) -> same projectestream.follow()
- *
- */
 
 export class InMemoryEventStore extends EventStore {
   private streams = new Map<string, Stream>();
   private projectedStreams = new Map<string, ProjectedStream>();
 
   private newStreamSubscribers = new Set<(stream: Stream) => void>();
+
+  close() {
+    this.clear();
+  }
 
   clear() {
     this.streams.clear();
@@ -31,7 +25,7 @@ export class InMemoryEventStore extends EventStore {
     AGGREGATE: Constructor<A>,
     accountId: A extends EsAggregate<infer Id> ? Id : never,
     changes: EsChange[],
-    expectedRevision?: bigint
+    expectedRevision: bigint
   ) {
     const streamName = `${AGGREGATE.name}-${accountId.toString()}`;
 
@@ -43,13 +37,11 @@ export class InMemoryEventStore extends EventStore {
 
     const stream = this.streams.get(streamName)!;
 
-    if (expectedRevision !== undefined) {
-      const currentRevision = stream.facts.length - 1;
-      if (currentRevision !== Number(expectedRevision)) {
-        throw new Error(
-          `Expected revision ${expectedRevision} but got ${currentRevision}`
-        );
-      }
+    const currentRevision = stream.facts.length - 1;
+    if (currentRevision !== Number(expectedRevision)) {
+      throw new Error(
+        `Expected revision ${expectedRevision} but got ${currentRevision}`
+      );
     }
 
     for (const change of changes) {
