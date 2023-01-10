@@ -22,11 +22,10 @@ import {
 
 export class ESDBEventStore extends EventStore {
   client: EventStoreDBClient;
-
-  namespace = Math.random().toString().substring(2, 8);
-
+  namespace: string;
   constructor() {
     super();
+    this.namespace = Math.random().toString().substring(2, 8);
     this.client = new EventStoreDBClient(
       { endpoint: { address: "localhost", port: 2113 } },
       { insecure: true }
@@ -105,6 +104,7 @@ export class ESDBEventStore extends EventStore {
     for await (const event of this.client.readStream(streamName, {
       fromRevision: from,
       resolveLinkTos: true,
+      direction: "forwards",
     })) {
       if (!event.event) {
         throw new Error("no event");
@@ -112,7 +112,6 @@ export class ESDBEventStore extends EventStore {
       if (!event.link) {
         throw new Error("no link");
       }
-      //console.log(event);
 
       yield {
         id: event.event.id,

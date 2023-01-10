@@ -33,7 +33,6 @@ export class FirestoreCheckpoint extends Checkpoint {
     revision: bigint,
     trx?: FirebaseFirestore.Transaction
   ) {
-    console.log("setting checkpoint", name, revision);
     const checkpointRef = await this.firestore
       .collection("checkpoints")
       .doc(name);

@@ -1,5 +1,5 @@
 import { AbstractConstructor } from "@ddd-ts/event-sourcing/dist/es-aggregate-store/event-store/event-store";
-import { ISerializer } from "@ddd-ts/event-sourcing/dist/model/serializer";
+import { Serializer } from "@ddd-ts/event-sourcing/dist/model/serializer";
 import { Store } from "@ddd-ts/event-sourcing/dist/model/store";
 import { InMemoryDatabase, InMemoryTransaction } from "./in-memory.database";
 
@@ -7,32 +7,28 @@ import { InMemoryDatabase, InMemoryTransaction } from "./in-memory.database";
  * This in memory store is a copy store. It stores a copy of the actual model.
  * It is the recommended inmemory store to use, as it reflects more closely the behaviour of a real store.
  */
-export function InMemoryStore<
-  Model,
-  Id extends { toString(): string },
-  Serialized extends Record<string, unknown> & { id: string }
->(
-  serializer: ISerializer<Model, Id, Serialized>,
+export function InMemoryStore<Model, Id extends { toString(): string }>(
   collection: string
-): AbstractConstructor<Store<Model, Id>, [InMemoryDatabase]> {
+): AbstractConstructor<
+  Store<Model, Id>,
+  [InMemoryDatabase, Serializer<Model>]
+> {
   abstract class InMemoryStore implements Store<Model, Id> {
-    _storage = new Map<string, Serialized>();
-    _serializer: ISerializer<Model, Id, Serialized>;
-
-    constructor(public readonly database: InMemoryDatabase) {
-      this._serializer = serializer;
-    }
+    constructor(
+      public readonly database: InMemoryDatabase,
+      private readonly serializer: Serializer<Model>
+    ) {}
 
     clear() {
       this.database.clear(collection);
     }
 
     async save(model: Model, trx?: InMemoryTransaction): Promise<void> {
-      const serialized = serializer.serialize(model);
+      const serialized = this.serializer.serialize(model);
       await this.database.save(
         collection,
         serialized.id,
-        serializer.serialize(model),
+        this.serializer.serialize(model),
         trx
       );
     }
@@ -48,13 +44,15 @@ export function InMemoryStore<
         return undefined;
       }
 
-      return serializer.deserialize(serialized);
+      return this.serializer.deserialize(serialized);
     }
 
     loadAll(): Promise<Model[]> {
       const serialized = this.database.loadAll(collection);
 
-      return Promise.resolve(serialized.map((s) => serializer.deserialize(s)));
+      return Promise.resolve(
+        serialized.map((s) => this.serializer.deserialize(s))
+      );
     }
 
     async delete(id: Id): Promise<void> {

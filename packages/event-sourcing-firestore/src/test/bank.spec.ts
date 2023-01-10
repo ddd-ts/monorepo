@@ -1,9 +1,3 @@
-require("leaked-handles").set({
-  fullStack: true, // use full stack traces
-  timeout: 1000, // run every 30 seconds instead of 5.
-  debugSockets: true, // pretty print tcp thrown exceptions.
-});
-
 import * as fb from "firebase-admin";
 import { FirestoreEventStore } from "../firestore.event-store";
 
@@ -20,8 +14,8 @@ describe("Firestore Bank Test", () => {
   const transactionPerformer = new FirebaseTransactionPerformer(es.firestore);
 
   BankSuite(es, checkpoint, transactionPerformer, (serializer, name) => {
-    const Store = class extends FirestoreStore(name, serializer) {};
-    const store = new Store(firestore);
+    const Store = class extends FirestoreStore(name) {};
+    const store = new Store(firestore, serializer) as any;
     return store;
   });
 });

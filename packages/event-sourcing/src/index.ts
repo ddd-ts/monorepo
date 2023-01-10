@@ -1,4 +1,4 @@
-export { Serializer } from "./model/serializer";
+export { Serializer, Serialized } from "./model/serializer";
 
 export { EsAggregatePersistor } from "./es-aggregate-store/es-aggregate.persistor";
 export { EsProjectedStreamReader } from "./es-aggregate-store/es-projected-stream.reader";

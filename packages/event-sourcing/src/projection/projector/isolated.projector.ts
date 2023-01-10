@@ -16,15 +16,15 @@ import { Projector } from "./projector";
 export class IsolatedProjector implements Projector {
   follower?: Follower;
 
-  logger = console;
-  // logger = {
-  //   info: (a: any, b: any) => {
-  //     //console.log(a)
-  //   },
-  //   warn: (a: any, b: any) => {
-  //     //console.warn(a);
-  //   },
-  // };
+  // logger = console;
+  logger = {
+    info: (a: any, b: any) => {
+      //console.log(a)
+    },
+    warn: (a: any, b: any) => {
+      //console.warn(a);
+    },
+  };
 
   constructor(
     private readonly projection: Projection,

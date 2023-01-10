@@ -1,31 +1,25 @@
+import { Serializer } from "@ddd-ts/event-sourcing";
 import { AbstractConstructor } from "@ddd-ts/event-sourcing/src/es-aggregate-store/event-store";
-import { ISerializer } from "@ddd-ts/event-sourcing/src/model/serializer";
 import { Store } from "@ddd-ts/event-sourcing/src/model/store";
 
-export function FirestoreStore<
-  Model,
-  Id extends { toString(): string },
-  S extends Record<string, unknown> & { id: string }
->(
-  collection: string,
-  serializer: ISerializer<Model, Id, S>
+export function FirestoreStore<Model, Id extends { toString(): string }>(
+  collection: string
 ): AbstractConstructor<Store<Model, Id>> {
   abstract class FirstoreStore implements Store<Model, Id> {
-    static _collectionName = collection;
     _collection: FirebaseFirestore.CollectionReference;
-    _serializer: ISerializer<Model, Id, S>;
 
-    constructor(public firestore: FirebaseFirestore.Firestore) {
+    constructor(
+      public readonly firestore: FirebaseFirestore.Firestore,
+      private readonly serializer: Serializer<Model>
+    ) {
       this._collection = this.firestore.collection(collection);
-      this._serializer = serializer;
     }
 
     async save(
       model: Model,
       trx?: FirebaseFirestore.Transaction
     ): Promise<void> {
-      console.log("saving", model);
-      const serialized = serializer.serialize(model);
+      const serialized = this.serializer.serialize(model);
       const ref = this._collection.doc(serialized.id);
 
       trx ? trx.set(ref, serialized) : await ref.set(serialized);
@@ -43,13 +37,13 @@ export function FirestoreStore<
         return undefined;
       }
 
-      return serializer.deserialize(snapshot.data() as S);
+      return this.serializer.deserialize(snapshot.data() as any);
     }
 
     async loadAll(): Promise<Model[]> {
       const snapshot = await this._collection.get();
       return snapshot.docs.map((doc) =>
-        serializer.deserialize(doc.data() as S)
+        this.serializer.deserialize(doc.data() as any)
       );
     }
 

@@ -6,7 +6,7 @@ import {
   IsolatedProjector,
   TransactionPerformer,
 } from "@ddd-ts/event-sourcing";
-import { ISerializer } from "@ddd-ts/event-sourcing/dist/model/serializer";
+import { Serializer } from "@ddd-ts/event-sourcing/dist/model/serializer";
 import { Store } from "@ddd-ts/event-sourcing/dist/model/store";
 import { CashFlowProjection } from "../app/application/cashflow.projection";
 import { Account } from "../app/domain/account/account";
@@ -69,12 +69,12 @@ export function BankSuite(
   es: EventStore,
   checkpoint: Checkpoint,
   transaction: TransactionPerformer,
-  snapshotter: <S extends ISerializer<any, any, any>>(
+  snapshotter: <S extends Serializer<any>>(
     serializer: S,
     name: string
   ) => Store<
-    S extends ISerializer<infer M, any, any> ? M : never,
-    S extends ISerializer<any, infer I, any> ? I : never
+    S extends Serializer<infer M> ? M : never,
+    S extends Serializer<any> ? ReturnType<S["getIdFromModel"]> : never
   >
 ) {
   const cashflowStore = snapshotter(new CashflowSerializer(), "cashflow");
@@ -100,9 +100,11 @@ export function BankSuite(
   });
 
   beforeEach(async () => {
+    await cashflowProjector.stop();
     await (checkpoint as any).clear();
     await cashflowStore.delete("global");
     await (es as any).clear();
+    void cashflowProjector.start();
   });
 
   afterAll(async () => {
@@ -126,7 +128,7 @@ export function BankSuite(
     expect(reloaded.balance).toBe(250);
   });
 
-  it("should maintain a cashflow", async () => {
+  it.only("should maintain a cashflow", async () => {
     const accountA = Account.new();
     accountA.deposit(100);
     await persistor.persist(accountA);

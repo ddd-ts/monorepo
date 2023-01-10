@@ -1,6 +1,4 @@
 import { EsAggregate } from "../es-aggregate/es-aggregate";
-import { ISerializer } from "../model/serializer";
-import { Store } from "../model/store";
 import { Constructor, EventStore } from "./event-store";
 
 type EsAggregateType<A extends EsAggregate> = Constructor<A> & {

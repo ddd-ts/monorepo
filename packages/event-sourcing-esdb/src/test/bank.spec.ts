@@ -14,8 +14,8 @@ describe("EventSourcingESDB", () => {
   const checkpoint = new InMemoryCheckpoint(database);
   const transaction = new InMemoryTransactionPerformer(database);
   BankSuite(es, checkpoint, transaction, (serializer, name) => {
-    const Store = class extends InMemoryStore(serializer, name) {};
-    const store = new Store(database);
+    const Store = class extends InMemoryStore(name) {};
+    const store = new Store(database, serializer) as any;
     return store;
   });
 });

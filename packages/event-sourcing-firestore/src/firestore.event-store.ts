@@ -95,7 +95,6 @@ export class FirestoreEventStore extends EventStore {
     id: { toString(): string },
     from?: bigint
   ): AsyncIterable<EsFact> {
-    console.log("read start");
     const aggregateCollection = this.firestore.collection("events");
 
     let query = aggregateCollection
@@ -116,7 +115,6 @@ export class FirestoreEventStore extends EventStore {
         payload: e.data().payload,
       };
     }
-    console.log("read end");
   }
 
   async *readProjectedStream(
@@ -152,7 +150,6 @@ export class FirestoreEventStore extends EventStore {
     AGGREGATE: ProjectedStreamConfiguration,
     from: bigint = 0n
   ): Promise<Follower> {
-    console.log(`following ${AGGREGATE.name} from ${from}`);
     const aggregateCollection = this.firestore.collection("events");
 
     let query = aggregateCollection
