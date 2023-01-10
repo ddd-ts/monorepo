@@ -1,13 +1,25 @@
+export { Serializer } from "./model/serializer";
+
+export { EsAggregatePersistor } from "./es-aggregate-store/es-aggregate.persistor";
+export { EsProjectedStreamReader } from "./es-aggregate-store/es-projected-stream.reader";
+
+export {
+  Transaction,
+  TransactionEffect,
+  TransactionPerformer,
+} from "./projection/transaction/transaction";
+
 export { Queue } from "./es-aggregate-store/tools/queue";
 export {
   Competitor,
   Constructor,
   EsChange,
   EsFact,
+  EsEvent,
   EventStore,
   Follower,
   ProjectedStreamConfiguration,
-} from "./es-aggregate-store/event-store/event-store";
+} from "./es-aggregate-store/event-store";
 
 export { Event, Change, Fact, Serializable } from "./event/event";
 export { EsAggregate } from "./es-aggregate/es-aggregate";

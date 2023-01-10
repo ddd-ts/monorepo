@@ -1,7 +1,7 @@
-import { Constructor } from "../es-aggregate-store/event-store/event-store";
+import { Constructor } from "../es-aggregate-store/event-store";
 import { EsAggregate } from "../es-aggregate/es-aggregate";
 import { Event, Fact } from "../event/event";
-import { Transaction } from "./transaction/transaction.old";
+import { Transaction } from "./transaction/transaction";
 
 export abstract class Projection<A extends EsAggregate = EsAggregate> {
   abstract AGGREGATE: Constructor<A>;

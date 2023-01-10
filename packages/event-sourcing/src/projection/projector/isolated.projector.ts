@@ -1,9 +1,8 @@
 import { EsProjectedStreamReader } from "../../es-aggregate-store/es-projected-stream.reader";
-import { Follower } from "../../es-aggregate-store/event-store/event-store";
-import { ProjectedStream } from "../../es-aggregate-store/event-store/in-memory/projected-stream";
+import { Follower } from "../../es-aggregate-store/event-store";
 import { Checkpoint } from "../checkpoint/checkpoint";
 import { Projection } from "../projection";
-import { TransactionPerformer } from "../transaction/transaction.old";
+import { TransactionPerformer } from "../transaction/transaction";
 import { Projector } from "./projector";
 
 /**
@@ -17,6 +16,16 @@ import { Projector } from "./projector";
 export class IsolatedProjector implements Projector {
   follower?: Follower;
 
+  logger = console;
+  // logger = {
+  //   info: (a: any, b: any) => {
+  //     //console.log(a)
+  //   },
+  //   warn: (a: any, b: any) => {
+  //     //console.warn(a);
+  //   },
+  // };
+
   constructor(
     private readonly projection: Projection,
     private readonly reader: EsProjectedStreamReader,
@@ -24,60 +33,74 @@ export class IsolatedProjector implements Projector {
     private readonly transaction: TransactionPerformer // private readonly logger: LoggerService
   ) {}
 
-  // get logs() {
-  //   type E = Indexed<SerializedEvent>;
+  get logs() {
+    // type E = Indexed<SerializedEvent>;
 
-  //   const { name, stream } = this.projection.configuration;
-  //   const meta = { projection: name, stream };
+    const { name, AGGREGATE } = this.projection.configuration;
+    const stream = AGGREGATE.name;
+    const meta = { projection: name, stream };
 
-  //   const p = `IsolatedProjection.${name}(${stream})`;
-  //   const e = (e: E) => `Event.${e.type}(${e.id})[${e.revision}n]`;
+    const p = `IsolatedProjection.${name}(${stream})`;
+    const e = (e: any) => `Event.${e.type}(${e.id})[${e.revision}n]`;
 
-  //   return {
-  //     init: () => {
-  //       this.logger.info(`${p} initializing`, { ...meta });
-  //     },
-  //     listen: (checkpoint: bigint) => {
-  //       this.logger.info(`${p} listening from revision ${checkpoint}n`, { ...meta });
-  //     },
-  //     stop: () => {
-  //       this.logger.info(`${p} stopping`, { ...meta });
-  //     },
-  //     stopped: () => {
-  //       this.logger.info(`${p} stopped`, { ...meta });
-  //     },
-  //     project: (event: E, checkpoint: bigint) => {
-  //       this.logger.info(`${p} projecting ${e(event)}`, { ...meta, event, checkpoint });
-  //     },
-  //     onSuccess: (event: E) => {
-  //       this.logger.info(`${p} successfully handled ${e(event)}`, { ...meta, event });
-  //     },
-  //     onFail: (event: E, error: Error) => {
-  //       this.logger.warn(`${p} failed to handle ${e(event)}, exiting`, { ...meta, event, error });
-  //     },
-  //   };
-  // }
+    return {
+      init: () => {
+        this.logger.info(`${p} initializing`, { ...meta });
+      },
+      listen: (checkpoint: bigint) => {
+        this.logger.info(`${p} listening from revision ${checkpoint}n`, {
+          ...meta,
+        });
+      },
+      stop: () => {
+        this.logger.info(`${p} stopping`, { ...meta });
+      },
+      stopped: () => {
+        this.logger.info(`${p} stopped`, { ...meta });
+      },
+      project: (event: any, checkpoint: bigint) => {
+        this.logger.info(`${p} projecting ${e(event)}`, {
+          ...meta,
+          event,
+          checkpoint,
+        });
+      },
+      onSuccess: (event: any) => {
+        this.logger.info(`${p} successfully handled ${e(event)}`, {
+          ...meta,
+          event,
+        });
+      },
+      onFail: (event: any, error: Error) => {
+        this.logger.warn(`${p} failed to handle ${e(event)}, exiting`, {
+          ...meta,
+          event,
+          error,
+        });
+      },
+    };
+  }
 
   async start() {
     const { name, AGGREGATE } = this.projection.configuration;
 
-    // this.logs.init();
+    this.logs.init();
 
     const checkpoint = await this.checkpoint.get(name);
     this.follower = await this.reader.follow(AGGREGATE, checkpoint + 1n);
 
-    // this.logs.listen(checkpoint);
+    this.logs.listen(checkpoint);
     for await (const event of this.follower) {
       try {
-        // this.logs.project(event, checkpoint);
+        this.logs.project(event, checkpoint);
         await this.transaction.perform(async (trx) => {
           await this.projection.project(event, trx);
           await this.checkpoint.set(name, event.revision, trx);
         });
-        // this.logs.onSuccess(event);
+        this.logs.onSuccess(event);
       } catch (error) {
         if (error instanceof Error) {
-          // this.logs.onFail(event, error);
+          this.logs.onFail(event, error);
           throw new Error("Projection failed " + error.message);
         } else {
           throw new Error("Projection failed " + error);
@@ -87,8 +110,8 @@ export class IsolatedProjector implements Projector {
   }
 
   async stop() {
-    // this.logs.stop();
+    this.logs.stop();
     await this.follower?.close();
-    // this.logs.stopped();
+    this.logs.stopped();
   }
 }

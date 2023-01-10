@@ -2,11 +2,18 @@ import * as fb from "firebase-admin";
 import { Checkpoint, CheckpointFurtherAway } from "@ddd-ts/event-sourcing";
 
 export class FirestoreCheckpoint extends Checkpoint {
-  firestore: fb.firestore.Firestore;
-  constructor() {
+  constructor(public readonly firestore: fb.firestore.Firestore) {
     super();
-    const app = fb.initializeApp({ projectId: "demo-es" });
-    this.firestore = app.firestore();
+  }
+
+  async clear() {
+    const bw = this.firestore.bulkWriter();
+    await this.firestore.recursiveDelete(
+      this.firestore.collection("checkpoints"),
+      bw
+    );
+    await bw.flush();
+    await bw.close();
   }
 
   async get(name: string) {
@@ -16,7 +23,7 @@ export class FirestoreCheckpoint extends Checkpoint {
       .get();
 
     if (!checkpoint.exists) {
-      return 0n;
+      return -1n;
     }
     return BigInt(checkpoint.data()?.revision);
   }
@@ -26,13 +33,12 @@ export class FirestoreCheckpoint extends Checkpoint {
     revision: bigint,
     trx?: FirebaseFirestore.Transaction
   ) {
+    console.log("setting checkpoint", name, revision);
     const checkpointRef = await this.firestore
       .collection("checkpoints")
       .doc(name);
 
-    const checkpoint = trx
-      ? await trx.get(checkpointRef)
-      : await checkpointRef.get();
+    const checkpoint = await checkpointRef.get();
 
     if (checkpoint.exists) {
       const currentRevision = BigInt(checkpoint.data()?.revision);
@@ -43,10 +49,10 @@ export class FirestoreCheckpoint extends Checkpoint {
 
     if (trx) {
       trx.set(this.firestore.collection("checkpoints").doc(name), {
-        revision: revision.toString(),
+        revision: Number(revision),
       });
     } else {
-      await checkpointRef.set({ revision });
+      await checkpointRef.set({ revision: Number(revision) });
     }
   }
 }

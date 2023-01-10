@@ -1,12 +1,9 @@
 import { EsProjectedStreamReader } from "../../es-aggregate-store/es-projected-stream.reader";
-import {
-  Competitor,
-  EventStore,
-} from "../../es-aggregate-store/event-store/event-store";
+import { Competitor } from "../../es-aggregate-store/event-store";
 import { Event } from "../../event/event";
 import { Checkpoint } from "../checkpoint/checkpoint";
 import { Projection } from "../projection";
-import { TransactionPerformer } from "../transaction/transaction.old";
+import { TransactionPerformer } from "../transaction/transaction";
 import { Projector } from "./projector";
 
 /**

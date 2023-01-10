@@ -13,26 +13,36 @@ import {
   ProjectedStreamConfiguration,
   Queue,
 } from "@ddd-ts/event-sourcing";
+import { inspect } from "util";
 import * as fb from "firebase-admin";
 
 process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
 
 export class FirestoreEventStore extends EventStore {
-  namespace = Math.random().toString().substring(2, 8);
-  firestore: fb.firestore.Firestore;
-  constructor() {
+  constructor(public readonly firestore: fb.firestore.Firestore) {
     super();
-    const app = fb.initializeApp({
-      projectId: "demo-es",
-    });
-    this.firestore = app.firestore();
   }
 
-  async close() {}
+  runningSubscriptions = new Set<any>();
+
+  async close() {
+    for (const unsubscribe of this.runningSubscriptions) {
+      unsubscribe();
+      this.runningSubscriptions.delete(unsubscribe);
+    }
+
+    await this.firestore.terminate();
+  }
 
   async clear() {
-    this.namespace = Math.random().toString().substring(2, 8);
-    await this.firestore.recursiveDelete(this.firestore.collection("events"));
+    const bw = this.firestore.bulkWriter();
+
+    await this.firestore.recursiveDelete(
+      this.firestore.collection("events"),
+      bw
+    );
+    await bw.flush();
+    await bw.close();
   }
 
   async appendToAggregateStream(
@@ -41,13 +51,13 @@ export class FirestoreEventStore extends EventStore {
     changes: EsChange[],
     expectedRevision: bigint
   ): Promise<void> {
-    console.log(
-      "appendToAggregateStream",
-      AGGREGATE.name,
-      id.toString(),
-      changes.length,
-      expectedRevision
-    );
+    // console.log(
+    //   "appendToAggregateStream",
+    //   AGGREGATE.name,
+    //   id.toString(),
+    //   changes.length,
+    //   expectedRevision
+    // );
     await this.firestore.runTransaction(async (trx) => {
       const aggregateCollection = this.firestore.collection("events");
 
@@ -66,11 +76,11 @@ export class FirestoreEventStore extends EventStore {
       let revision = expectedRevision + 1n;
 
       for (const change of changes) {
-        console.log("revision", revision, "change", change.id);
+        // console.log("revision", revision, "change", change.id);
         trx.create(aggregateCollection.doc(change.id), {
           aggregateType: AGGREGATE.name,
           aggregateId: id.toString(),
-          revision: revision,
+          revision: Number(revision),
           type: change.type,
           payload: change.payload,
           occurredAt: fb.firestore.FieldValue.serverTimestamp(),
@@ -85,6 +95,7 @@ export class FirestoreEventStore extends EventStore {
     id: { toString(): string },
     from?: bigint
   ): AsyncIterable<EsFact> {
+    console.log("read start");
     const aggregateCollection = this.firestore.collection("events");
 
     let query = aggregateCollection
@@ -105,6 +116,7 @@ export class FirestoreEventStore extends EventStore {
         payload: e.data().payload,
       };
     }
+    console.log("read end");
   }
 
   async *readProjectedStream(
@@ -140,6 +152,7 @@ export class FirestoreEventStore extends EventStore {
     AGGREGATE: ProjectedStreamConfiguration,
     from: bigint = 0n
   ): Promise<Follower> {
+    console.log(`following ${AGGREGATE.name} from ${from}`);
     const aggregateCollection = this.firestore.collection("events");
 
     let query = aggregateCollection
@@ -149,7 +162,7 @@ export class FirestoreEventStore extends EventStore {
 
     let revision = 0n;
     if (from) {
-      query = query.startAt(from);
+      query = query.startAt(Number(from));
       revision = from;
     }
 
@@ -160,6 +173,7 @@ export class FirestoreEventStore extends EventStore {
         if (change.type === "added") {
           const e =
             change.doc as any as fb.firestore.QueryDocumentSnapshot<any>;
+
           follower.push({
             id: e.id,
             revision: revision,
@@ -171,7 +185,12 @@ export class FirestoreEventStore extends EventStore {
       });
     });
 
-    follower.onClose(unsubscribe);
+    follower.onClose(() => {
+      unsubscribe();
+      this.runningSubscriptions.delete(unsubscribe);
+    });
+
+    this.runningSubscriptions.add(() => follower.close());
 
     return follower;
   }

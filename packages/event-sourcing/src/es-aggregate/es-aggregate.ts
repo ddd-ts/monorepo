@@ -1,4 +1,4 @@
-import { Constructor } from "../es-aggregate-store/event-store/event-store";
+import { Constructor } from "../es-aggregate-store/event-store";
 import { Change, Event, Fact } from "../event/event";
 
 export type EsAggregateId = { toString(): string };
@@ -68,7 +68,6 @@ export abstract class EsAggregate<
   static registerHandler(eventType: string, handler: (event: Event) => any) {
     this.eventHandlers.set(eventType, handler);
   }
-
   private getEventHandler(event: E) {
     const constructor = this.constructor as typeof EsAggregate;
     const eventType = event.type;

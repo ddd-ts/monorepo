@@ -138,7 +138,6 @@ export class ESDBEventStore extends EventStore {
     });
 
     const mapped = map(stream, (e) => {
-      // console.log("mapping", e);
       if (!e.event) {
         throw new Error("no event");
       }

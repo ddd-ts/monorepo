@@ -1,5 +1,5 @@
 import { EsAggregate } from "../es-aggregate/es-aggregate";
-import { Constructor, EventStore } from "./event-store/event-store";
+import { Constructor, EventStore } from "./event-store";
 
 export class EsProjectedStreamReader {
   constructor(private eventStore: EventStore) {}
