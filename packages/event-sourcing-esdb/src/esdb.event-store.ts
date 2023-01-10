@@ -36,7 +36,7 @@ export class ESDBEventStore extends EventStore {
     await this.client.dispose();
   }
 
-  clear() {
+  async clear() {
     this.namespace = Math.random().toString().substring(2, 8);
   }
 

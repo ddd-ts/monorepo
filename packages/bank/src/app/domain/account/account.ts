@@ -43,4 +43,11 @@ export class Account extends EsAggregate<
   static new() {
     return new Account(AccountId.generate());
   }
+
+  static deserialize(id: AccountId, balance: number, revision: bigint) {
+    const account = new Account(id);
+    account.balance = balance;
+    account.acknowledgedRevision = revision;
+    return account;
+  }
 }

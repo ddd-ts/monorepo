@@ -1,8 +1,17 @@
 export class Collection {
-  constructor(private data: Map<string, any> = new Map()) {}
+  constructor(
+    private data: Map<string, { savedAt: number; data: any }> = new Map()
+  ) {}
 
   clear() {
     this.data.clear();
+  }
+
+  getLatestSnapshot(id: string) {
+    const data = [...this.data.values()];
+    const sameId = data.filter((d) => d.data.id === id);
+    const sorted = sameId.sort((a, b) => b.savedAt - a.savedAt);
+    return sorted[0].data;
   }
 
   clone() {
@@ -29,21 +38,23 @@ export class Collection {
   }
 
   get(id: string): any {
-    return this.data.get(id);
+    return this.data.get(id)?.data;
   }
 
   getAll(): any[] {
-    return [...this.data.entries()];
+    return [...this.data.entries()].map(([id, data]) => data.data);
   }
 
   save(id: string, data: any): void {
-    this.data.set(id, data);
+    const now = process.hrtime();
+    const total = now[0] * 1e9 + now[1];
+    this.data.set(id, { savedAt: total, data });
   }
 
   toPretty() {
     return [...this.data.entries()]
       .map(([id, data]) => {
-        return `\t\t"${id}": ${JSON.stringify(data)}`;
+        return `\t\t"${id}": ${JSON.stringify(data.data)}`;
       })
       .join(",\n");
   }

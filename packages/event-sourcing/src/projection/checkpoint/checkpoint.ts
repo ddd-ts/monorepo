@@ -19,4 +19,5 @@ export abstract class Checkpoint {
     revision: bigint,
     trx?: Transaction
   ): Promise<void>;
+  abstract clear(): Promise<void>;
 }

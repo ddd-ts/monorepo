@@ -87,31 +87,40 @@ export class IsolatedProjector implements Projector {
     this.logs.init();
 
     const checkpoint = await this.checkpoint.get(name);
+
     this.follower = await this.reader.follow(AGGREGATE, checkpoint + 1n);
 
     this.logs.listen(checkpoint);
-    for await (const event of this.follower) {
-      try {
-        this.logs.project(event, checkpoint);
-        await this.transaction.perform(async (trx) => {
-          await this.projection.project(event, trx);
-          await this.checkpoint.set(name, event.revision, trx);
-        });
-        this.logs.onSuccess(event);
-      } catch (error) {
-        if (error instanceof Error) {
-          this.logs.onFail(event, error);
-          throw new Error("Projection failed " + error.message);
-        } else {
-          throw new Error("Projection failed " + error);
+
+    (async () => {
+      if (!this.follower) {
+        throw new Error("follower is undefined");
+      }
+      for await (const event of this.follower) {
+        try {
+          this.logs.project(event, checkpoint);
+          await this.transaction.perform(async (trx) => {
+            await this.projection.project(event, trx);
+            await this.checkpoint.set(name, event.revision, trx);
+          });
+          this.logs.onSuccess(event);
+        } catch (error) {
+          if (error instanceof Error) {
+            this.logs.onFail(event, error);
+            throw new Error("Projection failed " + error.message);
+          } else {
+            throw new Error("Projection failed " + error);
+          }
         }
       }
-    }
+    })();
   }
 
   async stop() {
     this.logs.stop();
     await this.follower?.close();
+    this.follower = undefined;
     this.logs.stopped();
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 }

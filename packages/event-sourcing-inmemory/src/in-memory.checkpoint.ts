@@ -31,7 +31,7 @@ export class InMemoryCheckpoint extends Checkpoint {
     this.inMemoryDatabase.save("checkpoint", name, revision, trx);
   }
 
-  clear() {
-    this.projections.clear();
+  async clear() {
+    this.inMemoryDatabase.clear("checkpoint");
   }
 }

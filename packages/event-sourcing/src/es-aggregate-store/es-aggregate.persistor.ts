@@ -1,9 +1,15 @@
 import { EsAggregate } from "../es-aggregate/es-aggregate";
+import { Snapshotter } from "../index";
 import { Constructor, EventStore } from "./event-store";
 
-type EsAggregateType<A extends EsAggregate> = Constructor<A> & {
+export type EsAggregateType<A extends EsAggregate> = Constructor<A> & {
   instanciate: (id: A["id"]) => A;
 };
+
+export interface EsAggregatePersistor<A extends EsAggregate> {
+  persist(aggregate: A): Promise<void>;
+  load(aggregateId: A["id"]): Promise<A>;
+}
 
 export function EsAggregatePersistor<A extends EsAggregateType<any>>(
   AGGREGATE: A
@@ -33,6 +39,44 @@ export function EsAggregatePersistor<A extends EsAggregateType<any>>(
       }
 
       return instance;
+    }
+  };
+}
+
+export function EsAggregatePersistorWithSnapshots<
+  A extends EsAggregateType<any>
+>(AGGREGATE: A) {
+  return class extends EsAggregatePersistor(AGGREGATE) {
+    constructor(
+      eventStore: EventStore,
+      public snapshotter: Snapshotter<InstanceType<A>>
+    ) {
+      super(eventStore);
+    }
+
+    async persist(aggregate: InstanceType<A>) {
+      await super.persist(aggregate);
+      await this.snapshotter.save(aggregate);
+    }
+
+    async load(aggregateId: InstanceType<A>["id"]): Promise<InstanceType<A>> {
+      const instance = await this.snapshotter.load(aggregateId);
+
+      if (instance) {
+        const stream = this.eventStore.readAggregateStream(
+          AGGREGATE,
+          aggregateId,
+          instance.acknowledgedRevision + 1n
+        );
+
+        for await (const fact of stream) {
+          instance.load(fact as any);
+        }
+
+        return instance;
+      }
+
+      return super.load(aggregateId);
     }
   };
 }

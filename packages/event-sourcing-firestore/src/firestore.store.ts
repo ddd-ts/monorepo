@@ -19,8 +19,9 @@ export function FirestoreStore<Model, Id extends { toString(): string }>(
       model: Model,
       trx?: FirebaseFirestore.Transaction
     ): Promise<void> {
+      const stack = new Error().stack;
       const serialized = this.serializer.serialize(model);
-      const ref = this._collection.doc(serialized.id);
+      const ref = this._collection.doc(serialized.id.toString());
 
       trx ? trx.set(ref, serialized) : await ref.set(serialized);
     }
@@ -48,7 +49,7 @@ export function FirestoreStore<Model, Id extends { toString(): string }>(
     }
 
     async delete(id: Id): Promise<void> {
-      await this._collection.doc(id.toString()).delete();
+      await this.firestore.collection(collection).doc(id.toString()).delete();
     }
   }
 

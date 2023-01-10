@@ -1,6 +1,9 @@
 import {
   Checkpoint,
+  Constructor,
+  EsAggregate,
   EsAggregatePersistor,
+  EsAggregateType,
   EsProjectedStreamReader,
   EventStore,
   IsolatedProjector,
@@ -10,6 +13,7 @@ import { Serializer } from "@ddd-ts/event-sourcing/dist/model/serializer";
 import { Store } from "@ddd-ts/event-sourcing/dist/model/store";
 import { CashFlowProjection } from "../app/application/cashflow.projection";
 import { Account } from "../app/domain/account/account";
+import { AccountSerializer } from "../app/infrastructure/account.serializer";
 import { CashflowSerializer } from "../app/infrastructure/cashflow.serializer";
 
 function WriteModelConsistencySuite(es: EventStore) {
@@ -69,15 +73,19 @@ export function BankSuite(
   es: EventStore,
   checkpoint: Checkpoint,
   transaction: TransactionPerformer,
-  snapshotter: <S extends Serializer<any>>(
+  createStore: <S extends Serializer<any>>(
     serializer: S,
     name: string
   ) => Store<
     S extends Serializer<infer M> ? M : never,
     S extends Serializer<any> ? ReturnType<S["getIdFromModel"]> : never
-  >
+  >,
+  createPersistor: <A extends EsAggregateType<any>>(
+    AGGREGATE: A,
+    serializer: Serializer<InstanceType<A>>
+  ) => EsAggregatePersistor<InstanceType<A>>
 ) {
-  const cashflowStore = snapshotter(new CashflowSerializer(), "cashflow");
+  const cashflowStore = createStore(new CashflowSerializer(), "cashflow");
   const cashflowProjection = new CashFlowProjection(cashflowStore);
   const projectedStreamReader = new EsProjectedStreamReader(es);
 
@@ -88,28 +96,19 @@ export function BankSuite(
     transaction
   );
 
-  class AccountPersistor extends EsAggregatePersistor(Account) {}
-
-  const persistor = new AccountPersistor(es);
-
-  beforeAll(async () => {
-    await (checkpoint as any).clear();
-    await cashflowStore.delete("global");
-    await (es as any).clear();
-    void cashflowProjector.start();
-  });
+  const persistor = createPersistor(Account, new AccountSerializer());
 
   beforeEach(async () => {
     await cashflowProjector.stop();
-    await (checkpoint as any).clear();
+    await checkpoint.clear();
     await cashflowStore.delete("global");
-    await (es as any).clear();
-    void cashflowProjector.start();
+    await es.clear();
+    await cashflowProjector.start();
   });
 
   afterAll(async () => {
     await cashflowProjector.stop();
-    await (es as any).close();
+    await es.close();
   });
 
   it("should deposit money", async () => {
@@ -119,16 +118,16 @@ export function BankSuite(
     await persistor.persist(accountA);
 
     accountA.deposit(50);
-    accountA.deposit(100);
+    accountA.deposit(200);
     await persistor.persist(accountA);
 
     const reloaded = await persistor.load(accountA.id);
 
     expect(reloaded).toEqual(accountA);
-    expect(reloaded.balance).toBe(250);
+    expect(reloaded.balance).toBe(350);
   });
 
-  it.only("should maintain a cashflow", async () => {
+  it("should maintain a cashflow", async () => {
     const accountA = Account.new();
     accountA.deposit(100);
     await persistor.persist(accountA);
@@ -137,11 +136,26 @@ export function BankSuite(
     accountB.deposit(100);
     await persistor.persist(accountB);
 
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 100));
 
     const flow = await cashflowStore.load("global");
 
     expect(flow?.flow).toBe(200);
-    expect(true).toBe(true);
-  }, 5000);
+  });
+
+  it("should load a big account", async () => {
+    const account = Account.new();
+    for (let i = 0; i < 500; i++) {
+      account.deposit(100);
+    }
+    await persistor.persist(account);
+    for (let i = 0; i < 500; i++) {
+      account.deposit(100);
+    }
+    await persistor.persist(account);
+    const reloaded = await persistor.load(account.id);
+
+    expect(reloaded).toEqual(account);
+    expect(reloaded.balance).toBe(100000);
+  });
 }

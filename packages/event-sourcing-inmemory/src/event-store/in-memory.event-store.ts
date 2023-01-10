@@ -1,4 +1,9 @@
-import { EsAggregate, Constructor, EsChange, EventStore } from "@ddd-ts/event-sourcing";
+import {
+  EsAggregate,
+  Constructor,
+  EsChange,
+  EventStore,
+} from "@ddd-ts/event-sourcing";
 import { ProjectedStream } from "./projected-stream";
 import { Stream } from "./stream";
 
@@ -8,11 +13,11 @@ export class InMemoryEventStore extends EventStore {
 
   private newStreamSubscribers = new Set<(stream: Stream) => void>();
 
-  close() {
+  async close() {
     this.clear();
   }
 
-  clear() {
+  async clear() {
     this.streams.clear();
     for (const [key, value] of this.projectedStreams) {
       value.onCloseCallbacks.forEach((callback) => callback());

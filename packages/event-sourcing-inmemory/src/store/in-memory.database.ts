@@ -37,6 +37,10 @@ export class InMemoryDatabase {
     return this.getStorage(trx).getCollection(collectionName).getAll();
   }
 
+  loadLatestSnapshot(id: string) {
+    return this.storage.getCollection("snapshots").getLatestSnapshot(id);
+  }
+
   save(
     collectionName: string,
     id: string,

@@ -62,4 +62,7 @@ export abstract class EventStore {
     AGGREGATE: ProjectedStreamConfiguration,
     competitionName: string
   ): Promise<Competitor>;
+
+  abstract clear(): Promise<void>;
+  abstract close(): Promise<void>;
 }

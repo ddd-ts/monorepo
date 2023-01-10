@@ -17,7 +17,7 @@ import { inspect } from "util";
 import * as fb from "firebase-admin";
 
 process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
-
+let id = 0;
 export class FirestoreEventStore extends EventStore {
   constructor(public readonly firestore: fb.firestore.Firestore) {
     super();
@@ -35,14 +35,23 @@ export class FirestoreEventStore extends EventStore {
   }
 
   async clear() {
+    console.log("clearing event store");
+    console.log("loading bulk writer");
     const bw = this.firestore.bulkWriter();
 
+    console.log("deleting events");
     await this.firestore.recursiveDelete(
       this.firestore.collection("events"),
       bw
     );
+
+    console.log("flushing bulk writer");
     await bw.flush();
+
+    console.log("closing bulk writer");
     await bw.close();
+
+    console.log("clearing event store done");
   }
 
   async appendToAggregateStream(
@@ -51,13 +60,6 @@ export class FirestoreEventStore extends EventStore {
     changes: EsChange[],
     expectedRevision: bigint
   ): Promise<void> {
-    // console.log(
-    //   "appendToAggregateStream",
-    //   AGGREGATE.name,
-    //   id.toString(),
-    //   changes.length,
-    //   expectedRevision
-    // );
     await this.firestore.runTransaction(async (trx) => {
       const aggregateCollection = this.firestore.collection("events");
 
@@ -76,9 +78,9 @@ export class FirestoreEventStore extends EventStore {
       let revision = expectedRevision + 1n;
 
       for (const change of changes) {
-        // console.log("revision", revision, "change", change.id);
         trx.create(aggregateCollection.doc(change.id), {
           aggregateType: AGGREGATE.name,
+          id: change.id,
           aggregateId: id.toString(),
           revision: Number(revision),
           type: change.type,
@@ -150,6 +152,7 @@ export class FirestoreEventStore extends EventStore {
     AGGREGATE: ProjectedStreamConfiguration,
     from: bigint = 0n
   ): Promise<Follower> {
+    const i = id++;
     const aggregateCollection = this.firestore.collection("events");
 
     let query = aggregateCollection
@@ -157,37 +160,36 @@ export class FirestoreEventStore extends EventStore {
       .orderBy("revision", "asc")
       .orderBy("occurredAt", "asc");
 
-    let revision = 0n;
-    if (from) {
-      query = query.startAt(Number(from));
-      revision = from;
-    }
+    let revision = from;
+    query = query.startAt(Number(revision));
 
     const follower = new Queue<EsFact>();
 
-    const unsubscribe = query.onSnapshot((snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const e =
-            change.doc as any as fb.firestore.QueryDocumentSnapshot<any>;
-
-          follower.push({
-            id: e.id,
-            revision: revision,
-            type: e.data().type,
-            payload: e.data().payload,
-          });
-          revision++;
+    const unsubscribe = query.onSnapshot((snap) => {
+      for (const change of snap.docChanges()) {
+        if (change.type !== "added") {
+          continue;
         }
-      });
+        const data = change.doc.data();
+
+        follower.push({
+          id: data.id,
+          revision: revision,
+          type: data.type,
+          payload: data.payload,
+        });
+        revision++;
+      }
     });
+
+    const hook = () => follower.close();
 
     follower.onClose(() => {
       unsubscribe();
-      this.runningSubscriptions.delete(unsubscribe);
+      this.runningSubscriptions.delete(hook);
     });
 
-    this.runningSubscriptions.add(() => follower.close());
+    this.runningSubscriptions.add(hook);
 
     return follower;
   }
