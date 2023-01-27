@@ -32,7 +32,7 @@ export interface EsEvent {
 export type EsFact = EsEvent & { revision: bigint };
 export type EsChange = EsEvent & { revision: undefined };
 
-export type ProjectedStreamConfiguration = Constructor<EsAggregate>;
+export type ProjectedStreamConfiguration = Constructor<EsAggregate>[];
 
 export abstract class EventStore {
   abstract appendToAggregateStream(

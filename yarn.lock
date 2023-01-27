@@ -502,6 +502,19 @@
     google-protobuf "^3.19.0"
     uuid "^8.3.2"
 
+"@eventstore/db-client@^5.0.0":
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/@eventstore/db-client/-/db-client-5.0.0.tgz#772cbbd743e6d3f688dfb88c3761ee6c0a3c7db1"
+  integrity sha512-d8EK6Tu1YgZPXh3A0FG3751VaZ213csG3GPo4KZijVcvfDlkuuVrUt5XEdpxj40F3eFe5Vp5kQKJvDIPPTGnaQ==
+  dependencies:
+    "@grpc/grpc-js" "^1.4.5"
+    "@types/debug" "^4.1.7"
+    "@types/google-protobuf" "^3.15.5"
+    "@types/node" "^16.11.4"
+    debug "^4.3.2"
+    google-protobuf "^3.19.0"
+    uuid "^8.3.2"
+
 "@fastify/busboy@^1.1.0":
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@fastify/busboy/-/busboy-1.1.0.tgz#4472f856e2bb5a9ee34ad64b93891b73b73537ca"

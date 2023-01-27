@@ -1,5 +1,5 @@
 import { Transaction } from "@ddd-ts/event-sourcing";
-import { Cashflow } from "../domain/cashflow/cashflow";
+import { Cashflow } from "../domain/read/cashflow/cashflow";
 
 export abstract class CashflowStore {
   abstract load(id: string, trx?: Transaction): Promise<Cashflow | undefined>;

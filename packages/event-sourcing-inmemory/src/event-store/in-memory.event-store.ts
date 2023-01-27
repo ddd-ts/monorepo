@@ -3,6 +3,7 @@ import {
   Constructor,
   EsChange,
   EventStore,
+  ProjectedStreamConfiguration,
 } from "@ddd-ts/event-sourcing";
 import { ProjectedStream } from "./projected-stream";
 import { Stream } from "./stream";
@@ -71,9 +72,12 @@ export class InMemoryEventStore extends EventStore {
   }
 
   private getProjectedStream(
-    AGGREGATE: Constructor<EsAggregate>
+    config: ProjectedStreamConfiguration
   ): ProjectedStream {
-    const streamName = `${AGGREGATE.name}`;
+    const streamName = config
+      .map((a) => a.name)
+      .sort()
+      .join("+");
 
     if (this.projectedStreams.has(streamName)) {
       return this.projectedStreams.get(streamName)!;
@@ -81,7 +85,7 @@ export class InMemoryEventStore extends EventStore {
 
     const streams = [...this.streams.keys()];
     const correspondingStreams = streams
-      .filter((name) => name.includes(AGGREGATE.name))
+      .filter((name) => config.some((a) => a.name === name.split("-")[0]))
       .map((name) => this.streams.get(name)!);
 
     const orderedFacts = correspondingStreams
@@ -116,23 +120,23 @@ export class InMemoryEventStore extends EventStore {
     return projectedStream;
   }
 
-  async *readProjectedStream(AGGREGATE: Constructor<EsAggregate>, from = 0n) {
-    const projectedStream = this.getProjectedStream(AGGREGATE);
+  async *readProjectedStream(config: ProjectedStreamConfiguration, from = 0n) {
+    const projectedStream = this.getProjectedStream(config);
 
     yield* projectedStream.read(from);
   }
 
-  async followProjectedStream(AGGREGATE: Constructor<EsAggregate>, from = 0n) {
-    const projectedStream = this.getProjectedStream(AGGREGATE);
+  async followProjectedStream(config: ProjectedStreamConfiguration, from = 0n) {
+    const projectedStream = this.getProjectedStream(config);
 
     return projectedStream.follow(from);
   }
 
   async competeForProjectedStream(
-    AGGREGATE: Constructor<EsAggregate>,
+    config: ProjectedStreamConfiguration,
     competition: string
   ) {
-    const projectedStream = this.getProjectedStream(AGGREGATE);
+    const projectedStream = this.getProjectedStream(config);
 
     return projectedStream.compete(competition);
   }

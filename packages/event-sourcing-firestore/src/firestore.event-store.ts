@@ -1,9 +1,6 @@
 import {
   EsAggregate,
   Event,
-  Serializable,
-  closeable,
-  map,
   Competitor,
   Constructor,
   EsChange,
@@ -13,7 +10,6 @@ import {
   ProjectedStreamConfiguration,
   Queue,
 } from "@ddd-ts/event-sourcing";
-import { inspect } from "util";
 import * as fb from "firebase-admin";
 
 process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
@@ -21,6 +17,10 @@ let id = 0;
 export class FirestoreEventStore extends EventStore {
   constructor(public readonly firestore: fb.firestore.Firestore) {
     super();
+  }
+
+  private serialize(object: object) {
+    return JSON.parse(JSON.stringify(object));
   }
 
   runningSubscriptions = new Set<any>();
@@ -84,9 +84,10 @@ export class FirestoreEventStore extends EventStore {
           aggregateId: id.toString(),
           revision: Number(revision),
           type: change.type,
-          payload: change.payload,
-          occurredAt: fb.firestore.FieldValue.serverTimestamp(),
+          payload: this.serialize(change.payload),
+          occurredAt: new Date(),
         });
+        await new Promise((r) => setTimeout(r, 1)); // ensure occurredAt is unique
         revision++;
       }
     });
@@ -120,19 +121,22 @@ export class FirestoreEventStore extends EventStore {
   }
 
   async *readProjectedStream(
-    AGGREGATE: ProjectedStreamConfiguration,
+    config: ProjectedStreamConfiguration,
     from?: bigint
   ): AsyncIterable<EsFact> {
     const aggregateCollection = this.firestore.collection("events");
 
     let query = aggregateCollection
-      .where("aggregateType", "==", AGGREGATE.name)
-      .orderBy("revision", "asc")
+      .where(
+        "aggregateType",
+        "in",
+        config.map((c) => c.name)
+      )
       .orderBy("occurredAt", "asc");
 
     let revision = 0n;
     if (from) {
-      query = query.startAt(from);
+      query = query.offset(Number(from));
       revision = from;
     }
 
@@ -149,19 +153,23 @@ export class FirestoreEventStore extends EventStore {
   }
 
   async followProjectedStream(
-    AGGREGATE: ProjectedStreamConfiguration,
+    config: ProjectedStreamConfiguration,
     from: bigint = 0n
   ): Promise<Follower> {
+    console.log("following", config, from);
     const i = id++;
     const aggregateCollection = this.firestore.collection("events");
 
     let query = aggregateCollection
-      .where("aggregateType", "==", AGGREGATE.name)
-      .orderBy("revision", "asc")
+      .where(
+        "aggregateType",
+        "in",
+        config.map((c) => c.name)
+      )
       .orderBy("occurredAt", "asc");
 
     let revision = from;
-    query = query.startAt(Number(revision));
+    query = query.offset(Number(revision));
 
     const follower = new Queue<EsFact>();
 
@@ -171,7 +179,7 @@ export class FirestoreEventStore extends EventStore {
           continue;
         }
         const data = change.doc.data();
-
+        console.log("pushing", data.type, data.revision, data.id);
         follower.push({
           id: data.id,
           revision: revision,
@@ -185,6 +193,7 @@ export class FirestoreEventStore extends EventStore {
     const hook = () => follower.close();
 
     follower.onClose(() => {
+      console.log("closing follower");
       unsubscribe();
       this.runningSubscriptions.delete(hook);
     });

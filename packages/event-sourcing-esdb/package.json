@@ -5,12 +5,12 @@
   "license": "MIT",
   "scripts": {
     "pretest": "docker compose -f docker/docker-compose.yml up -d",
-    "test": "jest",
+    "test": "DEBUG='esdb:*' jest",
     "posttest": "docker compose -f docker/docker-compose.yml down",
     "build": "tsc"
   },
   "dependencies": {
-    "@eventstore/db-client": "^3.3.1",
+    "@eventstore/db-client": "^5.0.0",
     "@ddd-ts/event-sourcing": "*"
   },
   "devDependencies": {

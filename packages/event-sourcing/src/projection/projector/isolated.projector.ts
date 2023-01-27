@@ -36,8 +36,8 @@ export class IsolatedProjector implements Projector {
   get logs() {
     // type E = Indexed<SerializedEvent>;
 
-    const { name, AGGREGATE } = this.projection.configuration;
-    const stream = AGGREGATE.name;
+    const { name, streams } = this.projection.configuration;
+    const stream = streams.map((s) => s.name).join(", ");
     const meta = { projection: name, stream };
 
     const p = `IsolatedProjection.${name}(${stream})`;
@@ -82,13 +82,13 @@ export class IsolatedProjector implements Projector {
   }
 
   async start() {
-    const { name, AGGREGATE } = this.projection.configuration;
+    const { name, streams } = this.projection.configuration;
 
     this.logs.init();
 
     const checkpoint = await this.checkpoint.get(name);
 
-    this.follower = await this.reader.follow(AGGREGATE, checkpoint + 1n);
+    this.follower = await this.reader.follow(streams, checkpoint + 1n);
 
     this.logs.listen(checkpoint);
 

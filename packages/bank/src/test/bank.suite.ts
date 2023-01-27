@@ -12,7 +12,7 @@ import {
 import { Serializer } from "@ddd-ts/event-sourcing/dist/model/serializer";
 import { Store } from "@ddd-ts/event-sourcing/dist/model/store";
 import { CashFlowProjection } from "../app/application/cashflow.projection";
-import { Account } from "../app/domain/account/account";
+import { Account } from "../app/domain/write/account/account";
 import { AccountSerializer } from "../app/infrastructure/account.serializer";
 import { CashflowSerializer } from "../app/infrastructure/cashflow.serializer";
 

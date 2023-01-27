@@ -1,5 +1,5 @@
 import { Serializer, Serialized } from "@ddd-ts/event-sourcing";
-import { Cashflow } from "../domain/cashflow/cashflow";
+import { Cashflow } from "../domain/read/cashflow/cashflow";
 
 export class CashflowSerializer extends Serializer<Cashflow> {
   serialize(model: Cashflow) {

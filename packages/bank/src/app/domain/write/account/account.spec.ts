@@ -1,5 +1,27 @@
+import { Constructor, Event } from "@ddd-ts/event-sourcing";
 import { Account } from "./account";
 import { Deposited } from "./deposited.event";
+function expectedFact(
+  event: Constructor<Event>,
+  revision: bigint,
+  payload: any
+) {
+  return expect.objectContaining({
+    type: event.name,
+    id: expect.any(String),
+    payload: expect.objectContaining({ ...payload }) ?? expect.anything(),
+    revision,
+  });
+}
+
+function expectedChange(event: Constructor<Event>, payload: any) {
+  return expect.objectContaining({
+    type: event.name,
+    id: expect.any(String),
+    payload: expect.objectContaining({ ...payload }) ?? expect.anything(),
+    revision: undefined,
+  });
+}
 
 describe("EsAggregate", () => {
   describe("when creating an aggregate", () => {
@@ -22,7 +44,9 @@ describe("EsAggregate", () => {
 
       account.deposit(100);
 
-      expect(account.changes).toEqual([Deposited.expectedChange(100)]);
+      expect(account.changes).toEqual([
+        expectedChange(Deposited, { amount: 100 }),
+      ]);
     });
 
     it("should update the internal projection accordingly to the aggregate interactibility", () => {
@@ -46,7 +70,15 @@ describe("EsAggregate", () => {
     it("should load facts without adding them to changes", () => {
       const account = Account.new();
 
-      account.load(Deposited.newFact(10, 0n));
+      account.load(
+        Deposited.asFact(
+          {
+            accountId: account.id,
+            amount: 10,
+          },
+          0n
+        )
+      );
 
       expect(account.changes).toEqual([]);
     });
@@ -61,7 +93,15 @@ describe("EsAggregate", () => {
     it("should update the internal projection accordingly to the loaded facts", () => {
       const account = Account.new();
 
-      account.load(Deposited.newFact(10, 0n));
+      account.load(
+        Deposited.asFact(
+          {
+            accountId: account.id,
+            amount: 10,
+          },
+          0n
+        )
+      );
 
       expect(account.balance).toEqual(10);
     });
@@ -69,7 +109,15 @@ describe("EsAggregate", () => {
     it("should update the acknowledged revision accordingly to the loaded facts", () => {
       const account = Account.new();
 
-      account.load(Deposited.newFact(10, 0n));
+      account.load(
+        Deposited.asFact(
+          {
+            accountId: account.id,
+            amount: 10,
+          },
+          0n
+        )
+      );
 
       expect(account.acknowledgedRevision).toEqual(0n);
     });
@@ -78,16 +126,44 @@ describe("EsAggregate", () => {
       const account = Account.new();
 
       // expected the 0n
-      expect(() => account.load(Deposited.newFact(10, 10n))).toThrow();
+      expect(() =>
+        account.load(
+          Deposited.asFact(
+            {
+              accountId: account.id,
+              amount: 10,
+            },
+            10n
+          )
+        )
+      ).toThrow();
     });
 
     it("should not load a fact supposed to have happened earlier in the aggregate lifetime", () => {
       const account = Account.new();
 
-      account.load(Deposited.newFact(10, 0n));
+      account.load(
+        Deposited.asFact(
+          {
+            accountId: account.id,
+            amount: 10,
+          },
+          0n
+        )
+      );
 
       // expected the 1n
-      expect(() => account.load(Deposited.newFact(10, 0n))).toThrow();
+      expect(() =>
+        account.load(
+          Deposited.asFact(
+            {
+              accountId: account.id,
+              amount: 10,
+            },
+            0n
+          )
+        )
+      ).toThrow();
     });
 
     it("should not load a fact after applying changes", () => {
@@ -96,7 +172,17 @@ describe("EsAggregate", () => {
       account.deposit(10);
 
       // expected the 1n
-      expect(() => account.load(Deposited.newFact(10, 0n))).toThrow();
+      expect(() =>
+        account.load(
+          Deposited.asFact(
+            {
+              accountId: account.id,
+              amount: 10,
+            },
+            0n
+          )
+        )
+      ).toThrow();
     });
   });
 });

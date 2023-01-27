@@ -34,9 +34,9 @@ export class DistributedProjector implements Projector {
   };
 
   get logs() {
-    const { name, AGGREGATE } = this.projection.configuration;
+    const { name, streams } = this.projection.configuration;
 
-    const stream = AGGREGATE.name;
+    const stream = streams.map((s) => s.name).join(", ");
     const meta = { projection: name, stream };
 
     type E = Event;
@@ -144,11 +144,11 @@ export class DistributedProjector implements Projector {
   //
 
   async start() {
-    const { name, AGGREGATE } = this.projection.configuration;
+    const { name, streams } = this.projection.configuration;
 
     this.logs.init();
 
-    this.competitor = await this.reader.compete(AGGREGATE, name);
+    this.competitor = await this.reader.compete(streams, name);
 
     this.logs.listen();
 
@@ -180,7 +180,7 @@ export class DistributedProjector implements Projector {
     this.logs.catchUp(checkpoint);
 
     for await (const event of this.reader.read(
-      this.projection.configuration.AGGREGATE,
+      this.projection.configuration.streams,
       checkpoint + 1n
     )) {
       this.logs.project(event, checkpoint);

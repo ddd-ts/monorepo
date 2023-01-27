@@ -1,7 +1,7 @@
 import { Serializer, Serialized } from "@ddd-ts/event-sourcing";
-import { Account } from "../domain/account/account";
-import { AccountId } from "../domain/account/account-id";
-import { Cashflow } from "../domain/cashflow/cashflow";
+import { Account } from "../domain/write/account/account";
+import { AccountId } from "../domain/write/account/account-id";
+import { Cashflow } from "../domain/read/cashflow/cashflow";
 
 export class AccountSerializer extends Serializer<Account> {
   serialize(model: Account) {

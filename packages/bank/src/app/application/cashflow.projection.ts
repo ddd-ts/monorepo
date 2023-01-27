@@ -1,7 +1,7 @@
 import { Fact, Projection, Transaction } from "@ddd-ts/event-sourcing";
-import { Account } from "../domain/account/account";
-import { Deposited } from "../domain/account/deposited.event";
-import { Cashflow } from "../domain/cashflow/cashflow";
+import { Account } from "../domain/write/account/account";
+import { Deposited } from "../domain/write/account/deposited.event";
+import { Cashflow } from "../domain/read/cashflow/cashflow";
 import { CashflowStore } from "./cashflow.store";
 
 export class CashFlowProjection extends Projection {
@@ -9,7 +9,7 @@ export class CashFlowProjection extends Projection {
     super();
   }
 
-  AGGREGATE = Account;
+  on = [Account];
 
   @Projection.on(Deposited)
   async onDeposited(fact: Fact<Deposited>, trx?: Transaction) {

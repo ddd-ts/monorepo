@@ -19,7 +19,7 @@ import {
   Follower,
   ProjectedStreamConfiguration,
 } from "@ddd-ts/event-sourcing";
-
+process.env.DEBUG = "esdb:*";
 export class ESDBEventStore extends EventStore {
   client: EventStoreDBClient;
   namespace: string;
@@ -32,8 +32,12 @@ export class ESDBEventStore extends EventStore {
     );
   }
 
+  private readonly subscriptions = new Set<() => Promise<any>>();
+
   async close() {
-    await this.client.dispose();
+    console.log("disposing client");
+    await Promise.all([...this.subscriptions.values()].map((s) => s()));
+    this.client.dispose();
   }
 
   async clear() {
@@ -89,19 +93,59 @@ export class ESDBEventStore extends EventStore {
     }
   }
 
-  private getProjectedStreamName(AGGREGATE: ProjectedStreamConfiguration) {
+  private getProjectedStreamName(AGGREGATE: ProjectedStreamConfiguration[0]) {
     return "$ce-" + this.namespace + "." + AGGREGATE.name;
   }
 
+  private async ensureProjectedStream(config: ProjectedStreamConfiguration) {
+    if (config.length === 1) {
+      return this.getProjectedStreamName(config[0]);
+    }
+
+    const projectionNameSuffix = config
+      .map((a) => a.name)
+      .sort()
+      .join("-");
+
+    const stableProjectionName =
+      this.namespace + "." + "pj-" + projectionNameSuffix;
+
+    const streams = config.map((a) => this.getProjectedStreamName(a));
+
+    const query = `
+      fromStreams(${streams
+        .map((s) => `'${s}'`)
+        .join(
+          ", "
+        )}).when({ $any: function(state, event) { linkTo('${stableProjectionName}', event) }})
+    `;
+
+    console.log("creating projection");
+
+    await this.client.createProjection(stableProjectionName, query, {
+      emitEnabled: true,
+    });
+
+    let status;
+
+    do {
+      status = await this.client.getProjectionStatus(stableProjectionName);
+      if (status.progress < 100) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      console.log(status.progress);
+    } while (status.progress < 100);
+
+    return stableProjectionName;
+  }
+
   async *readProjectedStream(
-    AGGREGATE: ProjectedStreamConfiguration,
+    config: ProjectedStreamConfiguration,
     from?: bigint
   ): AsyncIterable<EsFact> {
-    const streamName = this.getProjectedStreamName(AGGREGATE);
+    const stream = await this.ensureProjectedStream(config);
 
-    // const fromRevision = from === 0n ? "start" : from;
-
-    for await (const event of this.client.readStream(streamName, {
+    for await (const event of this.client.readStream(stream, {
       fromRevision: from,
       resolveLinkTos: true,
       direction: "forwards",
@@ -126,15 +170,19 @@ export class ESDBEventStore extends EventStore {
     AGGREGATE: ProjectedStreamConfiguration,
     from: bigint = 0n
   ): Promise<Follower> {
-    const streamName = this.getProjectedStreamName(AGGREGATE);
+    const streamName = await this.ensureProjectedStream(AGGREGATE);
 
     const position = from - 1n;
     const fromRevision = position < 0n ? "start" : position;
 
     const stream = this.client.subscribeToStream(streamName, {
-      fromRevision: fromRevision,
+      fromRevision,
       resolveLinkTos: true,
     });
+
+    const hook = async () => void stream.destroy();
+
+    this.subscriptions.add(hook);
 
     const mapped = map(stream, (e) => {
       if (!e.event) {
@@ -151,75 +199,85 @@ export class ESDBEventStore extends EventStore {
       };
     });
 
-    return closeable(mapped, () => stream.unsubscribe());
+    return closeable(mapped, async () => {
+      await stream.unsubscribe();
+      this.subscriptions.delete(hook);
+    });
   }
 
-  async competeForProjectedStream(
+  competeForProjectedStream(
     AGGREGATE: ProjectedStreamConfiguration,
     competitionName: string
   ): Promise<Competitor> {
-    const streamName = this.getProjectedStreamName(AGGREGATE);
-
-    try {
-      await this.client.createPersistentSubscriptionToStream(
-        streamName,
-        competitionName,
-        persistentSubscriptionToStreamSettingsFromDefaults({
-          resolveLinkTos: true,
-        })
-      );
-    } catch (error: any) {
-      if (
-        isCommandError(error) &&
-        error.type === ErrorType.PERSISTENT_SUBSCRIPTION_EXISTS
-      ) {
-        // do nothing and use the existing one
-      } else {
-        throw error;
-      }
-    }
-
-    const sub = this.client.subscribeToPersistentSubscriptionToStream(
-      streamName,
-      competitionName
-    );
-
-    return closeable(
-      map(sub, (event) => {
-        if (!event.event) {
-          throw new Error(
-            "[ESDB] listening projected stream : iterated over unreadable event"
-          );
-        }
-        const revision =
-          event.link?.revision !== undefined ? event.link?.revision : undefined;
-
-        if (revision === undefined) {
-          throw new Error(
-            "[ESDB] listening projected stream : iterated over unreadable event"
-          );
-        }
-        return {
-          fact: {
-            id: event.event.id,
-            type: event.event.type,
-            payload: event.event.data as Serializable,
-            revision,
-          },
-          succeed: async () => {
-            await sub.ack(event);
-          },
-          retry: async () => {
-            await sub.nack("retry", "unknown", event);
-          },
-          skip: async () => {
-            await sub.nack("skip", "unknown", event);
-          },
-        };
-      }),
-      async () => {
-        await sub.unsubscribe();
-      }
-    );
+    throw new Error("Method not implemented.");
   }
+
+  // async competeForProjectedStream(
+  //   AGGREGATE: ProjectedStreamConfiguration,
+  //   competitionName: string
+  // ): Promise<Competitor> {
+  //   const streamName = this.getProjectedStreamName(AGGREGATE);
+
+  //   try {
+  //     await this.client.createPersistentSubscriptionToStream(
+  //       streamName,
+  //       competitionName,
+  //       persistentSubscriptionToStreamSettingsFromDefaults({
+  //         resolveLinkTos: true,
+  //       })
+  //     );
+  //   } catch (error: any) {
+  //     if (
+  //       isCommandError(error) &&
+  //       error.type === ErrorType.PERSISTENT_SUBSCRIPTION_EXISTS
+  //     ) {
+  //       // do nothing and use the existing one
+  //     } else {
+  //       throw error;
+  //     }
+  //   }
+
+  //   const sub = this.client.subscribeToPersistentSubscriptionToStream(
+  //     streamName,
+  //     competitionName
+  //   );
+
+  //   return closeable(
+  //     map(sub, (event) => {
+  //       if (!event.event) {
+  //         throw new Error(follow
+  //           "[ESDB] listening projected stream : iterated over unreadable event"
+  //         );
+  //       }
+  //       const revision =
+  //         event.link?.revision !== undefined ? event.link?.revision : undefined;
+
+  //       if (revision === undefined) {
+  //         throw new Error(
+  //           "[ESDB] listening projected stream : iterated over unreadable event"
+  //         );
+  //       }
+  //       return {
+  //         fact: {
+  //           id: event.event.id,
+  //           type: event.event.type,
+  //           payload: event.event.data as Serializable,
+  //           revision,
+  //         },
+  //         succeed: async () => {
+  //           await sub.ack(event);
+  //         },
+  //         retry: async () => {
+  //           await sub.nack("retry", "unknown", event);
+  //         },
+  //         skip: async () => {
+  //           await sub.nack("skip", "unknown", event);
+  //         },
+  //       };
+  //     }),
+  //     async () => {
+  //       await sub.unsubscribe();
+  //     }
+  //   );
+  // }
 }

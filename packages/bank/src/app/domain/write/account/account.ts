@@ -16,11 +16,11 @@ export class Account extends EsAggregate<
   balance = 0;
 
   constructor(public id: AccountId) {
-    super();
+    super(id);
   }
 
   deposit(amount: number) {
-    this.apply(Deposited.newChange(amount));
+    this.apply(Deposited.new({ accountId: this.id, amount }));
   }
 
   @EsAggregate.on(Deposited)
@@ -37,11 +37,10 @@ export class Account extends EsAggregate<
     });
   }
 
-  // @EsAggregate.on("Withdrawn") // should work
-  // onWithdrawn(withdrawn: { amount: number }) {}
-
   static new() {
-    return new Account(AccountId.generate());
+    const accountId = AccountId.generate();
+    const account = this.instanciate(accountId);
+    return account;
   }
 
   static deserialize(id: AccountId, balance: number, revision: bigint) {

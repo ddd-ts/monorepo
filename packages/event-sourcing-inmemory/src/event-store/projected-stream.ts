@@ -28,7 +28,9 @@ export class ProjectedStream extends Stream {
 
     const unsubscribe = this.subscribe((datedFact) => {
       const { occuredAt, ...fact } = datedFact;
-      follower.push(fact);
+      if (fact.revision >= from) {
+        follower.push(fact);
+      }
     });
     follower.onClose(unsubscribe);
 

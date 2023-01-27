@@ -1,14 +1,17 @@
-import { Constructor } from "../es-aggregate-store/event-store";
+import {
+  Constructor,
+  ProjectedStreamConfiguration,
+} from "../es-aggregate-store/event-store";
 import { EsAggregate } from "../es-aggregate/es-aggregate";
 import { Event, Fact } from "../event/event";
 import { Transaction } from "./transaction/transaction";
 
 export abstract class Projection<A extends EsAggregate = EsAggregate> {
-  abstract AGGREGATE: Constructor<A>;
+  abstract on: ProjectedStreamConfiguration;
 
   get configuration() {
     return {
-      AGGREGATE: this.AGGREGATE,
+      streams: this.on,
       name: this.constructor.name,
     };
   }
@@ -16,6 +19,7 @@ export abstract class Projection<A extends EsAggregate = EsAggregate> {
   async project(event: Fact, trx?: Transaction) {
     const handler = this.getEventHandler(event);
     if (!handler) {
+      return;
       throw new Error(
         `cannot project event ${event.type}, no handler registered`
       );
