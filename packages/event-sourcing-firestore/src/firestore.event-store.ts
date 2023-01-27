@@ -15,8 +15,10 @@ import * as fb from "firebase-admin";
 process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
 let id = 0;
 export class FirestoreEventStore extends EventStore {
+  namespace: string;
   constructor(public readonly firestore: fb.firestore.Firestore) {
     super();
+    this.namespace = Math.random().toString().substring(2, 8);
   }
 
   private serialize(object: object) {
@@ -24,6 +26,10 @@ export class FirestoreEventStore extends EventStore {
   }
 
   runningSubscriptions = new Set<any>();
+
+  get aggregateCollection() {
+    return this.firestore.collection(this.namespace + "events");
+  }
 
   async close() {
     for (const unsubscribe of this.runningSubscriptions) {
@@ -35,23 +41,11 @@ export class FirestoreEventStore extends EventStore {
   }
 
   async clear() {
-    console.log("clearing event store");
-    console.log("loading bulk writer");
-    const bw = this.firestore.bulkWriter();
-
-    console.log("deleting events");
-    await this.firestore.recursiveDelete(
-      this.firestore.collection("events"),
-      bw
-    );
-
-    console.log("flushing bulk writer");
-    await bw.flush();
-
-    console.log("closing bulk writer");
-    await bw.close();
-
-    console.log("clearing event store done");
+    for (const unsubscribe of this.runningSubscriptions) {
+      unsubscribe();
+      this.runningSubscriptions.delete(unsubscribe);
+    }
+    this.namespace = Math.random().toString().substring(2, 8);
   }
 
   async appendToAggregateStream(
@@ -61,10 +55,8 @@ export class FirestoreEventStore extends EventStore {
     expectedRevision: bigint
   ): Promise<void> {
     await this.firestore.runTransaction(async (trx) => {
-      const aggregateCollection = this.firestore.collection("events");
-
       const eventsOccuredAfter = await trx.get(
-        aggregateCollection
+        this.aggregateCollection
           .where("aggregateType", "==", AGGREGATE.name)
           .where("aggregateId", "==", id.toString())
           .where("revision", ">", expectedRevision)
@@ -78,7 +70,7 @@ export class FirestoreEventStore extends EventStore {
       let revision = expectedRevision + 1n;
 
       for (const change of changes) {
-        trx.create(aggregateCollection.doc(change.id), {
+        trx.create(this.aggregateCollection.doc(change.id), {
           aggregateType: AGGREGATE.name,
           id: change.id,
           aggregateId: id.toString(),
@@ -98,9 +90,7 @@ export class FirestoreEventStore extends EventStore {
     id: { toString(): string },
     from?: bigint
   ): AsyncIterable<EsFact> {
-    const aggregateCollection = this.firestore.collection("events");
-
-    let query = aggregateCollection
+    let query = this.aggregateCollection
       .where("aggregateType", "==", AGGREGATE.name)
       .where("aggregateId", "==", id.toString())
       .orderBy("revision", "asc");
@@ -124,9 +114,7 @@ export class FirestoreEventStore extends EventStore {
     config: ProjectedStreamConfiguration,
     from?: bigint
   ): AsyncIterable<EsFact> {
-    const aggregateCollection = this.firestore.collection("events");
-
-    let query = aggregateCollection
+    let query = this.aggregateCollection
       .where(
         "aggregateType",
         "in",
@@ -156,11 +144,9 @@ export class FirestoreEventStore extends EventStore {
     config: ProjectedStreamConfiguration,
     from: bigint = 0n
   ): Promise<Follower> {
-    console.log("following", config, from);
     const i = id++;
-    const aggregateCollection = this.firestore.collection("events");
 
-    let query = aggregateCollection
+    let query = this.aggregateCollection
       .where(
         "aggregateType",
         "in",
@@ -179,7 +165,6 @@ export class FirestoreEventStore extends EventStore {
           continue;
         }
         const data = change.doc.data();
-        console.log("pushing", data.type, data.revision, data.id);
         follower.push({
           id: data.id,
           revision: revision,
@@ -193,7 +178,6 @@ export class FirestoreEventStore extends EventStore {
     const hook = () => follower.close();
 
     follower.onClose(() => {
-      console.log("closing follower");
       unsubscribe();
       this.runningSubscriptions.delete(hook);
     });

@@ -1,10 +1,4 @@
-import {
-  ErrorType,
-  EventStoreDBClient,
-  isCommandError,
-  jsonEvent,
-  persistentSubscriptionToStreamSettingsFromDefaults,
-} from "@eventstore/db-client";
+import { EventStoreDBClient, jsonEvent } from "@eventstore/db-client";
 import {
   EsAggregate,
   Event,
@@ -35,7 +29,6 @@ export class ESDBEventStore extends EventStore {
   private readonly subscriptions = new Set<() => Promise<any>>();
 
   async close() {
-    console.log("disposing client");
     await Promise.all([...this.subscriptions.values()].map((s) => s()));
     this.client.dispose();
   }
@@ -120,20 +113,22 @@ export class ESDBEventStore extends EventStore {
         )}).when({ $any: function(state, event) { linkTo('${stableProjectionName}', event) }})
     `;
 
-    console.log("creating projection");
-
     await this.client.createProjection(stableProjectionName, query, {
       emitEnabled: true,
     });
 
     let status;
 
+    let attempts = 0;
     do {
       status = await this.client.getProjectionStatus(stableProjectionName);
       if (status.progress < 100) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
-      console.log(status.progress);
+      attempts++;
+      if (attempts > 20) {
+        throw new Error("projection not stable");
+      }
     } while (status.progress < 100);
 
     return stableProjectionName;

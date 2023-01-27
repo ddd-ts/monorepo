@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "pretest": "docker compose -f docker/docker-compose.yml up -d",
-    "test": "DEBUG='esdb:*' jest",
+    "test": "jest",
     "posttest": "docker compose -f docker/docker-compose.yml down",
     "build": "tsc"
   },
