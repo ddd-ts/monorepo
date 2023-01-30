@@ -1,7 +1,1 @@
-/** @type {import('ts-jest/dist/types').InitialOptionsTsJest} */
-module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'node',
-  testMatch: ['**/*.spec.ts'],
-  maxWorkers: 1
-};
+module.exports =  require('@ddd-ts/dev/jest.config')

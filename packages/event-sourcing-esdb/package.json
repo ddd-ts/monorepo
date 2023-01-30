@@ -1,25 +1,22 @@
 {
   "name": "@ddd-ts/event-sourcing-esdb",
-  "version": "1.0.0",
+  "version": "0.0.2",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "license": "MIT",
   "scripts": {
     "pretest": "docker compose -f docker/docker-compose.yml up -d",
-    "test": "jest",
+    "test": "yarn pretest; test-runner; e=$?;yarn posttest; exit $e",
     "posttest": "docker compose -f docker/docker-compose.yml down",
-    "build": "tsc"
+    "build": "builder"
   },
   "dependencies": {
-    "@eventstore/db-client": "^5.0.0",
-    "@ddd-ts/event-sourcing": "*"
+    "@ddd-ts/event-sourcing": "*",
+    "@eventstore/db-client": "^5.0.0"
   },
   "devDependencies": {
+    "@ddd-ts/dev": "*",
     "@ddd-ts/event-sourcing-inmemory": "*",
-    "@ddd-ts/tests": "*",
-    "@types/jest": "^29.2.5",
-    "jest": "^29.3.1",
-    "ts-jest": "^29.0.3",
-    "ts-node": "^10.9.1",
-    "typescript": "^4.9.4"
+    "@ddd-ts/tests": "*"
   }
 }

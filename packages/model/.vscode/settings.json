@@ -1,4 +1,4 @@
 {
   "jest.shell": "zsh",
-  "jest.jestCommandLine": "source ~/.dotfiles/zsh/.zshrc  && yarn test"
+  "jest.jestCommandLine": "source ~/.dotfiles/zsh/.zshrc && yarn test"
 }
