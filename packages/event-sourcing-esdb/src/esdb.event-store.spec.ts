@@ -1,4 +1,4 @@
-import { EsAggregateStoreSuite } from "@ddd-ts/test-bank";
+import { EsAggregateStoreSuite } from "@ddd-ts/tests";
 import { ESDBEventStore } from "./esdb.event-store";
 
 describe("ESDBEventStore", () => {

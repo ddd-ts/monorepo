@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@ddd-ts/event-sourcing-inmemory": "*",
-    "@ddd-ts/test-bank": "*",
+    "@ddd-ts/tests": "*",
     "@types/jest": "^29.2.5",
     "jest": "^29.3.1",
     "ts-jest": "^29.0.3",

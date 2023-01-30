@@ -3,19 +3,18 @@
   "version": "0.0.0",
   "private": true,
   "workspaces": [
-    "test/*",
     "packages/*"
   ],
   "scripts": {
     "build": "turbo run build",
-    "test": "turbo run test",
+    "test": "turbo run test --parallel",
     "dev": "turbo run dev --parallel",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
     "prettier": "latest",
-    "turbo": "latest"
+    "turbo": "^1.7.0"
   },
   "engines": {
     "npm": ">=7.0.0",

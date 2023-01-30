@@ -1,4 +1,4 @@
-import { BankSuite } from "@ddd-ts/test-bank";
+import { BankSuite } from "@ddd-ts/tests";
 import { ESDBEventStore } from "../esdb.event-store";
 
 import {

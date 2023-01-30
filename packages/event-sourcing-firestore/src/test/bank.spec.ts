@@ -1,15 +1,12 @@
 import * as fb from "firebase-admin";
 import { FirestoreEventStore } from "../firestore.event-store";
 
-import { BankSuite } from "@ddd-ts/test-bank";
+import { BankSuite } from "@ddd-ts/tests";
 import { FirestoreCheckpoint } from "../firestore.checkpoint";
 import { FirebaseTransactionPerformer } from "../firebase.transaction";
 import { FirestoreStore } from "../firestore.store";
 import { FirestoreSnapshotter } from "../firestore.snapshotter";
-import {
-  EsAggregatePersistor,
-  EsAggregatePersistorWithSnapshots,
-} from "@ddd-ts/event-sourcing";
+import { EsAggregatePersistorWithSnapshots } from "@ddd-ts/event-sourcing";
 
 describe("Firestore Bank Test", () => {
   const app = fb.initializeApp({ projectId: "demo-es" });

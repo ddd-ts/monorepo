@@ -1,4 +1,4 @@
-import { EsAggregateStoreSuite } from "@ddd-ts/test-bank";
+import { EsAggregateStoreSuite } from "@ddd-ts/tests";
 import * as fb from "firebase-admin";
 import { FirestoreEventStore } from "./firestore.event-store";
 

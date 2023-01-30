@@ -1,5 +1,5 @@
 {
-  "name": "@ddd-ts/test-bank",
+  "name": "@ddd-ts/tests",
   "version": "1.0.0",
   "private": true,
   "main": "dist/index.js",

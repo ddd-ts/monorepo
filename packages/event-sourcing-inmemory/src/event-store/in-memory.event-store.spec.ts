@@ -1,4 +1,4 @@
-import { EsAggregateStoreSuite } from "@ddd-ts/test-bank";
+import { EsAggregateStoreSuite } from "@ddd-ts/tests";
 import { InMemoryEventStore } from "./in-memory.event-store";
 
 describe("InMemoryEventStore", () => {
