@@ -1,4 +1,4 @@
-import { Serializer, Serialized } from "@ddd-ts/event-sourcing";
+import { Serializer, Serialized } from "@ddd-ts/model";
 import { Account } from "../domain/write/account/account";
 import { AccountId } from "../domain/write/account/account-id";
 import { Cashflow } from "../domain/read/cashflow/cashflow";

@@ -1,8 +1,9 @@
-import { Fact, Projection, Transaction } from "@ddd-ts/event-sourcing";
+import { Fact, Projection } from "@ddd-ts/event-sourcing";
 import { Account } from "../domain/write/account/account";
 import { Deposited } from "../domain/write/account/deposited.event";
 import { Cashflow } from "../domain/read/cashflow/cashflow";
 import { CashflowStore } from "./cashflow.store";
+import { Transaction } from "@ddd-ts/model";
 
 export class CashFlowProjection extends Projection {
   constructor(private readonly store: CashflowStore) {

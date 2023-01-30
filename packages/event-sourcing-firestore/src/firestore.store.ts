@@ -1,6 +1,5 @@
-import { Serializer } from "@ddd-ts/event-sourcing";
+import { Serializer, Store } from "@ddd-ts/model";
 import { AbstractConstructor } from "@ddd-ts/event-sourcing/src/es-aggregate-store/event-store";
-import { Store } from "@ddd-ts/event-sourcing/src/model/store";
 
 export function FirestoreStore<Model, Id extends { toString(): string }>(
   collection: string

@@ -1,5 +1,5 @@
-import { Fact, Projection, Transaction } from "@ddd-ts/event-sourcing";
-import { AccountTransfers } from "../domain/read/accountTransfers/accountTransfers";
+import { Fact, Projection } from "@ddd-ts/event-sourcing";
+import { Transaction } from "@ddd-ts/model";
 import { Account } from "../domain/write/account/account";
 import { Transfer, TransferInitiated } from "../domain/write/transfer/transfer";
 import { AccountTransfersStore } from "./accountTransfers.store";

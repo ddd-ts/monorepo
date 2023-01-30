@@ -1,4 +1,4 @@
-import { TransactionPerformer } from "@ddd-ts/event-sourcing";
+import { TransactionPerformer } from "@ddd-ts/model";
 
 export class FirebaseTransactionPerformer extends TransactionPerformer {
   constructor(db: FirebaseFirestore.Firestore) {

@@ -1,16 +1,12 @@
 import {
   Checkpoint,
-  Constructor,
-  EsAggregate,
   EsAggregatePersistor,
   EsAggregateType,
   EsProjectedStreamReader,
   EventStore,
   IsolatedProjector,
-  TransactionPerformer,
 } from "@ddd-ts/event-sourcing";
-import { Serializer } from "@ddd-ts/event-sourcing/dist/model/serializer";
-import { Store } from "@ddd-ts/event-sourcing/dist/model/store";
+import { Serializer, Store, TransactionPerformer } from "@ddd-ts/model";
 import { CashFlowProjection } from "../app/application/cashflow.projection";
 import { Account } from "../app/domain/write/account/account";
 import { AccountSerializer } from "../app/infrastructure/account.serializer";

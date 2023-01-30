@@ -1,4 +1,5 @@
-import { Serializer, Snapshotter, EsAggregate } from "@ddd-ts/event-sourcing";
+import { Snapshotter, EsAggregate } from "@ddd-ts/event-sourcing";
+import { Serializer } from "@ddd-ts/model";
 
 export class FirestoreSnapshotter<
   S extends Serializer<EsAggregate>

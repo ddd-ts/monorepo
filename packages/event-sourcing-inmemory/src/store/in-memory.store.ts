@@ -1,6 +1,5 @@
 import { AbstractConstructor } from "@ddd-ts/event-sourcing/dist/es-aggregate-store/event-store/event-store";
-import { Serializer } from "@ddd-ts/event-sourcing/dist/model/serializer";
-import { Store } from "@ddd-ts/event-sourcing/dist/model/store";
+import { Serializer, Store } from "@ddd-ts/model";
 import { InMemoryDatabase, InMemoryTransaction } from "./in-memory.database";
 
 /**

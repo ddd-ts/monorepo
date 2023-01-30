@@ -7,7 +7,7 @@ Tools facilitating DDD and ES
 mandatory:
 
 - [x] snapshot write model
-- [ ] cross aggregate projections
+- [x] cross aggregate projections
 
 cleanup:
 
@@ -17,10 +17,11 @@ cleanup:
 
 next:
 
-- [ ] versionned serializers
+- [x] versionned serializers
 - [ ] automated snapshot migrations
 - [ ] automated event upcasting
 - [ ] automated event stream migration
+- [ ] sagas
 
 reminder:
 

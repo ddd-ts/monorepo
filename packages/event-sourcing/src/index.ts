@@ -1,10 +1,6 @@
-export { Store } from "./model/store";
-
 export { AbstractConstructor } from "./es-aggregate-store/event-store";
 
-export { Snapshotter } from "./model/snapshotter";
-
-export { Serializer, Serialized } from "./model/serializer";
+export { Snapshotter } from "./es-aggregate-store/snapshotter";
 
 export {
   EsAggregatePersistor,
@@ -12,12 +8,6 @@ export {
   EsAggregatePersistorWithSnapshots,
 } from "./es-aggregate-store/es-aggregate.persistor";
 export { EsProjectedStreamReader } from "./es-aggregate-store/es-projected-stream.reader";
-
-export {
-  Transaction,
-  TransactionEffect,
-  TransactionPerformer,
-} from "./projection/transaction/transaction";
 
 export { Queue } from "./es-aggregate-store/tools/queue";
 export {

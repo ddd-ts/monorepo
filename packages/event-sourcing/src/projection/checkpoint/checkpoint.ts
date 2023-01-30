@@ -1,4 +1,4 @@
-import { Transaction } from "../transaction/transaction";
+import { Transaction } from "@ddd-ts/model";
 
 export class CheckpointFurtherAway extends Error {
   constructor(

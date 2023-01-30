@@ -1,7 +1,5 @@
-import { Serializer, Serialized } from "@ddd-ts/event-sourcing";
-import { Account } from "../domain/write/account/account";
+import { Serializer, Serialized } from "@ddd-ts/model";
 import { AccountId } from "../domain/write/account/account-id";
-import { Cashflow } from "../domain/read/cashflow/cashflow";
 import { Transfer } from "../domain/write/transfer/transfer";
 
 export class TransferSerializer extends Serializer<Transfer> {
@@ -17,6 +15,7 @@ export class TransferSerializer extends Serializer<Transfer> {
 
   deserialize(serialized: Serialized<this>) {
     return Transfer.deserialize(
+      serialized.id,
       AccountId.deserialize(serialized.from),
       AccountId.deserialize(serialized.to),
       serialized.amount,

@@ -1,4 +1,4 @@
-import { Serializer, Serialized } from "@ddd-ts/event-sourcing";
+import { Serializer, Serialized } from "@ddd-ts/model";
 import { Cashflow } from "../domain/read/cashflow/cashflow";
 
 export class CashflowSerializer extends Serializer<Cashflow> {

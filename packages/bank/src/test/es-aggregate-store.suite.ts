@@ -6,7 +6,6 @@ import {
   Event,
   EventStore,
   Fact,
-  ProjectedStreamConfiguration,
 } from "@ddd-ts/event-sourcing";
 import { Account } from "../app/domain/write/account/account";
 import { Deposited } from "../app/domain/write/account/deposited.event";

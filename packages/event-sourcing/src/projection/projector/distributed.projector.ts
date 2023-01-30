@@ -1,9 +1,10 @@
+import { TransactionPerformer } from "@ddd-ts/model";
 import { EsProjectedStreamReader } from "../../es-aggregate-store/es-projected-stream.reader";
 import { Competitor } from "../../es-aggregate-store/event-store";
 import { Event } from "../../event/event";
 import { Checkpoint } from "../checkpoint/checkpoint";
 import { Projection } from "../projection";
-import { TransactionPerformer } from "../transaction/transaction";
+
 import { Projector } from "./projector";
 
 /**

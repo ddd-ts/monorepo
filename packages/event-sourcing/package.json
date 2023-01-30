@@ -8,9 +8,7 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@ddd-ts/value": "^0.0.6",
-    "@eventstore/db-client": "^3.3.1",
-    "firebase-admin": "^11.2.1",
+    "@ddd-ts/model": "*",
     "uuid": "^8.3.2"
   },
   "devDependencies": {

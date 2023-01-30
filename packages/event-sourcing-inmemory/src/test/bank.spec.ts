@@ -1,7 +1,4 @@
-import {
-  EsAggregatePersistorWithSnapshots,
-  Serializer,
-} from "@ddd-ts/event-sourcing";
+import { EsAggregatePersistorWithSnapshots } from "@ddd-ts/event-sourcing";
 import { BankSuite } from "@ddd-ts/test-bank";
 import {
   InMemoryCheckpoint,

@@ -53,12 +53,13 @@ export class Transfer extends EsAggregate<
   }
 
   static deserialize(
+    transferId: string,
     from: AccountId,
     to: AccountId,
     amount: number,
     amountClaimed: boolean
   ) {
-    const transfer = this.instanciate(v4());
+    const transfer = this.instanciate(transferId);
     transfer.from = from;
     transfer.to = to;
     transfer.amount = amount;

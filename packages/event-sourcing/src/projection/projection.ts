@@ -1,10 +1,7 @@
-import {
-  Constructor,
-  ProjectedStreamConfiguration,
-} from "../es-aggregate-store/event-store";
+import { Transaction } from "@ddd-ts/model";
+import { ProjectedStreamConfiguration } from "../es-aggregate-store/event-store";
 import { EsAggregate } from "../es-aggregate/es-aggregate";
 import { Event, Fact } from "../event/event";
-import { Transaction } from "./transaction/transaction";
 
 export abstract class Projection<A extends EsAggregate = EsAggregate> {
   abstract on: ProjectedStreamConfiguration;

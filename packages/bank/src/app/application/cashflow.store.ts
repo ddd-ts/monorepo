@@ -1,4 +1,4 @@
-import { Transaction } from "@ddd-ts/event-sourcing";
+import { Transaction } from "@ddd-ts/model";
 import { Cashflow } from "../domain/read/cashflow/cashflow";
 
 export abstract class CashflowStore {
