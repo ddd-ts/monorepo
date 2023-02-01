@@ -27,6 +27,10 @@ describe("Serializer", () => {
       getIdFromModel(user: User) {
         return user.id;
       }
+
+      getIdFromSerialized(serialized: ReturnType<this["serialize"]>) {
+        return serialized.id;
+      }
     }
 
     const serializer = new UserSerializer();
@@ -47,6 +51,10 @@ describe("Serializer", () => {
     getIdFromModel(user: User) {
       return user.id;
     }
+
+    getIdFromSerialized(serialized: any) {
+      return serialized.id;
+    }
   }
 
   class UserSerializerV1 extends VersionnedSerializer<User> {
@@ -62,6 +70,9 @@ describe("Serializer", () => {
 
     getIdFromModel(user: User) {
       return user.id;
+    }
+    getIdFromSerialized(serialized: any) {
+      return serialized.id;
     }
   }
 
@@ -93,6 +104,9 @@ describe("Serializer", () => {
 
     getIdFromModel(user: User) {
       return user.id;
+    }
+    getIdFromSerialized(serialized: any) {
+      return serialized.id;
     }
   }
 

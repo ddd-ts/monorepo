@@ -1,14 +1,18 @@
 export type Serialized<S extends Serializer<any>> = ReturnType<S["serialize"]>;
 
 export abstract class Serializer<Model> {
-  abstract serialize(model: Model): { id: string };
+  abstract serialize(model: Model): any;
   abstract deserialize(serialized: ReturnType<this["serialize"]>): Model;
   abstract getIdFromModel(model: Model): { toString(): string };
+
+  abstract getIdFromSerialized(serialized: ReturnType<this["serialize"]>): {
+    toString(): string;
+  };
 }
 
 export abstract class VersionnedSerializer<Model> extends Serializer<Model> {
   abstract version: bigint;
-  abstract serialize(model: Model): { id: string; version: bigint };
+  abstract serialize(model: Model): { version: bigint };
   abstract deserialize(serialized: ReturnType<this["serialize"]>): Model;
 }
 
@@ -17,7 +21,7 @@ export abstract class V0VersionnedSerializer<
 > extends VersionnedSerializer<Model> {
   version = 0n;
 
-  serialize(model: Model): { id: string; version: bigint } {
+  serialize(model: Model): { version: bigint } {
     throw new Error(`Not implemented`);
   }
 }

@@ -22,8 +22,7 @@ describe("Firestore Bank Test", () => {
     checkpoint,
     transactionPerformer,
     (serializer, name) => {
-      const Store = class extends FirestoreStore(name) {};
-      const store = new Store(firestore, serializer) as any;
+      const store = new FirestoreStore(name, firestore, serializer) as any;
       return store;
     },
     (AGGREGATE, serializer) => {

@@ -19,8 +19,7 @@ describe("EventSourcingInMemory", () => {
     checkpoint,
     transaction,
     (serializer, name) => {
-      const Store = class extends InMemoryStore(name) {};
-      const store = new Store(database, serializer) as any;
+      const store = new InMemoryStore(name, database, serializer) as any;
       return store;
     },
     (AGGREGATE, serializer) => {

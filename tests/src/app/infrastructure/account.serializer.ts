@@ -25,4 +25,8 @@ export class AccountSerializer extends Serializer<Account> {
   getIdFromModel(model: Account) {
     return model.id;
   }
+
+  getIdFromSerialized(serialized: Serialized<this>) {
+    return serialized.id;
+  }
 }

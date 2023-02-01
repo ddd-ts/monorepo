@@ -11,4 +11,8 @@ export class CashflowSerializer extends Serializer<Cashflow> {
   getIdFromModel(model: Cashflow) {
     return model.id;
   }
+
+  getIdFromSerialized(serialized: Serialized<this>) {
+    return serialized.id;
+  }
 }

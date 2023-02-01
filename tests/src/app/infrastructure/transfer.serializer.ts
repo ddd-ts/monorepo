@@ -26,4 +26,8 @@ export class TransferSerializer extends Serializer<Transfer> {
   getIdFromModel(model: Transfer) {
     return model.id;
   }
+
+  getIdFromSerialized(serialized: Serialized<this>) {
+    return serialized.id;
+  }
 }
