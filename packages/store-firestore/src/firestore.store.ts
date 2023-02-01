@@ -15,8 +15,8 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
   constructor(
     public readonly collection: string,
     public readonly firestore: Firestore,
-    private readonly serializer: Serializer<Model>,
-    private readonly converter?: FirestoreDataConverter<DocumentData>
+    public readonly serializer: Serializer<Model>,
+    public readonly converter?: FirestoreDataConverter<DocumentData>
   ) {
     if (this.converter) {
       this._collection = this.firestore
@@ -28,8 +28,10 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
   }
 
   async save(model: Model, trx?: Transaction): Promise<void> {
-    const serialized = this.serializer.serialize(model);
-    const ref = this._collection.doc(serialized.id.toString());
+    const serialized = await this.serializer.serialize(model);
+    const ref = this._collection.doc(
+      this.serializer.getIdFromModel(model).toString()
+    );
 
     trx ? trx.set(ref, serialized) : await ref.set(serialized);
   }
@@ -48,8 +50,8 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
 
   async loadAll(): Promise<Model[]> {
     const snapshot = await this._collection.get();
-    return snapshot.docs.map((doc) =>
-      this.serializer.deserialize(doc.data() as any)
+    return Promise.all(
+      snapshot.docs.map((doc) => this.serializer.deserialize(doc.data() as any))
     );
   }
 

@@ -10,7 +10,7 @@ export class InMemoryStore<Model, Id extends { toString(): string }>
   constructor(
     public readonly collection: string,
     public readonly database: InMemoryDatabase,
-    private readonly serializer: Serializer<Model>
+    public readonly serializer: Serializer<Model>
   ) {}
 
   clear() {
@@ -18,11 +18,10 @@ export class InMemoryStore<Model, Id extends { toString(): string }>
   }
 
   async save(model: Model, trx?: InMemoryTransaction): Promise<void> {
-    const serialized = this.serializer.serialize(model);
     await this.database.save(
       this.collection,
-      serialized.id,
-      this.serializer.serialize(model),
+      this.serializer.getIdFromModel(model).toString(),
+      await this.serializer.serialize(model),
       trx
     );
   }
@@ -44,9 +43,7 @@ export class InMemoryStore<Model, Id extends { toString(): string }>
   loadAll(): Promise<Model[]> {
     const serialized = this.database.loadAll(this.collection);
 
-    return Promise.resolve(
-      serialized.map((s) => this.serializer.deserialize(s))
-    );
+    return Promise.all(serialized.map((s) => this.serializer.deserialize(s)));
   }
 
   async delete(id: Id): Promise<void> {

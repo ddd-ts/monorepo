@@ -44,7 +44,7 @@ export class FirestoreSnapshotter<
       .set({
         id: id.toString(),
         revision: Number(aggregate.acknowledgedRevision),
-        serialized: this.serializer.serialize(aggregate),
+        serialized: await this.serializer.serialize(aggregate),
       });
   }
 }

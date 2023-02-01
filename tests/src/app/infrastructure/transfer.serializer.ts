@@ -3,7 +3,7 @@ import { AccountId } from "../domain/write/account/account-id";
 import { Transfer } from "../domain/write/transfer/transfer";
 
 export class TransferSerializer extends Serializer<Transfer> {
-  serialize(model: Transfer) {
+  async serialize(model: Transfer) {
     return {
       id: model.id.toString(),
       from: model.from.toString(),
@@ -13,7 +13,7 @@ export class TransferSerializer extends Serializer<Transfer> {
     };
   }
 
-  deserialize(serialized: Serialized<this>) {
+  async deserialize(serialized: Serialized<this>) {
     return Transfer.deserialize(
       serialized.id,
       AccountId.deserialize(serialized.from),

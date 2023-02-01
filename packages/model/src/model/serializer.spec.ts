@@ -1,4 +1,5 @@
 import {
+  Serialized,
   Serializer,
   UpcastSerializer,
   V0VersionnedSerializer,
@@ -14,13 +15,13 @@ describe("Serializer", () => {
     }
   }
 
-  it("should be able to serialize and deserialize", () => {
+  it("should be able to serialize and deserialize", async () => {
     class UserSerializer extends Serializer<User> {
-      serialize(user: User) {
+      async serialize(user: User) {
         return { id: user.id, name: user.name };
       }
 
-      deserialize(serialized: ReturnType<this["serialize"]>) {
+      async deserialize(serialized: Serialized<this>) {
         return User.deserialize(serialized.id, serialized.name);
       }
 
@@ -28,7 +29,7 @@ describe("Serializer", () => {
         return user.id;
       }
 
-      getIdFromSerialized(serialized: ReturnType<this["serialize"]>) {
+      getIdFromSerialized(serialized: Serialized<this>) {
         return serialized.id;
       }
     }
@@ -37,14 +38,14 @@ describe("Serializer", () => {
 
     const user = new User("1", "John Doe");
 
-    const serialized = serializer.serialize(user);
-    const deserialized = serializer.deserialize(serialized);
+    const serialized = await serializer.serialize(user);
+    const deserialized = await serializer.deserialize(serialized);
 
     expect(deserialized).toEqual(user);
   });
 
   class UserSerializerV0 extends V0VersionnedSerializer<User> {
-    deserialize(serialized: any) {
+    async deserialize(serialized: any) {
       return User.deserialize(serialized.id, serialized.name || serialized.id); // in v0, name was not present
     }
 
@@ -60,11 +61,11 @@ describe("Serializer", () => {
   class UserSerializerV1 extends VersionnedSerializer<User> {
     version = 1n;
 
-    serialize(user: User) {
+    async serialize(user: User) {
       return { id: user.id, name: user.name, version: this.version };
     }
 
-    deserialize(serialized: ReturnType<this["serialize"]>) {
+    async deserialize(serialized: Serialized<this>) {
       return User.deserialize(serialized.id, serialized.name);
     }
 
@@ -87,7 +88,7 @@ describe("Serializer", () => {
       return name.split(" ")[0]; // intentionally destructive
     }
 
-    serialize(user: User) {
+    async serialize(user: User) {
       return {
         id: user.id,
         name: this.serializerName(user.name),
@@ -95,7 +96,7 @@ describe("Serializer", () => {
       };
     }
 
-    deserialize(serialized: ReturnType<this["serialize"]>) {
+    async deserialize(serialized: Serialized<this>) {
       return User.deserialize(
         serialized.id,
         this.deserializerName(serialized.name)
@@ -110,19 +111,19 @@ describe("Serializer", () => {
     }
   }
 
-  it("should be able to serialize and deserialize with version", () => {
+  it("should be able to serialize and deserialize with version", async () => {
     const serializerV1 = new UserSerializerV1();
     const serializerV2 = new UserSerializerV2();
     const serializer = new UpcastSerializer([serializerV1, serializerV2]);
 
     const user = new User("1", "John Doe");
 
-    const serializedV1 = serializerV1.serialize(user);
+    const serializedV1 = await serializerV1.serialize(user);
 
-    const deserialized = serializer.deserialize(serializedV1);
+    const deserialized = await serializer.deserialize(serializedV1);
     expect(deserialized).toEqual(user);
 
-    const serialized = serializer.serialize(user);
+    const serialized = await serializer.serialize(user);
     expect(serialized).toEqual({
       id: user.id,
       name: `${user.name} (v2)`,
@@ -130,7 +131,7 @@ describe("Serializer", () => {
     });
   });
 
-  it("should use the 0n serializer if the input is not versionned", () => {
+  it("should use the 0n serializer if the input is not versionned", async () => {
     const serializerV0 = new UserSerializerV0();
     const serializerV1 = new UserSerializerV1();
     const serializerV2 = new UserSerializerV2();
@@ -140,7 +141,7 @@ describe("Serializer", () => {
       serializerV2,
     ]);
 
-    const user = serializer.deserialize({ id: "2" });
+    const user = await serializer.deserialize({ id: "2" });
 
     expect(user).toEqual(new User("2", "2"));
   });

@@ -4,7 +4,7 @@ import { AccountId } from "../domain/write/account/account-id";
 import { Cashflow } from "../domain/read/cashflow/cashflow";
 
 export class AccountSerializer extends Serializer<Account> {
-  serialize(model: Account) {
+  async serialize(model: Account) {
     return {
       id: model.id.toString(),
       balance: model.balance,
@@ -12,7 +12,7 @@ export class AccountSerializer extends Serializer<Account> {
     };
   }
 
-  deserialize(serialized: Serialized<this>) {
+  async deserialize(serialized: Serialized<this>) {
     const account = Account.deserialize(
       AccountId.deserialize(serialized.id),
       serialized.balance,
