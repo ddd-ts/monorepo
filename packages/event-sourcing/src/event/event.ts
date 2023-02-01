@@ -3,7 +3,7 @@
 // };
 
 import { v4 } from "uuid";
-import { Constructor } from "../index";
+import { Constructor } from "@ddd-ts/types";
 
 // export type Change<T extends Event = Event> = T & {
 //   revision: undefined;

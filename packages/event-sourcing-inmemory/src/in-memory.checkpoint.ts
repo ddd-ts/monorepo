@@ -2,10 +2,7 @@ import {
   Checkpoint,
   CheckpointFurtherAway,
 } from "@ddd-ts/event-sourcing/src/projection/checkpoint/checkpoint";
-import {
-  InMemoryDatabase,
-  InMemoryTransaction,
-} from "./store/in-memory.database";
+import { InMemoryDatabase, InMemoryTransaction } from "@ddd-ts/store-inmemory";
 
 export class InMemoryCheckpoint extends Checkpoint {
   projections = new Map<string, bigint>();

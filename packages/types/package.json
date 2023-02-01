@@ -1,0 +1,13 @@
+{
+  "name": "@ddd-ts/types",
+  "version": "0.0.2",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "scripts": {
+    "build": "builder"
+  },
+  "devDependencies": {
+    "@ddd-ts/dev": "*"
+  }
+}

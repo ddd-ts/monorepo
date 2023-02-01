@@ -1,21 +1,17 @@
 {
-  "name": "@ddd-ts/event-sourcing-inmemory",
+  "name": "@ddd-ts/store-inmemory",
   "version": "0.0.2",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
   "scripts": {
-    "test": "test-runner",
     "build": "builder"
   },
   "dependencies": {
-    "@ddd-ts/event-sourcing": "*",
-    "@ddd-ts/model": "*",
-    "@ddd-ts/store-inmemory": "*"
+    "@ddd-ts/model": "*"
   },
   "devDependencies": {
     "@ddd-ts/dev": "*",
-    "@ddd-ts/tests": "*",
     "@ddd-ts/types": "*"
   }
 }

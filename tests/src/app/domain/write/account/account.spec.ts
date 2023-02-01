@@ -1,4 +1,5 @@
-import { Constructor, Event } from "@ddd-ts/event-sourcing";
+import { Event } from "@ddd-ts/event-sourcing";
+import { Constructor } from "@ddd-ts/types";
 import { Account } from "./account";
 import { Deposited } from "./deposited.event";
 function expectedFact(

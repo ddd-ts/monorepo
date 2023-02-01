@@ -1,15 +1,8 @@
 import { EsAggregate, Serializable } from "../index";
 
+import { Constructor } from "@ddd-ts/types";
+
 export type Follower = AsyncIterable<EsFact> & { close: () => void };
-
-export type Constructor<T, Params extends any[] = any[]> = new (
-  ...args: Params
-) => T;
-
-export type AbstractConstructor<
-  T,
-  Params extends any[] = any[]
-> = abstract new (...args: Params) => T;
 
 export type Attempt<T extends EsFact> = {
   fact: T;

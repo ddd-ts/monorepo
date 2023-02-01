@@ -1,6 +1,7 @@
+import { Constructor } from "@ddd-ts/types";
 import { EsAggregate } from "../es-aggregate/es-aggregate";
 import { Snapshotter } from "../index";
-import { Constructor, EventStore } from "./event-store";
+import { EventStore } from "./event-store";
 
 export type EsAggregateType<A extends EsAggregate> = Constructor<A> & {
   instanciate: (id: A["id"]) => A;

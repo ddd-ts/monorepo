@@ -686,7 +686,9 @@ __metadata:
     "@ddd-ts/dev": "*"
     "@ddd-ts/event-sourcing": "*"
     "@ddd-ts/model": "*"
+    "@ddd-ts/store-firestore": "*"
     "@ddd-ts/tests": "*"
+    "@ddd-ts/types": "*"
     firebase-admin: ^11.5.0
   languageName: unknown
   linkType: soft
@@ -698,7 +700,9 @@ __metadata:
     "@ddd-ts/dev": "*"
     "@ddd-ts/event-sourcing": "*"
     "@ddd-ts/model": "*"
+    "@ddd-ts/store-inmemory": "*"
     "@ddd-ts/tests": "*"
+    "@ddd-ts/types": "*"
   languageName: unknown
   linkType: soft
 
@@ -708,6 +712,7 @@ __metadata:
   dependencies:
     "@ddd-ts/dev": "*"
     "@ddd-ts/model": "*"
+    "@ddd-ts/types": "*"
     "@types/uuid": ^8.3.4
     uuid: ^8.3.2
   languageName: unknown
@@ -730,12 +735,42 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@ddd-ts/store-firestore@*, @ddd-ts/store-firestore@workspace:packages/store-firestore":
+  version: 0.0.0-use.local
+  resolution: "@ddd-ts/store-firestore@workspace:packages/store-firestore"
+  dependencies:
+    "@ddd-ts/dev": "*"
+    "@ddd-ts/model": "*"
+    "@ddd-ts/types": "*"
+    firebase-admin: ^11.5.0
+  languageName: unknown
+  linkType: soft
+
+"@ddd-ts/store-inmemory@*, @ddd-ts/store-inmemory@workspace:packages/store-inmemory":
+  version: 0.0.0-use.local
+  resolution: "@ddd-ts/store-inmemory@workspace:packages/store-inmemory"
+  dependencies:
+    "@ddd-ts/dev": "*"
+    "@ddd-ts/model": "*"
+    "@ddd-ts/types": "*"
+  languageName: unknown
+  linkType: soft
+
 "@ddd-ts/tests@*, @ddd-ts/tests@workspace:tests":
   version: 0.0.0-use.local
   resolution: "@ddd-ts/tests@workspace:tests"
   dependencies:
     "@ddd-ts/dev": "*"
     "@ddd-ts/event-sourcing": "*"
+    "@ddd-ts/types": "*"
+  languageName: unknown
+  linkType: soft
+
+"@ddd-ts/types@*, @ddd-ts/types@workspace:packages/types":
+  version: 0.0.0-use.local
+  resolution: "@ddd-ts/types@workspace:packages/types"
+  dependencies:
+    "@ddd-ts/dev": "*"
   languageName: unknown
   linkType: soft
 

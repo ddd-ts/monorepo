@@ -2,7 +2,6 @@ import {
   EsAggregate,
   Event,
   Competitor,
-  Constructor,
   EsChange,
   EsFact,
   EventStore,
@@ -10,6 +9,7 @@ import {
   ProjectedStreamConfiguration,
   Queue,
 } from "@ddd-ts/event-sourcing";
+import { Constructor } from "@ddd-ts/types";
 import * as fb from "firebase-admin";
 
 process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";

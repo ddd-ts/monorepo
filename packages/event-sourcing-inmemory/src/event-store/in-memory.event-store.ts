@@ -1,10 +1,10 @@
 import {
   EsAggregate,
-  Constructor,
   EsChange,
   EventStore,
   ProjectedStreamConfiguration,
 } from "@ddd-ts/event-sourcing";
+import { Constructor } from "@ddd-ts/types";
 import { ProjectedStream } from "./projected-stream";
 import { Stream } from "./stream";
 

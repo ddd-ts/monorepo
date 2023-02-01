@@ -1,4 +1,4 @@
-import { Constructor } from "../es-aggregate-store/event-store";
+import { Constructor } from "@ddd-ts/types";
 import { Change, Event, Fact } from "../event/event";
 
 export type EsAggregateId = { toString(): string };

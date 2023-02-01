@@ -1,7 +1,6 @@
-import { AbstractConstructor } from "@ddd-ts/event-sourcing";
 import { Serializer, Store } from "@ddd-ts/model";
 import { InMemoryDatabase, InMemoryTransaction } from "./in-memory.database";
-
+import { AbstractConstructor } from "@ddd-ts/types";
 /**
  * This in memory store is a copy store. It stores a copy of the actual model.
  * It is the recommended inmemory store to use, as it reflects more closely the behaviour of a real store.

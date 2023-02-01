@@ -3,12 +3,14 @@ import { ESDBEventStore } from "../esdb.event-store";
 
 import {
   InMemoryCheckpoint,
-  InMemoryDatabase,
-  InMemoryStore,
-  InMemoryTransactionPerformer,
   InMemorySnapshotter,
 } from "@ddd-ts/event-sourcing-inmemory";
 import { EsAggregatePersistorWithSnapshots } from "@ddd-ts/event-sourcing";
+import {
+  InMemoryDatabase,
+  InMemoryStore,
+  InMemoryTransactionPerformer,
+} from "@ddd-ts/store-inmemory";
 
 describe("EventSourcingESDB", () => {
   const es = new ESDBEventStore();

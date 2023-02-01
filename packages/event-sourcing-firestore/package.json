@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "pretest": "docker compose -f docker/docker-compose.yml up -d",
-    "test": "yarn pretest; test-runner; e=$?;yarn posttest; exit $e",
+    "test": "yarn pretest; test-runner; e=$? ;yarn posttest; exit $e",
     "posttest": "docker compose -f docker/docker-compose.yml down",
     "build": "builder"
   },
@@ -17,6 +17,8 @@
   },
   "devDependencies": {
     "@ddd-ts/dev": "*",
-    "@ddd-ts/tests": "*"
+    "@ddd-ts/store-firestore": "*",
+    "@ddd-ts/tests": "*",
+    "@ddd-ts/types": "*"
   }
 }

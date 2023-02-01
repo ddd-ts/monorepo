@@ -12,6 +12,7 @@
     "@ddd-ts/event-sourcing": "*"
   },
   "devDependencies": {
-    "@ddd-ts/dev": "*"
+    "@ddd-ts/dev": "*",
+    "@ddd-ts/types": "*"
   }
 }

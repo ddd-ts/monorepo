@@ -1,5 +1,3 @@
-export { AbstractConstructor } from "./es-aggregate-store/event-store";
-
 export { Snapshotter } from "./es-aggregate-store/snapshotter";
 
 export {
@@ -12,7 +10,6 @@ export { EsProjectedStreamReader } from "./es-aggregate-store/es-projected-strea
 export { Queue } from "./es-aggregate-store/tools/queue";
 export {
   Competitor,
-  Constructor,
   EsChange,
   EsFact,
   EsEvent,

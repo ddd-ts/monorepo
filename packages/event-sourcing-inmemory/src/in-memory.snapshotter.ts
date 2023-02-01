@@ -1,6 +1,6 @@
 import { Serializer } from "@ddd-ts/model";
 import { Snapshotter, EsAggregate } from "@ddd-ts/event-sourcing";
-import { InMemoryDatabase } from "./index";
+import { InMemoryDatabase } from "@ddd-ts/store-inmemory";
 
 export class InMemorySnapshotter<
   S extends Serializer<EsAggregate>

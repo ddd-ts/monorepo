@@ -1,12 +1,11 @@
 import { EsAggregatePersistorWithSnapshots } from "@ddd-ts/event-sourcing";
-import { BankSuite } from "@ddd-ts/tests";
 import {
-  InMemoryCheckpoint,
   InMemoryDatabase,
-  InMemoryEventStore,
-  InMemoryStore,
   InMemoryTransactionPerformer,
-} from "..";
+  InMemoryStore,
+} from "@ddd-ts/store-inmemory";
+import { BankSuite } from "@ddd-ts/tests";
+import { InMemoryCheckpoint, InMemoryEventStore } from "..";
 import { InMemorySnapshotter } from "../in-memory.snapshotter";
 
 describe("EventSourcingInMemory", () => {

@@ -1,34 +1,41 @@
 import { Serializer, Store } from "@ddd-ts/model";
-import { AbstractConstructor } from "@ddd-ts/event-sourcing/src/es-aggregate-store/event-store";
+import { AbstractConstructor } from "@ddd-ts/types";
+import {
+  CollectionReference,
+  Firestore,
+  FirestoreDataConverter,
+  DocumentData,
+  Transaction,
+} from "firebase-admin/firestore";
 
 export function FirestoreStore<Model, Id extends { toString(): string }>(
   collection: string
 ): AbstractConstructor<Store<Model, Id>> {
   abstract class FirstoreStore implements Store<Model, Id> {
-    _collection: FirebaseFirestore.CollectionReference;
+    _collection: CollectionReference;
 
     constructor(
-      public readonly firestore: FirebaseFirestore.Firestore,
-      private readonly serializer: Serializer<Model>
+      public readonly firestore: Firestore,
+      private readonly serializer: Serializer<Model>,
+      private readonly converter?: FirestoreDataConverter<DocumentData>
     ) {
-      this._collection = this.firestore.collection(collection);
+      if (this.converter) {
+        this._collection = this.firestore
+          .collection(collection)
+          .withConverter(this.converter);
+      } else {
+        this._collection = this.firestore.collection(collection);
+      }
     }
 
-    async save(
-      model: Model,
-      trx?: FirebaseFirestore.Transaction
-    ): Promise<void> {
-      const stack = new Error().stack;
+    async save(model: Model, trx?: Transaction): Promise<void> {
       const serialized = this.serializer.serialize(model);
       const ref = this._collection.doc(serialized.id.toString());
 
       trx ? trx.set(ref, serialized) : await ref.set(serialized);
     }
 
-    async load(
-      id: Id,
-      trx?: FirebaseFirestore.Transaction
-    ): Promise<Model | undefined> {
+    async load(id: Id, trx?: Transaction): Promise<Model | undefined> {
       const ref = this._collection.doc(id.toString());
 
       const snapshot = trx ? await trx.get(ref) : await ref.get();

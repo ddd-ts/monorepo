@@ -6,13 +6,14 @@ import {
   closeable,
   map,
   Competitor,
-  Constructor,
   EsChange,
   EsFact,
   EventStore,
   Follower,
   ProjectedStreamConfiguration,
 } from "@ddd-ts/event-sourcing";
+import { Constructor } from "@ddd-ts/types";
+
 process.env.DEBUG = "esdb:*";
 export class ESDBEventStore extends EventStore {
   client: EventStoreDBClient;

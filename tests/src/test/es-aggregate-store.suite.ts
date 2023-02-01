@@ -1,12 +1,12 @@
 import {
   buffer,
-  Constructor,
   EsAggregatePersistor,
   EsProjectedStreamReader,
   Event,
   EventStore,
   Fact,
 } from "@ddd-ts/event-sourcing";
+import { Constructor } from "@ddd-ts/types";
 import { Account } from "../app/domain/write/account/account";
 import { Deposited } from "../app/domain/write/account/deposited.event";
 import {
