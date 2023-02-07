@@ -13,7 +13,7 @@
     "clean": "yarn workspaces foreach exec rm -rf dist",
     "clean:cache": "yarn workspaces foreach exec rm -rf .turbo",
     "clean:nm": "rm -rf node_modules",
-    "clean:hard": "yarn clean:nm && yarn clean:cache && yarn clean"
+    "clean:hard": "yarn clean:cache && yarn clean && yarn clean:nm"
   },
   "devDependencies": {
     "prettier": "latest",

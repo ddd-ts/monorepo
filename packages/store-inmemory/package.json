@@ -7,7 +7,7 @@
   "scripts": {
     "build": "builder"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@ddd-ts/model": "*"
   },
   "devDependencies": {

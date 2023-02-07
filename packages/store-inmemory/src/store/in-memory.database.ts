@@ -61,7 +61,7 @@ export class InMemoryDatabase {
   }
 
   async transactionally(fn: (trx: InMemoryTransaction) => any) {
-    let trx = Math.random().toString().substring(2);
+    const trx = Math.random().toString().substring(2);
     const snapshot = this.storage.clone();
 
     this.transactions.set(trx, snapshot);

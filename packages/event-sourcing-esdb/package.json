@@ -11,8 +11,10 @@
     "build": "builder"
   },
   "dependencies": {
-    "@ddd-ts/event-sourcing": "*",
     "@eventstore/db-client": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@ddd-ts/event-sourcing": "*"
   },
   "devDependencies": {
     "@ddd-ts/dev": "*",

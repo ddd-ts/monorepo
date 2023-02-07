@@ -672,10 +672,11 @@ __metadata:
   resolution: "@ddd-ts/event-sourcing-esdb@workspace:packages/event-sourcing-esdb"
   dependencies:
     "@ddd-ts/dev": "*"
-    "@ddd-ts/event-sourcing": "*"
     "@ddd-ts/event-sourcing-inmemory": "*"
     "@ddd-ts/tests": "*"
     "@eventstore/db-client": ^5.0.0
+  peerDependencies:
+    "@ddd-ts/event-sourcing": "*"
   languageName: unknown
   linkType: soft
 
@@ -684,12 +685,13 @@ __metadata:
   resolution: "@ddd-ts/event-sourcing-firestore@workspace:packages/event-sourcing-firestore"
   dependencies:
     "@ddd-ts/dev": "*"
-    "@ddd-ts/event-sourcing": "*"
-    "@ddd-ts/model": "*"
     "@ddd-ts/store-firestore": "*"
     "@ddd-ts/tests": "*"
     "@ddd-ts/types": "*"
     firebase-admin: ^11.5.0
+  peerDependencies:
+    "@ddd-ts/event-sourcing": "*"
+    "@ddd-ts/model": "*"
   languageName: unknown
   linkType: soft
 
@@ -711,10 +713,11 @@ __metadata:
   resolution: "@ddd-ts/event-sourcing@workspace:packages/event-sourcing"
   dependencies:
     "@ddd-ts/dev": "*"
-    "@ddd-ts/model": "*"
     "@ddd-ts/types": "*"
     "@types/uuid": ^8.3.4
     uuid: ^8.3.2
+  peerDependencies:
+    "@ddd-ts/model": "*"
   languageName: unknown
   linkType: soft
 
@@ -740,9 +743,10 @@ __metadata:
   resolution: "@ddd-ts/store-firestore@workspace:packages/store-firestore"
   dependencies:
     "@ddd-ts/dev": "*"
-    "@ddd-ts/model": "*"
     "@ddd-ts/types": "*"
     firebase-admin: ^11.5.0
+  peerDependencies:
+    "@ddd-ts/model": "*"
   languageName: unknown
   linkType: soft
 
@@ -751,8 +755,9 @@ __metadata:
   resolution: "@ddd-ts/store-inmemory@workspace:packages/store-inmemory"
   dependencies:
     "@ddd-ts/dev": "*"
-    "@ddd-ts/model": "*"
     "@ddd-ts/types": "*"
+  peerDependencies:
+    "@ddd-ts/model": "*"
   languageName: unknown
   linkType: soft
 

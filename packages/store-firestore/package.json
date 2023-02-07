@@ -8,8 +8,10 @@
     "build": "builder"
   },
   "dependencies": {
-    "@ddd-ts/model": "*",
     "firebase-admin": "^11.5.0"
+  },
+  "peerDependencies": {
+    "@ddd-ts/model": "*"
   },
   "devDependencies": {
     "@ddd-ts/dev": "*",

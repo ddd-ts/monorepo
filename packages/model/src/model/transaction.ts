@@ -14,4 +14,7 @@ export abstract class TransactionPerformer {
   perform<Result>(effect: TransactionEffect<Result>) {
     return this.createTransaction(effect);
   }
+
+  /** @deprecated use .perform instead */
+  transactionnally = this.perform.bind(this);
 }
