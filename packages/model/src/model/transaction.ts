@@ -1,17 +1,19 @@
-export type TransactionEffect<Result> = (
-  transaction: Transaction
+export type TransactionEffect<Result, T extends Transaction = Transaction> = (
+  transaction: T
 ) => Promise<Result>;
 
-export interface Transaction {}
+export type Transaction = unknown;
 
-export abstract class TransactionPerformer {
+export abstract class TransactionPerformer<
+  T extends Transaction = Transaction
+> {
   constructor(
     private readonly createTransaction: <Result>(
-      effect: TransactionEffect<Result>
+      effect: TransactionEffect<Result, T>
     ) => Promise<Result>
   ) {}
 
-  perform<Result>(effect: TransactionEffect<Result>) {
+  perform<Result>(effect: TransactionEffect<Result, T>) {
     return this.createTransaction(effect);
   }
 
