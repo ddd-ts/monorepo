@@ -53,9 +53,7 @@ export class Collection {
 
   toPretty() {
     return [...this.data.entries()]
-      .map(function collectionStringifier([id, data]) {
-        return `\t\t"${id}": ${JSON.stringify(data.data)}`;
-      })
+      .map(([id, data]) => `\t\t"${id}": ${JSON.stringify(data.data)}`)
       .join(",\n");
   }
 }
