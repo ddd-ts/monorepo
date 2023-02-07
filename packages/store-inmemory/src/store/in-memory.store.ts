@@ -13,6 +13,18 @@ export class InMemoryStore<Model, Id extends { toString(): string }>
     public readonly serializer: Serializer<Model>
   ) {}
 
+  protected async filter(
+    predicate: (model: Model) => boolean
+  ): Promise<Model[]> {
+    const serialized = await this.database.loadAll(this.collection);
+
+    const all = await Promise.all(
+      serialized.map((s) => this.serializer.deserialize(s))
+    );
+
+    return all.filter(predicate);
+  }
+
   clear() {
     this.database.clear(this.collection);
   }

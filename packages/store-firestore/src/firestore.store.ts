@@ -27,6 +27,14 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
     }
   }
 
+  protected async executeQuery(
+    query: FirebaseFirestore.Query<any>
+  ): Promise<Model[]> {
+    return Promise.all(
+      (await query.get()).docs.map((doc) => this.serializer.deserialize(doc))
+    );
+  }
+
   async save(model: Model, trx?: Transaction): Promise<void> {
     const serialized = await this.serializer.serialize(model);
     const ref = this._collection.doc(
