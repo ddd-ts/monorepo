@@ -9,3 +9,9 @@ export class InMemoryTransactionPerformer extends TransactionPerformer<InMemoryT
     super((effect) => db.transactionally(effect));
   }
 }
+
+export class FakeInMemoryTransactionPerformer extends TransactionPerformer<null> {
+  constructor() {
+    super((effect) => effect(null));
+  }
+}

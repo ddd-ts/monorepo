@@ -1,4 +1,7 @@
-export { InMemoryTransactionPerformer } from "./in-memory.transaction";
+export {
+  InMemoryTransactionPerformer,
+  FakeInMemoryTransactionPerformer,
+} from "./in-memory.transaction";
 export {
   InMemoryDatabase,
   InMemoryTransaction,

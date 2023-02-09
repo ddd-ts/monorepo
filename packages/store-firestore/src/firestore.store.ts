@@ -32,7 +32,9 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
     query: FirebaseFirestore.Query<any>
   ): Promise<Model[]> {
     return Promise.all(
-      (await query.get()).docs.map((doc) => this.serializer.deserialize(doc))
+      (await query.get()).docs.map((doc) =>
+        this.serializer.deserialize(doc.data())
+      )
     );
   }
 

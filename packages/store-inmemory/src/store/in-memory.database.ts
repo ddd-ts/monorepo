@@ -51,8 +51,9 @@ export class InMemoryDatabase {
     const targetStorage = this.getStorage(trx);
 
     if (
+      globalStorage.getCollection(collectionName).get(id) &&
       globalStorage.getCollection(collectionName).get(id) !==
-      targetStorage.getCollection(collectionName).get(id)
+        targetStorage.getCollection(collectionName).get(id)
     ) {
       throw new Error(`Write collision detected for key "${id}"`);
     }
@@ -60,12 +61,15 @@ export class InMemoryDatabase {
     targetStorage.getCollection(collectionName).save(id, data);
   }
 
-  async transactionally(fn: (trx: InMemoryTransaction) => any) {
-    const trx = Math.random().toString().substring(2);
+  private initiateTransaction(trx = Math.random().toString().substring(2)) {
     const snapshot = this.storage.clone();
 
     this.transactions.set(trx, snapshot);
+    return trx;
+  }
 
+  async transactionally(fn: (trx: InMemoryTransaction) => any) {
+    const trx = this.initiateTransaction();
     let retry = 5;
     let latestReturnValue = undefined;
     while (retry--) {
@@ -75,7 +79,7 @@ export class InMemoryDatabase {
         break;
       } catch (error) {
         console.error(error);
-        this.transactions.set(trx, this.storage.clone());
+        this.initiateTransaction(trx);
       }
     }
 
