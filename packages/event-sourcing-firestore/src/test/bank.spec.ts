@@ -1,5 +1,6 @@
+process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
 import * as fb from "firebase-admin";
-import { FirestoreEventStore } from "../firestore.event-store";
+import { TestFirestoreEventStore } from "../firestore.event-store";
 
 import { BankSuite } from "@ddd-ts/tests";
 import { FirestoreCheckpoint } from "../firestore.checkpoint";
@@ -13,7 +14,7 @@ import {
 describe("Firestore Bank Test", () => {
   const app = fb.initializeApp({ projectId: "demo-es" });
   const firestore = app.firestore();
-  const es = new FirestoreEventStore(firestore);
+  const es = new TestFirestoreEventStore(firestore);
   const checkpoint = new FirestoreCheckpoint(firestore);
   const transactionPerformer = new FirebaseTransactionPerformer(es.firestore);
 

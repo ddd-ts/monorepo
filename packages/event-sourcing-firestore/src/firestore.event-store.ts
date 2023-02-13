@@ -12,13 +12,13 @@ import {
 import { Constructor } from "@ddd-ts/types";
 import * as fb from "firebase-admin";
 
-process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
-let id = 0;
 export class FirestoreEventStore extends EventStore {
-  namespace: string;
   constructor(public readonly firestore: fb.firestore.Firestore) {
     super();
-    this.namespace = Math.random().toString().substring(2, 8);
+  }
+
+  async clear() {
+    throw new Error("Not implemented");
   }
 
   private serialize(object: object) {
@@ -28,7 +28,7 @@ export class FirestoreEventStore extends EventStore {
   runningSubscriptions = new Set<any>();
 
   get aggregateCollection() {
-    return this.firestore.collection(this.namespace + "events");
+    return this.firestore.collection("events");
   }
 
   async close() {
@@ -38,14 +38,6 @@ export class FirestoreEventStore extends EventStore {
     }
 
     await this.firestore.terminate();
-  }
-
-  async clear() {
-    for (const unsubscribe of this.runningSubscriptions) {
-      unsubscribe();
-      this.runningSubscriptions.delete(unsubscribe);
-    }
-    this.namespace = Math.random().toString().substring(2, 8);
   }
 
   async appendToAggregateStream(
@@ -144,8 +136,6 @@ export class FirestoreEventStore extends EventStore {
     config: ProjectedStreamConfiguration,
     from: bigint = 0n
   ): Promise<Follower> {
-    const i = id++;
-
     let query = this.aggregateCollection
       .where(
         "aggregateType",
@@ -192,5 +182,25 @@ export class FirestoreEventStore extends EventStore {
     competitionName: string
   ): Promise<Competitor> {
     throw new Error("not implemented");
+  }
+}
+
+export class TestFirestoreEventStore extends FirestoreEventStore {
+  namespace = Math.random().toString().substring(2, 8);
+
+  changeNamespace() {
+    this.namespace = Math.random().toString().substring(2, 8);
+  }
+
+  async clear() {
+    for (const unsubscribe of this.runningSubscriptions) {
+      unsubscribe();
+      this.runningSubscriptions.delete(unsubscribe);
+    }
+    this.namespace = Math.random().toString().substring(2, 8);
+  }
+
+  get aggregateCollection() {
+    return this.firestore.collection(this.namespace + "-events");
   }
 }
