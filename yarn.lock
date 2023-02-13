@@ -700,11 +700,12 @@ __metadata:
   resolution: "@ddd-ts/event-sourcing-inmemory@workspace:packages/event-sourcing-inmemory"
   dependencies:
     "@ddd-ts/dev": "*"
+    "@ddd-ts/tests": "*"
+    "@ddd-ts/types": "*"
+  peerDependencies:
     "@ddd-ts/event-sourcing": "*"
     "@ddd-ts/model": "*"
     "@ddd-ts/store-inmemory": "*"
-    "@ddd-ts/tests": "*"
-    "@ddd-ts/types": "*"
   languageName: unknown
   linkType: soft
 
@@ -721,7 +722,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ddd-ts/model@*, @ddd-ts/model@workspace:packages/model":
+"@ddd-ts/model@workspace:packages/model":
   version: 0.0.0-use.local
   resolution: "@ddd-ts/model@workspace:packages/model"
   dependencies:
@@ -750,7 +751,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ddd-ts/store-inmemory@*, @ddd-ts/store-inmemory@workspace:packages/store-inmemory":
+"@ddd-ts/store-inmemory@workspace:packages/store-inmemory":
   version: 0.0.0-use.local
   resolution: "@ddd-ts/store-inmemory@workspace:packages/store-inmemory"
   dependencies:
