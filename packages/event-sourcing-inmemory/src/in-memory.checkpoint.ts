@@ -1,7 +1,4 @@
-import {
-  Checkpoint,
-  CheckpointFurtherAway,
-} from "@ddd-ts/event-sourcing/src/projection/checkpoint/checkpoint";
+import { Checkpoint, CheckpointFurtherAway } from "@ddd-ts/event-sourcing";
 import { InMemoryDatabase, InMemoryTransaction } from "@ddd-ts/store-inmemory";
 
 export class InMemoryCheckpoint extends Checkpoint {
