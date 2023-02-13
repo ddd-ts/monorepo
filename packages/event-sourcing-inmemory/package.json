@@ -8,7 +8,7 @@
     "test": "test-runner",
     "build": "builder"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@ddd-ts/event-sourcing": "*",
     "@ddd-ts/model": "*",
     "@ddd-ts/store-inmemory": "*"
