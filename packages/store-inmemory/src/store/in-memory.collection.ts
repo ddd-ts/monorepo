@@ -11,7 +11,7 @@ export class Collection {
     const data = [...this.data.values()];
     const sameId = data.filter((d) => d.data.id === id);
     const sorted = sameId.sort((a, b) => b.savedAt - a.savedAt);
-    return sorted[0].data;
+    return sorted[0]?.data;
   }
 
   clone() {
