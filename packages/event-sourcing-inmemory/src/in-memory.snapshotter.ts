@@ -3,7 +3,7 @@ import { Snapshotter, EsAggregate } from "@ddd-ts/event-sourcing";
 import { InMemoryDatabase } from "@ddd-ts/store-inmemory";
 
 export class InMemorySnapshotter<
-  S extends Serializer<EsAggregate>
+  S extends Serializer<EsAggregate<any, any>>
 > extends Snapshotter<S extends Serializer<infer A> ? A : never> {
   constructor(
     private readonly db: InMemoryDatabase,

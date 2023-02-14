@@ -2,7 +2,9 @@ import { EsAggregate, Serializable } from "../index";
 
 import { Constructor } from "@ddd-ts/types";
 
-export type Follower = AsyncIterable<EsFact> & { close: () => void };
+export type Follower<E = EsFact> = AsyncIterable<E> & {
+  close: () => void;
+};
 
 export type Attempt<T extends EsFact> = {
   fact: T;
@@ -25,19 +27,19 @@ export interface EsEvent {
 export type EsFact = EsEvent & { revision: bigint };
 export type EsChange = EsEvent & { revision: undefined };
 
-export type ProjectedStreamConfiguration = Constructor<EsAggregate>[];
+export type ProjectedStreamConfiguration = Constructor<EsAggregate<any, any>>[];
 
 export abstract class EventStore {
   abstract appendToAggregateStream(
-    AGGREGATE: Constructor<EsAggregate>,
-    id: EsAggregate["id"],
+    AGGREGATE: Constructor<EsAggregate<any, any>>,
+    id: EsAggregate<any, any>["id"],
     changes: EsChange[],
     expectedRevision: bigint
   ): Promise<void>;
 
   abstract readAggregateStream(
-    AGGREGATE: Constructor<EsAggregate>,
-    id: EsAggregate["id"],
+    AGGREGATE: Constructor<EsAggregate<any, any>>,
+    id: EsAggregate<any, any>["id"],
     from?: bigint
   ): AsyncIterable<EsFact>;
 

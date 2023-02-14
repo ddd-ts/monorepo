@@ -10,6 +10,7 @@ import {
   FirebaseTransactionPerformer,
   FirestoreStore,
 } from "@ddd-ts/store-firestore";
+import { AllEventSerializers } from "@ddd-ts/event-sourcing/dist/es-aggregate-store/es-aggregate.persistor";
 
 describe("Firestore Bank Test", () => {
   const app = fb.initializeApp({ projectId: "demo-es" });
@@ -26,12 +27,12 @@ describe("Firestore Bank Test", () => {
       const store = new FirestoreStore(name, firestore, serializer) as any;
       return store;
     },
-    (AGGREGATE, serializer) => {
+    (AGGREGATE, serializer, eventsSerializers) => {
       const snapshotter = new FirestoreSnapshotter(firestore, serializer);
       const persistor = class extends EsAggregatePersistorWithSnapshots(
         AGGREGATE
       ) {};
-      return new persistor(es, snapshotter);
+      return new persistor(es, eventsSerializers, snapshotter);
     }
   );
 });

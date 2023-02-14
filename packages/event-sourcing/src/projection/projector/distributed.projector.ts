@@ -15,12 +15,12 @@ import { Projector } from "./projector";
  * Allows to load balance the Projection hydratation among multiple workloads.
  * Will compete for events and catch up from the latest checkpoint to the end of the stream.
  */
-export class DistributedProjector implements Projector {
+export class DistributedProjector<P extends Projection> implements Projector {
   competitor?: Competitor;
 
   constructor(
-    private readonly projection: Projection,
-    private readonly reader: EsProjectedStreamReader,
+    private readonly projection: P,
+    private readonly reader: EsProjectedStreamReader<P["on"]>,
     private readonly checkpoint: Checkpoint,
     private readonly transaction: TransactionPerformer // private readonly logger: LoggerService,
   ) {}
@@ -187,10 +187,10 @@ export class DistributedProjector implements Projector {
       this.logs.project(event, checkpoint);
 
       await this.transaction.perform(async (trx) => {
-        await this.projection.project(event, trx);
+        await this.projection.project(event as any, trx);
         await this.checkpoint.set(
           this.projection.configuration.name,
-          event.revision,
+          event.revision as any,
           trx
         );
       });

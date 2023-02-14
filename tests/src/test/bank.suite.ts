@@ -6,16 +6,24 @@ import {
   EventStore,
   IsolatedProjector,
 } from "@ddd-ts/event-sourcing";
+import { AllEventSerializers } from "@ddd-ts/event-sourcing/dist/es-aggregate-store/es-aggregate.persistor";
 import { Serializer, Store, TransactionPerformer } from "@ddd-ts/model";
 import { CashFlowProjection } from "../app/application/cashflow.projection";
 import { Account } from "../app/domain/write/account/account";
-import { AccountSerializer } from "../app/infrastructure/account.serializer";
+import {
+  AccountSerializer,
+  DepositedSerializer,
+  WithdrawnSerializer,
+} from "../app/infrastructure/account.serializer";
 import { CashflowSerializer } from "../app/infrastructure/cashflow.serializer";
 
 function WriteModelConsistencySuite(es: EventStore) {
   describe("Write model consistency", () => {
     class AccountPersistor extends EsAggregatePersistor(Account) {}
-    const persistor = new AccountPersistor(es);
+    const persistor = new AccountPersistor(es, [
+      new DepositedSerializer(),
+      new WithdrawnSerializer(),
+    ]);
 
     it("should allow to save a new account", async () => {
       const account = Account.new();
@@ -78,12 +86,15 @@ export function BankSuite(
   >,
   createPersistor: <A extends EsAggregateType<any>>(
     AGGREGATE: A,
-    serializer: Serializer<InstanceType<A>>
+    serializer: Serializer<InstanceType<A>>,
+    eventSerializers: AllEventSerializers<InstanceType<A>>
   ) => EsAggregatePersistor<InstanceType<A>>
 ) {
   const cashflowStore = createStore(new CashflowSerializer(), "cashflow");
   const cashflowProjection = new CashFlowProjection(cashflowStore);
-  const projectedStreamReader = new EsProjectedStreamReader(es);
+  const projectedStreamReader = new EsProjectedStreamReader<
+    CashFlowProjection["on"]
+  >(es, [[new DepositedSerializer(), new WithdrawnSerializer()]]);
 
   const cashflowProjector = new IsolatedProjector(
     cashflowProjection,
@@ -92,7 +103,10 @@ export function BankSuite(
     transaction
   );
 
-  const persistor = createPersistor(Account, new AccountSerializer());
+  const persistor = createPersistor(Account, new AccountSerializer(), [
+    new DepositedSerializer(),
+    new WithdrawnSerializer(),
+  ] as const);
 
   beforeEach(async () => {
     await cashflowProjector.stop();

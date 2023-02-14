@@ -10,7 +10,9 @@ export async function* map<T, U>(
 export function closeable<T, U>(
   iterable: AsyncIterableIterator<T>,
   onClose?: () => Promise<void>
-): AsyncIterableIterator<T> & { close: () => Promise<void> } {
+): AsyncIterableIterator<T> & {
+  close: () => Promise<void>;
+} {
   const resolves = new Set<(value: unknown) => void>();
   let done = false;
 
@@ -47,6 +49,14 @@ export function closeable<T, U>(
       return onClose?.();
     },
   } as any;
+}
+
+export function mappable<T extends AsyncIterable<any>, U>(iterable: T) {
+  return Object.assign(iterable, {
+    map(fn: (value: T extends AsyncIterable<infer V> ? V : never) => U) {
+      return mappable(map(iterable, fn));
+    },
+  });
 }
 
 export async function buffer<T>(iterator: AsyncIterable<T>, count = Infinity) {

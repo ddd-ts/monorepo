@@ -3,17 +3,15 @@ import { Change, Event, Fact } from "../event/event";
 
 export type EsAggregateId = { toString(): string };
 
-export abstract class EsAggregate<
-  Id extends EsAggregateId = EsAggregateId,
-  E extends Event = Event
-> {
+export abstract class EsAggregate<Id extends EsAggregateId, E extends Event[]> {
+  a: E = [] as any;
   acknowledgedRevision = -1n;
 
-  changes: Change<E>[] = [];
+  changes: Change<E[number]>[] = [];
 
   constructor(public id: Id) {}
 
-  load(fact: Fact<E>) {
+  load(fact: Fact<E[number]>) {
     if (typeof fact.revision !== "bigint") {
       throw new Error("not a fact");
     }
@@ -32,12 +30,12 @@ export abstract class EsAggregate<
     this.acknowledgedRevision = fact.revision;
   }
 
-  apply(change: Change<E>) {
+  apply(change: Change<E[number]>) {
     this.play(change);
     this.changes.push(change);
   }
 
-  private play(event: E) {
+  private play(event: E[number]) {
     const handler = this.getEventHandler(event);
     if (!handler) {
       throw new Error(`cannot play event ${event.type}, no handler registered`);
@@ -56,9 +54,9 @@ export abstract class EsAggregate<
     this.changes = [];
   }
 
-  static instanciate<T extends Constructor<EsAggregate<any>>>(
+  static instanciate<T extends Constructor<EsAggregate<any, any>>>(
     this: T,
-    id: T extends Constructor<EsAggregate<infer U>> ? U : never
+    id: T extends Constructor<EsAggregate<infer U, any>> ? U : never
   ) {
     return new this(id) as InstanceType<T>;
   }
@@ -68,7 +66,7 @@ export abstract class EsAggregate<
   static registerHandler(eventType: string, handler: (event: Event) => any) {
     this.eventHandlers.set(eventType, handler);
   }
-  private getEventHandler(event: E) {
+  private getEventHandler(event: E[number]) {
     const constructor = this.constructor as typeof EsAggregate;
     const eventType = event.type;
     const handler = constructor.eventHandlers.get(eventType);

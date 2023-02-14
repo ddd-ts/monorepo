@@ -11,6 +11,7 @@ import {
   InMemoryStore,
   InMemoryTransactionPerformer,
 } from "@ddd-ts/store-inmemory";
+import { AllEventSerializers } from "@ddd-ts/event-sourcing/dist/es-aggregate-store/es-aggregate.persistor";
 
 describe("EventSourcingESDB", () => {
   const es = new ESDBEventStore();
@@ -25,12 +26,12 @@ describe("EventSourcingESDB", () => {
       const store = new InMemoryStore(name, database, serializer) as any;
       return store;
     },
-    (AGGREGATE, serializer) => {
+    (AGGREGATE, serializer, eventSerializers) => {
       const persistor = class extends EsAggregatePersistorWithSnapshots(
         AGGREGATE
       ) {};
       const snapshotter = new InMemorySnapshotter(database, serializer);
-      return new persistor(es, snapshotter);
+      return new persistor(es, eventSerializers, snapshotter);
     }
   );
 });

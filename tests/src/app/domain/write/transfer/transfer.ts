@@ -16,7 +16,7 @@ export class TransferAmountClaimed extends Event<{
 
 export class Transfer extends EsAggregate<
   string,
-  TransferInitiated | TransferAmountClaimed
+  [TransferInitiated, TransferAmountClaimed]
 > {
   public from: AccountId;
   public to: AccountId;

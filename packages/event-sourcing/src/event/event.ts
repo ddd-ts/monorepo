@@ -1,24 +1,10 @@
-// export type Fact<T extends Event = Event> = T & {
-//   revision: bigint;
-// };
-
 import { v4 } from "uuid";
-import { Constructor } from "@ddd-ts/types";
-
-// export type Change<T extends Event = Event> = T & {
-//   revision: undefined;
-// };
+import { AbstractConstructor, Constructor } from "@ddd-ts/types";
 
 export type Serializable =
   | { [key: string | number]: string | number | boolean | Serializable }
   | Serializable[];
 
-// export type Event = {
-//   id: string;
-//   type: string;
-//   revision?: bigint;
-//   payload: Serializable;
-// };
 export type Fact<T extends Event = Event> = T & {
   revision: bigint;
 };

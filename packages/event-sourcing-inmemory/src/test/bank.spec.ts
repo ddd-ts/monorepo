@@ -22,12 +22,12 @@ describe("EventSourcingInMemory", () => {
       const store = new InMemoryStore(name, database, serializer) as any;
       return store;
     },
-    (AGGREGATE, serializer) => {
+    (AGGREGATE, serializer, eventSerializers) => {
       const persistor = class extends EsAggregatePersistorWithSnapshots(
         AGGREGATE
       ) {};
       const snapshotter = new InMemorySnapshotter(database, serializer);
-      return new persistor(es, snapshotter);
+      return new persistor(es, eventSerializers, snapshotter);
     }
   );
 });

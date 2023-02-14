@@ -3,7 +3,9 @@ import { ProjectedStreamConfiguration } from "../es-aggregate-store/event-store"
 import { EsAggregate } from "../es-aggregate/es-aggregate";
 import { Event, Fact } from "../event/event";
 
-export abstract class Projection<A extends EsAggregate = EsAggregate> {
+export abstract class Projection<
+  A extends EsAggregate<any, any> = EsAggregate<any, any>
+> {
   abstract on: ProjectedStreamConfiguration;
 
   get configuration() {

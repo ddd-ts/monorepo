@@ -13,6 +13,14 @@ import {
   Transfer,
   TransferInitiated,
 } from "../app/domain/write/transfer/transfer";
+import {
+  DepositedSerializer,
+  WithdrawnSerializer,
+} from "../app/infrastructure/account.serializer";
+import {
+  TransferAmountClaimedSerializer,
+  TransferInitiatedSerializer,
+} from "../app/infrastructure/transfer.serializer";
 
 function expectedFact(
   event: Constructor<Event>,
@@ -60,9 +68,14 @@ function expectFacts(
 jest.setTimeout(10000);
 
 export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
-  const accountPersistor = new (EsAggregatePersistor(Account))(es);
-  const transferPersistor = new (EsAggregatePersistor(Transfer))(es);
-  const reader = new EsProjectedStreamReader(es);
+  const accountPersistor = new (EsAggregatePersistor(Account))(es, [
+    new DepositedSerializer(),
+    new WithdrawnSerializer(),
+  ]);
+  const transferPersistor = new (EsAggregatePersistor(Transfer))(es, [
+    new TransferInitiatedSerializer(),
+    new TransferAmountClaimedSerializer(),
+  ]);
 
   afterAll(() => {
     return es.close();
@@ -117,6 +130,10 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
       await accountPersistor.persist(accountA);
       await accountPersistor.persist(accountB);
 
+      const reader = new EsProjectedStreamReader<[typeof Account]>(es, [
+        [new DepositedSerializer(), new WithdrawnSerializer()],
+      ]);
+
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       const events = await buffer(reader.read([Account]), 2);
@@ -135,9 +152,13 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
 
       await accountPersistor.persist(account);
 
+      const reader = new EsProjectedStreamReader<[typeof Account]>(es, [
+        [new DepositedSerializer(), new WithdrawnSerializer()],
+      ]);
+
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const events = await buffer(reader.read([Account], 1n));
+      const events: any[] = await buffer(reader.read([Account], 1n));
 
       expectFacts(events, [[Deposited, 1n, 200]]);
     });
@@ -153,6 +174,16 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
 
       const transferA = Transfer.new(accountA.id, accountB.id, 10);
       await transferPersistor.persist(transferA);
+
+      const reader = new EsProjectedStreamReader<
+        [typeof Account, typeof Transfer]
+      >(es, [
+        [new DepositedSerializer(), new WithdrawnSerializer()],
+        [
+          new TransferInitiatedSerializer(),
+          new TransferAmountClaimedSerializer(),
+        ],
+      ]);
 
       await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -176,6 +207,10 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
 
       account.deposit(100);
       await accountPersistor.persist(account);
+
+      const reader = new EsProjectedStreamReader<[typeof Account]>(es, [
+        [new DepositedSerializer(), new WithdrawnSerializer()],
+      ]);
 
       const follower = await reader.follow([Account]);
 
@@ -203,6 +238,15 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
       const transferA = Transfer.new(accountA.id, accountB.id, 10);
       await transferPersistor.persist(transferA);
 
+      const reader = new EsProjectedStreamReader<
+        [typeof Account, typeof Transfer]
+      >(es, [
+        [new DepositedSerializer(), new WithdrawnSerializer()],
+        [
+          new TransferInitiatedSerializer(),
+          new TransferAmountClaimedSerializer(),
+        ],
+      ]);
       const follower = await reader.follow([Account, Transfer]);
 
       const existing = await buffer(follower, 3);
@@ -232,6 +276,16 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
     });
 
     it("should aggregate new corresponding streams on the fly", async () => {
+      const reader = new EsProjectedStreamReader<
+        [typeof Account, typeof Transfer]
+      >(es, [
+        [new DepositedSerializer(), new WithdrawnSerializer()],
+        [
+          new TransferInitiatedSerializer(),
+          new TransferAmountClaimedSerializer(),
+        ],
+      ]);
+
       const follower = await reader.follow([Account, Transfer]);
 
       const account = Account.new();
@@ -258,6 +312,16 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
 
     describe("should follow the projected stream from the specified revision", () => {
       it("when starting from an existing revision", async () => {
+        const reader = new EsProjectedStreamReader<
+          [typeof Account, typeof Transfer]
+        >(es, [
+          [new DepositedSerializer(), new WithdrawnSerializer()],
+          [
+            new TransferInitiatedSerializer(),
+            new TransferAmountClaimedSerializer(),
+          ],
+        ]);
+
         const account = Account.new();
 
         account.deposit(100);
@@ -289,6 +353,10 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
       }, 10000);
 
       it("when starting from a non-existing revision", async () => {
+        const reader = new EsProjectedStreamReader<[typeof Account]>(es, [
+          [new DepositedSerializer(), new WithdrawnSerializer()],
+        ]);
+
         const account = Account.new();
 
         account.deposit(100);
@@ -347,6 +415,10 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
       expect.objectContaining({ fact });
 
     it("should load balance facts between competitors of the same competition", async () => {
+      const reader = new EsProjectedStreamReader<[typeof Account]>(es, [
+        [new DepositedSerializer(), new WithdrawnSerializer()],
+      ]);
+
       const competitorA = await reader.compete(
         [Account],
         "default-competition"
@@ -378,6 +450,10 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
     });
 
     it("should propagate all facts to every competition", async () => {
+      const reader = new EsProjectedStreamReader<[typeof Account]>(es, [
+        [new DepositedSerializer(), new WithdrawnSerializer()],
+      ]);
+
       const competitorA = await reader.compete([Account], "competition-a");
       const competitorB = await reader.compete([Account], "competition-b");
 
@@ -405,6 +481,10 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
     });
 
     it("should use the remaining competitors if one of them is closed", async () => {
+      const reader = new EsProjectedStreamReader<[typeof Account]>(es, [
+        [new DepositedSerializer(), new WithdrawnSerializer()],
+      ]);
+
       const competitorA = await reader.compete(
         [Account],
         "default-competition"
@@ -436,6 +516,10 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
     });
 
     it("should allow to retry an attempt", async () => {
+      const reader = new EsProjectedStreamReader<[typeof Account]>(es, [
+        [new DepositedSerializer(), new WithdrawnSerializer()],
+      ]);
+
       const competitorA = await reader.compete(
         [Account],
         "default-competition"

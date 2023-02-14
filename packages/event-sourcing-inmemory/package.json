@@ -5,7 +5,7 @@
   "types": "dist/index.d.ts",
   "license": "MIT",
   "scripts": {
-    "test": "test-runner",
+    "test": "test-runner --maxWorkers=1",
     "build": "builder"
   },
   "peerDependencies": {

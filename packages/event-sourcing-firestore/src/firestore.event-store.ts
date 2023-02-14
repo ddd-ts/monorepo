@@ -41,7 +41,7 @@ export class FirestoreEventStore extends EventStore {
   }
 
   async appendToAggregateStream(
-    AGGREGATE: Constructor<EsAggregate>,
+    AGGREGATE: Constructor<EsAggregate<any, any>>,
     id: { toString(): string },
     changes: EsChange[],
     expectedRevision: bigint
@@ -78,7 +78,7 @@ export class FirestoreEventStore extends EventStore {
   }
 
   async *readAggregateStream(
-    AGGREGATE: Constructor<EsAggregate<{ toString(): string }, Event>, any[]>,
+    AGGREGATE: Constructor<EsAggregate<{ toString(): string }, Event[]>, any[]>,
     id: { toString(): string },
     from?: bigint
   ): AsyncIterable<EsFact> {

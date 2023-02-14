@@ -14,7 +14,7 @@ import { Projector } from "./projector";
  * Will subscribe to all new events and catch up from the latest checkpoint to the end of the stream.
  * (In the case of an in-memory store, this will catchup from the beginning of the stream.)
  */
-export class IsolatedProjector implements Projector {
+export class IsolatedProjector<P extends Projection> implements Projector {
   follower?: Follower;
 
   // logger = console;
@@ -29,7 +29,7 @@ export class IsolatedProjector implements Projector {
 
   constructor(
     private readonly projection: Projection,
-    private readonly reader: EsProjectedStreamReader,
+    private readonly reader: EsProjectedStreamReader<P["on"]>,
     private readonly checkpoint: Checkpoint,
     private readonly transaction: TransactionPerformer // private readonly logger: LoggerService
   ) {}

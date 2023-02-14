@@ -1,6 +1,5 @@
-export type Serialized<S extends Serializer<any>> = Awaited<
-  ReturnType<S["serialize"]>
->;
+export type Serialized<S extends { serialize: (...args: any[]) => any }> =
+  Awaited<ReturnType<S["serialize"]>>;
 
 export abstract class Serializer<Model> {
   abstract serialize(model: Model): Promise<any>;

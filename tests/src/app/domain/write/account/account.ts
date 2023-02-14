@@ -5,13 +5,15 @@ import { Deposited } from "./deposited.event";
 
 export class Account extends EsAggregate<
   AccountId,
-  | Deposited
-  | {
+  [
+    Deposited,
+    {
       type: "Withdrawn";
       id: string;
       payload: { amount: number };
       revision?: bigint;
     }
+  ]
 > {
   balance = 0;
 

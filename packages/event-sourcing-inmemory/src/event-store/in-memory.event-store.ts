@@ -26,9 +26,9 @@ export class InMemoryEventStore extends EventStore {
     this.projectedStreams.clear();
   }
 
-  async appendToAggregateStream<A extends EsAggregate>(
+  async appendToAggregateStream<A extends EsAggregate<any, any>>(
     AGGREGATE: Constructor<A>,
-    accountId: A extends EsAggregate<infer Id> ? Id : never,
+    accountId: A extends EsAggregate<infer Id, any> ? Id : never,
     changes: EsChange[],
     expectedRevision: bigint
   ) {
@@ -54,9 +54,9 @@ export class InMemoryEventStore extends EventStore {
     }
   }
 
-  async *readAggregateStream<A extends EsAggregate>(
+  async *readAggregateStream<A extends EsAggregate<any, any>>(
     AGGREGATE: Constructor<A>,
-    accountId: A extends EsAggregate<infer Id> ? Id : never,
+    accountId: A extends EsAggregate<infer Id, any> ? Id : never,
     from = 0n
   ) {
     const streamName = `${AGGREGATE.name}-${accountId.toString()}`;
