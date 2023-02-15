@@ -1,11 +1,11 @@
 import { Serialized } from "@ddd-ts/model";
 import { Constructor } from "@ddd-ts/types";
-import { Change, Event, Fact } from "./event";
+import { Event, Fact } from "./event";
 
 export interface EventSerializer<E extends Event = Event> {
   type: E["type"];
-  serialize(event: E): Promise<any>;
-  deserialize(serialized: Serialized<this>): Promise<E>;
+  serialize(event: E): any | Promise<any>;
+  deserialize(serialized: Serialized<this>): E | Promise<E>;
 }
 export function MakeEventSerializer<
   EVENT extends Constructor<Event> & {

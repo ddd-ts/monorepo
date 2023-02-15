@@ -104,7 +104,7 @@ export function EsAggregatePersistorWithSnapshots<
 
         for await (const fact of stream) {
           const serializer = this.getSerializer(fact.type);
-          const event = serializer.deserialize(fact);
+          const event = await serializer.deserialize(fact);
           instance.load(event as any);
         }
 
