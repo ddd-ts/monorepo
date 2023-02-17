@@ -13,8 +13,15 @@ export abstract class Serializer<Model> {
 
 export abstract class VersionnedSerializer<Model> extends Serializer<Model> {
   abstract version: bigint;
-  abstract serialize(model: Model): Promise<{ version: bigint }>;
-  abstract deserialize(serialized: Serialized<this>): Promise<Model>;
+  async serialize(model: Model) {
+    return {
+      version: this.version,
+      ...(await this.serializeModel(model)),
+    };
+  }
+
+  abstract serializeModel(model: Model): Promise<any>;
+  abstract deserializeModel(serialized: Serialized<this>): Promise<Model>;
 }
 
 export abstract class V0VersionnedSerializer<

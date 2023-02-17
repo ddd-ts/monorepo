@@ -22,7 +22,11 @@ export class FirestoreEventStore extends EventStore {
   }
 
   private serialize(object: object) {
-    return JSON.parse(JSON.stringify(object));
+    return JSON.parse(
+      JSON.stringify(object, (_, value) =>
+        typeof value === "bigint" ? value.toString() : value
+      )
+    );
   }
 
   runningSubscriptions = new Set<any>();
