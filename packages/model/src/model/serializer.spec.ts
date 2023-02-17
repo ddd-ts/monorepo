@@ -45,7 +45,7 @@ describe("Serializer", () => {
   });
 
   class UserSerializerV0 extends V0VersionnedSerializer<User> {
-    async deserialize(serialized: any) {
+    async deserializeModel(serialized: any) {
       return User.deserialize(serialized.id, serialized.name || serialized.id); // in v0, name was not present
     }
 
@@ -61,11 +61,11 @@ describe("Serializer", () => {
   class UserSerializerV1 extends VersionnedSerializer<User> {
     version = 1n;
 
-    async serialize(user: User) {
-      return { id: user.id, name: user.name, version: this.version };
+    async serializeModel(user: User) {
+      return { id: user.id, name: user.name };
     }
 
-    async deserialize(serialized: Serialized<this>) {
+    async deserializeModel(serialized: Serialized<this>) {
       return User.deserialize(serialized.id, serialized.name);
     }
 
@@ -88,15 +88,14 @@ describe("Serializer", () => {
       return name.split(" ")[0]; // intentionally destructive
     }
 
-    async serialize(user: User) {
+    async serializeModel(user: User) {
       return {
         id: user.id,
         name: this.serializerName(user.name),
-        version: this.version,
       };
     }
 
-    async deserialize(serialized: Serialized<this>) {
+    async deserializeModel(serialized: Serialized<this>) {
       return User.deserialize(
         serialized.id,
         this.deserializerName(serialized.name)

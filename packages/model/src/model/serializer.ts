@@ -20,6 +20,10 @@ export abstract class VersionnedSerializer<Model> extends Serializer<Model> {
     };
   }
 
+  async deserialize(serialized: Serialized<this>): Promise<Model> {
+    return this.deserializeModel(serialized);
+  }
+
   abstract serializeModel(model: Model): Promise<any>;
   abstract deserializeModel(serialized: Serialized<this>): Promise<Model>;
 }
@@ -29,7 +33,7 @@ export abstract class V0VersionnedSerializer<
 > extends VersionnedSerializer<Model> {
   version = 0n;
 
-  serialize(model: Model): Promise<{ version: bigint }> {
+  serializeModel(model: Model): Promise<{ version: bigint }> {
     throw new Error(`Not implemented`);
   }
 }

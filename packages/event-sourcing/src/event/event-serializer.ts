@@ -16,10 +16,10 @@ export function MakeEventSerializer<
     type = event.name as InstanceType<EVENT>["type"];
     abstract serializePayload(
       payload: InstanceType<EVENT>["payload"]
-    ): Promise<any>;
+    ): any | Promise<any>;
     abstract deserializePayload(
       serialized: any
-    ): Promise<InstanceType<EVENT>["payload"]>;
+    ): InstanceType<EVENT>["payload"] | Promise<InstanceType<EVENT>["payload"]>;
 
     async serialize(event: InstanceType<EVENT>) {
       return {
