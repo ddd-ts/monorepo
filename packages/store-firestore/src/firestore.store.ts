@@ -33,7 +33,7 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
   ): Promise<Model[]> {
     return Promise.all(
       (await query.get()).docs.map((doc) =>
-        this.serializer.deserialize(doc.data())
+        this.serializer.deserialize({ id: doc.id, ...doc.data() })
       )
     );
   }
@@ -43,7 +43,7 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
   ): AsyncIterable<Model> {
     const stream: AsyncIterable<QueryDocumentSnapshot> = query.stream() as any;
     for await (const doc of stream) {
-      yield this.serializer.deserialize(doc.data());
+      yield this.serializer.deserialize({ id: doc.id, ...doc.data() });
     }
   }
 
@@ -65,13 +65,18 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
       return undefined;
     }
 
-    return this.serializer.deserialize(snapshot.data() as any);
+    return this.serializer.deserialize({
+      id: id.toString(),
+      ...(snapshot.data() as any),
+    });
   }
 
   async loadAll(): Promise<Model[]> {
     const snapshot = await this.collection.get();
     return Promise.all(
-      snapshot.docs.map((doc) => this.serializer.deserialize(doc.data() as any))
+      snapshot.docs.map((doc) =>
+        this.serializer.deserialize({ id: doc.id, ...(doc.data() as any) })
+      )
     );
   }
 
