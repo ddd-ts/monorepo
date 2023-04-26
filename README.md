@@ -26,3 +26,10 @@ next:
 reminder:
 
 - [ ] transactionnal snapshot storage
+
+
+# Release
+npm dist-tags @ddd-ts/model | grep latest | awk '{ print $2 }'
+
+npm version 0.0.3-x -ws
+npm publish --access public --workspaces
