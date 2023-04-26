@@ -1,3 +1,5 @@
+import { Model } from "./model";
+
 export type Serialized<S extends { serialize: (...args: any[]) => any }> =
   Awaited<ReturnType<S["serialize"]>>;
 
@@ -38,8 +40,10 @@ export abstract class V0VersionnedSerializer<
   }
 }
 
-export class UpcastSerializer<Model> {
-  constructor(private readonly serializers: VersionnedSerializer<Model>[]) {}
+export class UpcastSerializer<M extends Model> implements Serializer<M> {
+  constructor(
+    private readonly serializers: (Serializer<M> & { version: bigint })[]
+  ) {}
 
   get sorted() {
     return [...this.serializers].sort(
@@ -55,7 +59,34 @@ export class UpcastSerializer<Model> {
     return this.sorted.shift();
   }
 
-  serialize(model: Model) {
+  getIdFromModel(model: M) {
+    if (!this.latest) {
+      throw new Error(`No serializer found`);
+    }
+
+    return this.latest.getIdFromModel(model);
+  }
+
+  getIdFromSerialized(serialized: any) {
+    if (!serialized.version) {
+      if (!this.oldest) {
+        throw new Error(`No serializer found`);
+      }
+      return this.oldest.getIdFromSerialized(serialized);
+    }
+
+    const serializer = this.serializers.find(
+      (serializer) => serializer.version === serialized.version
+    );
+
+    if (!serializer) {
+      throw new Error(`No serializer found for version ${serialized.version}`);
+    }
+
+    return serializer.getIdFromSerialized(serialized);
+  }
+
+  serialize(model: M) {
     if (!this.latest) {
       throw new Error(`No serializer found`);
     }
