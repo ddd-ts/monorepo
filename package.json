@@ -13,7 +13,8 @@
     "clean": "yarn workspaces foreach exec rm -rf dist",
     "clean:cache": "yarn workspaces foreach exec rm -rf .turbo",
     "clean:nm": "rm -rf node_modules",
-    "clean:hard": "yarn clean:cache && yarn clean && yarn clean:nm"
+    "clean:hard": "yarn clean:cache && yarn clean && yarn clean:nm",
+    "release": "yarn build && yarn test && npm version -ws `npm dist-tags @ddd-ts/model | grep latest | awk '{ print $2 }' | cut -d'-' -f1`-$((`npm dist-tags @ddd-ts/model | grep latest | awk '{ print $2 }' | cut -d'-' -f2`+1)) && npm publish --access public --workspaces"
   },
   "devDependencies": {
     "prettier": "latest",

@@ -30,6 +30,5 @@ reminder:
 
 # Release
 npm dist-tags @ddd-ts/model | grep latest | awk '{ print $2 }'
-
-npm version 0.0.3-x -ws
+npm version -ws 0.0.3-x 
 npm publish --access public --workspaces
