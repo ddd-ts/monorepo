@@ -29,10 +29,13 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
   }
 
   protected async executeQuery(
-    query: FirebaseFirestore.Query<any>
+    query: FirebaseFirestore.Query<any>,
+    trx?: FirebaseFirestore.Transaction
   ): Promise<Model[]> {
+    const result = trx ? await trx.get(query) : await query.get();
+
     return Promise.all(
-      (await query.get()).docs.map((doc) =>
+      result.docs.map((doc) =>
         this.serializer.deserialize({ id: doc.id, ...doc.data() })
       )
     );

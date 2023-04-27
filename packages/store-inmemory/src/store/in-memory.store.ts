@@ -14,9 +14,10 @@ export class InMemoryStore<Model, Id extends { toString(): string }>
   ) {}
 
   protected async filter(
-    predicate: (model: Model) => boolean
+    predicate: (model: Model) => boolean,
+    trx?: InMemoryTransaction
   ): Promise<Model[]> {
-    const serialized = await this.database.loadAll(this.collection);
+    const serialized = await this.database.loadAll(this.collection, trx);
 
     const all = await Promise.all(
       serialized.map((s) => this.serializer.deserialize(s))
