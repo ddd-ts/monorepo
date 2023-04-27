@@ -76,7 +76,7 @@ export class UpcastSerializer<M extends Model> implements Serializer<M> {
     }
 
     const serializer = this.serializers.find(
-      (serializer) => serializer.version === serialized.version
+      (serializer) => Number(serializer.version) === Number(serialized.version)
     );
 
     if (!serializer) {
@@ -103,7 +103,7 @@ export class UpcastSerializer<M extends Model> implements Serializer<M> {
     }
 
     const serializer = this.serializers.find(
-      (serializer) => serializer.version === serialized.version
+      (serializer) => Number(serializer.version) === Number(serialized.version)
     );
 
     if (!serializer) {
