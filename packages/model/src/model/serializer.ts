@@ -4,7 +4,7 @@ export type Serialized<S extends { serialize: (...args: any[]) => any }> =
   Awaited<ReturnType<S["serialize"]>>;
 
 export abstract class Serializer<Model> {
-  abstract serialize(model: Model): any | Promise<any>;
+  abstract serialize(model: Model): {} | Promise<{}>;
   abstract deserialize(serialized: Serialized<this>): Model | Promise<Model>;
   abstract getIdFromModel(model: Model): { toString(): string };
 
@@ -43,20 +43,31 @@ export abstract class V0VersionnedSerializer<
 export class UpcastSerializer<M extends Model> implements Serializer<M> {
   constructor(
     private readonly serializers: (Serializer<M> & { version: bigint })[]
-  ) {}
-
-  get sorted() {
-    return [...this.serializers].sort(
+  ) {
+    this.serializers = this.serializers.sort(
       (a, b) => Number(a.version) - Number(b.version)
     );
   }
 
   get latest() {
-    return this.sorted.pop();
+    return this.serializers[this.serializers.length - 1];
   }
 
   get oldest() {
-    return this.sorted.shift();
+    return this.serializers[0];
+  }
+
+  private getSerializer(version: number) {
+    let serializer = this.serializers[version];
+    if (!serializer || Number(serializer.version) !== Number(version)) {
+      this.serializers.find(
+        (serializer) => Number(serializer.version) === Number(version)
+      );
+    }
+    if (!serializer) {
+      throw new Error(`No serializer found for version ${version}`);
+    }
+    return serializer;
   }
 
   getIdFromModel(model: M) {
@@ -75,13 +86,7 @@ export class UpcastSerializer<M extends Model> implements Serializer<M> {
       return this.oldest.getIdFromSerialized(serialized);
     }
 
-    const serializer = this.serializers.find(
-      (serializer) => Number(serializer.version) === Number(serialized.version)
-    );
-
-    if (!serializer) {
-      throw new Error(`No serializer found for version ${serialized.version}`);
-    }
+    const serializer = this.getSerializer(serialized.version);
 
     return serializer.getIdFromSerialized(serialized);
   }
@@ -102,13 +107,7 @@ export class UpcastSerializer<M extends Model> implements Serializer<M> {
       return this.oldest.deserialize(serialized);
     }
 
-    const serializer = this.serializers.find(
-      (serializer) => Number(serializer.version) === Number(serialized.version)
-    );
-
-    if (!serializer) {
-      throw new Error(`No serializer found for version ${serialized.version}`);
-    }
+    const serializer = this.getSerializer(serialized.version);
 
     return serializer.deserialize(serialized);
   }
