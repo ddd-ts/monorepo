@@ -1,9 +1,18 @@
-// type Collection = Map<string, any>;
-// type Storage = Map<string, Collection>;
-
 import { Storage } from "./in-memory.storage";
 
 export type InMemoryTransaction = string;
+
+class TransactionNotFound extends Error {
+  constructor(trx: InMemoryTransaction) {
+    super(`Transaction "${trx}" not found`);
+  }
+}
+
+class WriteCollisionDetected extends Error {
+  constructor(id: string) {
+    super(`Write collision detected for key "${id}"`);
+  }
+}
 
 export class InMemoryDatabase {
   private storage = new Storage();
@@ -13,7 +22,7 @@ export class InMemoryDatabase {
     if (trx) {
       const storage = this.transactions.get(trx);
       if (!storage) {
-        throw new Error(`Transaction "${trx}" not found`);
+        throw new TransactionNotFound(trx);
       }
       return storage;
     }
@@ -55,7 +64,7 @@ export class InMemoryDatabase {
       globalStorage.getCollection(collectionName).get(id) !==
         targetStorage.getCollection(collectionName).get(id)
     ) {
-      throw new Error(`Write collision detected for key "${id}"`);
+      throw new WriteCollisionDetected(id);
     }
 
     targetStorage.getCollection(collectionName).save(id, data);
@@ -78,8 +87,14 @@ export class InMemoryDatabase {
         this.commit(trx);
         break;
       } catch (error) {
-        console.error(error);
-        this.initiateTransaction(trx);
+        if (
+          error instanceof WriteCollisionDetected ||
+          error instanceof TransactionNotFound
+        ) {
+          this.initiateTransaction(trx);
+        } else {
+          throw error;
+        }
       }
     }
 
@@ -93,7 +108,7 @@ export class InMemoryDatabase {
   private commit(trx: InMemoryTransaction): void {
     const snapshot = this.transactions.get(trx);
     if (!snapshot) {
-      throw new Error(`Transaction "${trx}" not found`);
+      throw new TransactionNotFound(trx);
     }
 
     this.storage = this.storage.clone().merge(snapshot);
