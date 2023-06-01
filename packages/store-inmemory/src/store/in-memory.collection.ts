@@ -53,7 +53,17 @@ export class Collection {
 
   toPretty() {
     return [...this.data.entries()]
-      .map(([id, data]) => `\t\t"${id}": ${JSON.stringify(data.data)}`)
+      .map(
+        ([id, data]) =>
+          `\t\t"${id}": ${JSON.stringify(data.data, replaceBigInt)}`
+      )
       .join(",\n");
   }
+}
+
+function replaceBigInt(key: string, value: any) {
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+  return value;
 }
