@@ -94,9 +94,22 @@ export function Subtrait<
   };
 }
 
+export type Props<T extends { __traits_props__: any } | Trait | Trait[]> =
+  T extends {
+    __traits_props__: any;
+  }
+    ? T["__traits_props__"]
+    : T extends Trait
+    ? MergeParameter<[T]>
+    : T extends Trait[]
+    ? MergeParameter<T>
+    : never;
+
 export function Derive<R extends Trait[], C extends CheckTraitRequirements<R>>(
   ...traits: R
-): C extends "success" ? ApplyTraits<R> : C {
+): C extends "success"
+  ? ApplyTraits<R> & { __traits__: R; __traits_props__: MergeParameter<R> }
+  : C {
   let current: Constructor = class {};
   for (const trait of traits) {
     current = trait.factory(current);

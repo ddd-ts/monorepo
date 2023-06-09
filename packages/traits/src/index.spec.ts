@@ -1,4 +1,4 @@
-import { Derive, Subtrait, Trait, implementsTrait } from ".";
+import { Derive, Props, Subtrait, Trait, implementsTrait } from ".";
 
 describe("Traits", () => {
   const Swim = Trait(
@@ -151,6 +151,36 @@ describe("Traits", () => {
     }
   });
 
+  it("allows to easily access prop types", () => {
+    const WithProperties = <T>() =>
+      Trait(
+        (base) =>
+          class extends base {
+            a: string;
+            b: T;
+            c: number;
+            constructor(props: { a: string; b: T; c: number }) {
+              super(props);
+              this.a = props.a;
+              this.b = props.b;
+              this.c = props.c;
+            }
+          }
+      );
+
+    class Thing extends Derive(WithProperties<boolean>()) {
+      constructor(props: Props<typeof Thing> & { d: null }) {
+        super(props);
+      }
+
+      do() {
+        const a: string = this.a;
+        const b: boolean = this.b;
+        const c: number = this.c;
+      }
+    }
+  });
+
   describe("Subtraits", () => {
     it("allows to specify supertraits", () => {
       const Walk = Trait(
@@ -162,7 +192,7 @@ describe("Traits", () => {
 
       const Run = Subtrait(
         [Walk], // supertrait of subtrait defined here
-        (base, Props) =>
+        (base) =>
           class Run extends base {
             run() {
               this.walk();
