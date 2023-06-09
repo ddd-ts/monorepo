@@ -3,7 +3,7 @@ import { Derive, Subtrait, Trait, implementsTrait } from ".";
 describe("Traits", () => {
   const Swim = Trait(
     (base) =>
-      class extends base {
+      class Swim extends base {
         swim() {
           return 1;
         }
@@ -20,7 +20,12 @@ describe("Traits", () => {
   );
 
   it("derives a trait", () => {
-    class Fish extends Derive(Swim) {}
+    class Fish extends Derive(Swim) {
+      do() {
+        // @ts-expect-error should be strictly typed
+        this.test();
+      }
+    }
 
     const fish = new Fish({});
 
@@ -150,15 +155,15 @@ describe("Traits", () => {
     it("allows to specify supertraits", () => {
       const Walk = Trait(
         (base) =>
-          class extends base {
+          class Walk extends base {
             walk() {}
           }
       );
 
       const Run = Subtrait(
-        [Walk] as const, // supertrait of subtrait defined here
+        [Walk], // supertrait of subtrait defined here
         (base, Props) =>
-          class extends base {
+          class Run extends base {
             run() {
               this.walk();
               this.walk();
@@ -302,8 +307,10 @@ describe("Traits", () => {
         [Walk, Fly], // supertrait of subtrait defined here
         (base, Props) =>
           class Land extends base {
+            weigth: number;
             constructor(props: { weigth: number } & typeof Props) {
               super(props);
+              this.weigth = props.weigth;
             }
             land() {
               return this.walk() + this.fly() - this.weigth;
@@ -376,8 +383,10 @@ describe("Traits", () => {
         [Walk], // supertrait of subtrait defined here
         (base, Props) =>
           class Land extends base {
+            weigth: number;
             constructor(props: { weigth: number } & typeof Props) {
               super(props);
+              this.weigth = props.weigth;
             }
             land() {
               return this.walk() - this.weigth;

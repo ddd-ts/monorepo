@@ -1,8 +1,12 @@
-export type Constructor<Props extends {} = any> = new (props: Props) => any;
+export type Constructor<Props extends {} = any, Result extends {} = {}> = {
+  new (props: Props): Result;
+};
 
-type Trait = {
-  factory: (a: Constructor<{}>) => Constructor;
-  superTraits: readonly Trait[];
+export type Trait<
+  Factory extends <Base extends Constructor>(base: Base) => Constructor = any
+> = {
+  factory: Factory;
+  superTraits: readonly Trait<any>[];
 };
 
 type Explode<T> = { [P in keyof T]: T[P] };
@@ -17,9 +21,11 @@ type MergeStaticSide<T extends readonly Trait[]> = UnionToIntersection<
   Explode<ReturnType<[...T][number]["factory"]>>
 >;
 
-type MergeInstanceSide<T extends readonly Trait[]> = UnionToIntersection<
-  InstanceType<ReturnType<[...T][number]["factory"]>>
->;
+export type MergeInstanceSide<T extends readonly Trait[]> = T extends []
+  ? {}
+  : T extends never[]
+  ? {}
+  : UnionToIntersection<InstanceType<ReturnType<[...T][number]["factory"]>>>;
 
 export type MergeParameter<T extends readonly Trait[]> = T extends []
   ? {}
@@ -83,11 +89,7 @@ export function Subtrait<
   ) => Constructor
 >(superTraits: SuperTraits, factory: Factory) {
   return {
-    factory: (base: Applied): ReturnType<Factory> =>
-      factory(
-        base as any,
-        "🚨 Error: the second parameter of the subtrait factory is to be used in types with typeof only" as any
-      ) as any,
+    factory,
     superTraits,
   };
 }
@@ -106,7 +108,11 @@ export function Derive<R extends Trait[], C extends CheckTraitRequirements<R>>(
 
   return current as any;
 }
-export const Trait = <T extends Trait["factory"]>(factory: T) => {
+export const Trait = <
+  T extends (base: Constructor<{}, {}>) => Constructor<any, any>
+>(
+  factory: T
+) => {
   const symbol = Symbol();
   (factory as any).symbol = symbol;
   return { factory, superTraits: [] as Trait[] };
