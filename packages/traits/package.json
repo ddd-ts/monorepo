@@ -1,0 +1,14 @@
+{
+  "name": "@ddd-ts/traits",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "scripts": {
+    "build": "builder",
+    "test": "test-runner"
+  },
+  "devDependencies": {
+    "@ddd-ts/dev": "*"
+  }
+}
