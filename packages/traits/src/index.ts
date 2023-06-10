@@ -141,3 +141,12 @@ export function implementsTrait<I extends InstanceType<any>, T extends Trait>(
 export type ImplementsTrait<T extends Trait> = InstanceType<
   ReturnType<T["factory"]>
 >;
+
+export const WithProps = <P extends Record<string, any>>() =>
+  Trait((base) => {
+    class Intermediate extends base {}
+    type I = typeof Intermediate extends new (...args: infer A) => infer T
+      ? new (...args: A) => T & P
+      : never;
+    return Intermediate as typeof Intermediate & I;
+  });

@@ -1,4 +1,11 @@
-import { Derive, Props, Subtrait, Trait, implementsTrait } from ".";
+import {
+  Constructor,
+  Derive,
+  Props,
+  Subtrait,
+  Trait,
+  implementsTrait,
+} from ".";
 
 describe("Traits", () => {
   const Swim = Trait(
@@ -179,6 +186,38 @@ describe("Traits", () => {
         const c: number = this.c;
       }
     }
+  });
+
+  it("allows a trait to construct the base class", () => {
+    const WithProperties = <T>() =>
+      Trait(
+        (base) =>
+          class extends base {
+            a: string;
+            b: T;
+            c: number;
+            constructor(props: { a: string; b: T; c: number }) {
+              super(props);
+              this.a = props.a;
+              this.b = props.b;
+              this.c = props.c;
+            }
+            static new<T extends Constructor>(
+              this: T,
+              props: ConstructorParameters<T>[0]
+            ) {
+              return new this({ ...props }) as InstanceType<T>;
+            }
+          }
+      );
+
+    class Thing extends Derive(WithProperties<boolean>()) {
+      constructor(props: Props<typeof Thing> & { d: null }) {
+        super(props);
+      }
+    }
+
+    Thing.new({ a: "a", b: true, c: 1, d: null });
   });
 
   describe("Subtraits", () => {
