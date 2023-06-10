@@ -8,11 +8,13 @@ import {
 import { Deposited } from "../domain/write/account/deposited.event";
 
 export class AccountSerializer extends Serializer<Account> {
+  version = 1n;
   async serialize(model: Account) {
     return {
       id: model.id.toString(),
       balance: model.balance,
       revision: Number(model.acknowledgedRevision),
+      version: this.version,
     };
   }
 
@@ -24,14 +26,6 @@ export class AccountSerializer extends Serializer<Account> {
     );
 
     return account;
-  }
-
-  getIdFromModel(model: Account) {
-    return model.id;
-  }
-
-  getIdFromSerialized(serialized: Serialized<this>) {
-    return serialized.id;
   }
 }
 

@@ -3,7 +3,10 @@ import { Change, Event, Fact } from "../event/event";
 
 export type EsAggregateId = { toString(): string };
 
-export abstract class EsAggregate<Id extends EsAggregateId, E extends Event[]> {
+export abstract class EsAggregate<
+  Id extends EsAggregateId = EsAggregateId,
+  E extends Event[] = Event[]
+> {
   a: E = [] as any;
   acknowledgedRevision = -1n;
 

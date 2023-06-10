@@ -80,10 +80,7 @@ export function BankSuite(
   createStore: <S extends Serializer<any>>(
     serializer: S,
     name: string
-  ) => Store<
-    S extends Serializer<infer M> ? M : never,
-    S extends Serializer<any> ? ReturnType<S["getIdFromModel"]> : never
-  >,
+  ) => Store<S extends Serializer<infer M> ? M : never>,
   createPersistor: <A extends EsAggregateType<any>>(
     AGGREGATE: A,
     serializer: Serializer<InstanceType<A>>,

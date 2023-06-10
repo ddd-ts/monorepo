@@ -8,15 +8,18 @@ import {
   QueryDocumentSnapshot,
 } from "firebase-admin/firestore";
 
-export class FirestoreStore<Model, Id extends { toString(): string }>
-  implements Store<Model, Id>
+export class FirestoreStore<Model extends { id: { toString(): string } }>
+  implements Store<Model>
 {
   collection: CollectionReference;
 
   constructor(
     public readonly collectionName: string,
     public readonly firestore: Firestore,
-    public readonly serializer: Serializer<Model>,
+    public readonly serializer: Serializer<
+      Model,
+      { id: string; version: bigint }
+    >,
     public readonly converter?: FirestoreDataConverter<DocumentData>
   ) {
     if (this.converter) {
@@ -52,14 +55,12 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
 
   async save(model: Model, trx?: Transaction): Promise<void> {
     const serialized = await this.serializer.serialize(model);
-    const ref = this.collection.doc(
-      this.serializer.getIdFromModel(model).toString()
-    );
+    const ref = this.collection.doc(model.id.toString());
 
     trx ? trx.set(ref, serialized) : await ref.set(serialized);
   }
 
-  async load(id: Id, trx?: Transaction): Promise<Model | undefined> {
+  async load(id: Model["id"], trx?: Transaction): Promise<Model | undefined> {
     const ref = this.collection.doc(id.toString());
 
     const snapshot = trx ? await trx.get(ref) : await ref.get();
@@ -83,7 +84,7 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
     );
   }
 
-  async delete(id: Id, trx?: Transaction): Promise<void> {
+  async delete(id: Model["id"], trx?: Transaction): Promise<void> {
     if (trx) {
       trx.delete(this.collection.doc(id.toString()));
     } else {

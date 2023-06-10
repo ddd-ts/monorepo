@@ -1,5 +1,5 @@
 import { Constructor } from "@ddd-ts/types";
-import { EsAggregate } from "../es-aggregate/es-aggregate";
+import { EsAggregate, EsAggregateId } from "../es-aggregate/es-aggregate";
 import { EventSerializer } from "../event/event-serializer";
 import { Event, Snapshotter } from "../index";
 import { EventStore } from "./event-store";
@@ -22,7 +22,7 @@ export type AllEventSerializers<A extends EsAggregate<any, any>> =
     : never;
 
 export function EsAggregatePersistor<
-  AGG extends EsAggregateType<EsAggregate<any, any>>
+  AGG extends EsAggregateType<EsAggregate<EsAggregateId, any>>
 >(AGGREGATE: AGG) {
   return class {
     constructor(

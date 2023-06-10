@@ -1,4 +1,4 @@
-import { Serialized } from "@ddd-ts/model";
+import { Serialized, Serializer } from "@ddd-ts/model";
 import { Constructor } from "@ddd-ts/types";
 import { Event, Fact } from "./event";
 
@@ -12,7 +12,7 @@ export function MakeEventSerializer<
     asFact: (payload: any, revision: bigint) => Fact;
   }
 >(event: EVENT) {
-  abstract class EventSerializer {
+  abstract class EventSerializer extends Serializer<InstanceType<EVENT>> {
     type = event.name as InstanceType<EVENT>["type"];
     abstract serializePayload(
       payload: InstanceType<EVENT>["payload"]
@@ -21,12 +21,15 @@ export function MakeEventSerializer<
       serialized: any
     ): InstanceType<EVENT>["payload"] | Promise<InstanceType<EVENT>["payload"]>;
 
+    abstract readonly version: bigint;
+
     async serialize(event: InstanceType<EVENT>) {
       return {
         id: event.id,
         type: event.type,
         payload: await this.serializePayload(event.payload),
         revision: Number(event.revision),
+        version: this.version,
       };
     }
     async deserialize(

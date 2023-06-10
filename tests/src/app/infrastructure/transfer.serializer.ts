@@ -8,6 +8,7 @@ import {
 } from "../domain/write/transfer/transfer";
 
 export class TransferSerializer extends Serializer<Transfer> {
+  version = 1n;
   async serialize(model: Transfer) {
     return {
       id: model.id.toString(),
@@ -15,6 +16,7 @@ export class TransferSerializer extends Serializer<Transfer> {
       to: model.to.toString(),
       amount: model.amount,
       amountClaimed: model.amountClaimed,
+      version: this.version,
     };
   }
 
@@ -26,14 +28,6 @@ export class TransferSerializer extends Serializer<Transfer> {
       serialized.amount,
       serialized.amountClaimed
     );
-  }
-
-  getIdFromModel(model: Transfer) {
-    return model.id;
-  }
-
-  getIdFromSerialized(serialized: Serialized<this>) {
-    return serialized.id;
   }
 }
 

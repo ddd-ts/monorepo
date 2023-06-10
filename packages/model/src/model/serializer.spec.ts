@@ -1,10 +1,4 @@
-import {
-  Serialized,
-  Serializer,
-  UpcastSerializer,
-  V0VersionnedSerializer,
-  VersionnedSerializer,
-} from "./serializer";
+import { Serialized, Serializer, UpcastSerializer } from "./serializer";
 
 describe("Serializer", () => {
   class User {
@@ -17,20 +11,13 @@ describe("Serializer", () => {
 
   it("should be able to serialize and deserialize", async () => {
     class UserSerializer extends Serializer<User> {
+      version = 1n;
       async serialize(user: User) {
-        return { id: user.id, name: user.name };
+        return { id: user.id, name: user.name, version: this.version };
       }
 
       async deserialize(serialized: Serialized<this>) {
         return User.deserialize(serialized.id, serialized.name);
-      }
-
-      getIdFromModel(user: User) {
-        return user.id;
-      }
-
-      getIdFromSerialized(serialized: Serialized<this>) {
-        return serialized.id;
       }
     }
 
@@ -44,40 +31,31 @@ describe("Serializer", () => {
     expect(deserialized).toEqual(user);
   });
 
-  class UserSerializerV0 extends V0VersionnedSerializer<User> {
-    async deserializeModel(serialized: any) {
+  class UserSerializerV0 extends Serializer<User> {
+    version = 0n;
+
+    async serialize(user: User): Promise<any> {
+      throw new Error("not implemented");
+    }
+
+    async deserialize(serialized: any) {
       return User.deserialize(serialized.id, serialized.name || serialized.id); // in v0, name was not present
     }
-
-    getIdFromModel(user: User) {
-      return user.id;
-    }
-
-    getIdFromSerialized(serialized: any) {
-      return serialized.id;
-    }
   }
 
-  class UserSerializerV1 extends VersionnedSerializer<User> {
+  class UserSerializerV1 extends Serializer<User> {
     version = 1n;
 
-    async serializeModel(user: User) {
-      return { id: user.id, name: user.name };
+    async serialize(user: User) {
+      return { id: user.id, name: user.name, version: this.version };
     }
 
-    async deserializeModel(serialized: Serialized<this>) {
+    async deserialize(serialized: Serialized<this>) {
       return User.deserialize(serialized.id, serialized.name);
-    }
-
-    getIdFromModel(user: User) {
-      return user.id;
-    }
-    getIdFromSerialized(serialized: any) {
-      return serialized.id;
     }
   }
 
-  class UserSerializerV2 extends VersionnedSerializer<User> {
+  class UserSerializerV2 extends Serializer<User> {
     version = 2n;
 
     private serializerName(name: string) {
@@ -88,25 +66,19 @@ describe("Serializer", () => {
       return name.split(" ")[0]; // intentionally destructive
     }
 
-    async serializeModel(user: User) {
+    async serialize(user: User) {
       return {
         id: user.id,
         name: this.serializerName(user.name),
+        version: this.version,
       };
     }
 
-    async deserializeModel(serialized: Serialized<this>) {
+    async deserialize(serialized: Serialized<this>) {
       return User.deserialize(
         serialized.id,
         this.deserializerName(serialized.name)
       );
-    }
-
-    getIdFromModel(user: User) {
-      return user.id;
-    }
-    getIdFromSerialized(serialized: any) {
-      return serialized.id;
     }
   }
 

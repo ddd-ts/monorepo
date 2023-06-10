@@ -7,5 +7,6 @@ import { TestFirestoreEventStore } from "./firestore.event-store";
 describe("FirestoreEventStore", () => {
   const app = fb.initializeApp({ projectId: "demo-es" });
   const firestore = app.firestore();
+
   EsAggregateStoreSuite(new TestFirestoreEventStore(firestore));
 });

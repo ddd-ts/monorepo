@@ -1,18 +1,20 @@
 import { Serializer } from "@ddd-ts/model";
-import { Snapshotter, EsAggregate } from "@ddd-ts/event-sourcing";
+import {
+  Snapshotter,
+  EsAggregate,
+  EsAggregateId,
+} from "@ddd-ts/event-sourcing";
 import { InMemoryDatabase } from "@ddd-ts/store-inmemory";
 
-export class InMemorySnapshotter<
-  S extends Serializer<EsAggregate<any, any>>
-> extends Snapshotter<S extends Serializer<infer A> ? A : never> {
+export class InMemorySnapshotter<A extends EsAggregate> extends Snapshotter<A> {
   constructor(
     private readonly db: InMemoryDatabase,
-    public readonly serializer: S
+    public readonly serializer: Serializer<A>
   ) {
     super();
   }
 
-  async load(id: ReturnType<S["getIdFromModel"]>): Promise<any> {
+  async load(id: A["id"]): Promise<any> {
     const snapshot = await this.db.loadLatestSnapshot(id.toString());
 
     if (!snapshot) {
@@ -22,12 +24,10 @@ export class InMemorySnapshotter<
     return this.serializer.deserialize(snapshot.serialized);
   }
 
-  async save(
-    aggregate: S extends Serializer<infer A> ? A : never
-  ): Promise<void> {
-    const id = this.serializer.getIdFromModel(aggregate);
-    this.db.save("snapshots", id.toString(), {
-      id: id.toString(),
+  async save(aggregate: A): Promise<void> {
+    const id = aggregate.id.toString();
+    this.db.save("snapshots", id, {
+      id,
       revision: Number(aggregate.acknowledgedRevision),
       serialized: await this.serializer.serialize(aggregate),
     });

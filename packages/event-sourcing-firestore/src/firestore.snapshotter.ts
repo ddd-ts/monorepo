@@ -1,17 +1,21 @@
-import { Snapshotter, EsAggregate } from "@ddd-ts/event-sourcing";
+import {
+  Snapshotter,
+  EsAggregate,
+  EsAggregateId,
+} from "@ddd-ts/event-sourcing";
 import { Serializer } from "@ddd-ts/model";
 
 export class FirestoreSnapshotter<
-  S extends Serializer<EsAggregate<any, any>>
-> extends Snapshotter<S extends Serializer<infer A> ? A : never> {
+  A extends EsAggregate<EsAggregateId, any>
+> extends Snapshotter<A> {
   constructor(
     private readonly db: FirebaseFirestore.Firestore,
-    public readonly serializer: S
+    public readonly serializer: Serializer<A>
   ) {
     super();
   }
 
-  async load(id: ReturnType<S["getIdFromModel"]>): Promise<any> {
+  async load(id: A["id"]): Promise<any> {
     const query = await this.db
       .collection("snapshots")
       .where("aggregateId", "==", id.toString())
@@ -34,15 +38,13 @@ export class FirestoreSnapshotter<
     return this.serializer.deserialize(snapshot.serialized);
   }
 
-  async save(
-    aggregate: S extends Serializer<infer A> ? A : never
-  ): Promise<void> {
-    const id = this.serializer.getIdFromModel(aggregate);
+  async save(aggregate: A): Promise<void> {
+    const id = aggregate.id.toString();
     await this.db
       .collection("snapshots")
-      .doc(id.toString() + "." + aggregate.acknowledgedRevision.toString())
+      .doc(id + "." + aggregate.acknowledgedRevision.toString())
       .set({
-        id: id.toString(),
+        id,
         revision: Number(aggregate.acknowledgedRevision),
         serialized: await this.serializer.serialize(aggregate),
       });

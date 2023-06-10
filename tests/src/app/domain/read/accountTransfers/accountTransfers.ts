@@ -6,6 +6,10 @@ export class AccountTransfers {
     public initiatedTransferCount: number = 0
   ) {}
 
+  get id() {
+    return this.accountId;
+  }
+
   registerInitiatedTransfer() {
     this.initiatedTransferCount += 1;
   }

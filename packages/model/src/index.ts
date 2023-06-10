@@ -5,10 +5,4 @@ export {
 } from "./model/transaction";
 
 export { Store } from "./model/store";
-export {
-  Serializer,
-  Serialized,
-  VersionnedSerializer,
-  V0VersionnedSerializer,
-  UpcastSerializer,
-} from "./model/serializer";
+export { Serializer, Serialized, UpcastSerializer } from "./model/serializer";

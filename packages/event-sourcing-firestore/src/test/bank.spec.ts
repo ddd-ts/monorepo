@@ -10,7 +10,6 @@ import {
   FirebaseTransactionPerformer,
   FirestoreStore,
 } from "@ddd-ts/store-firestore";
-import { AllEventSerializers } from "@ddd-ts/event-sourcing/dist/es-aggregate-store/es-aggregate.persistor";
 
 describe("Firestore Bank Test", () => {
   const app = fb.initializeApp({ projectId: "demo-es" });
