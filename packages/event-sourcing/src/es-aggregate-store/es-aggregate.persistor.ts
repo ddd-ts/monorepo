@@ -2,9 +2,9 @@ import { Constructor } from "@ddd-ts/types";
 import { EsAggregate, EsAggregateId } from "../es-aggregate/es-aggregate";
 import { EventSerializer } from "../event/event-serializer";
 import { Event, Snapshotter } from "../index";
-import { EventStore } from "./event-store";
+import { EsEvent, EventStore } from "./event-store";
 
-export type EsAggregateType<A extends EsAggregate<any, Event[]>> =
+export type EsAggregateType<A extends EsAggregate<any, EsEvent[]>> =
   Constructor<A> & {
     instanciate: (id: A["id"]) => A;
   };
@@ -15,8 +15,8 @@ export interface EsAggregatePersistor<A extends EsAggregate<any, any>> {
 }
 
 export type AllEventSerializers<A extends EsAggregate<any, any>> =
-  A extends EsAggregate<any, infer E>
-    ? E extends Event[]
+  A extends EsAggregate<any, infer E extends EsEvent[]>
+    ? E extends EsEvent[]
       ? Readonly<{ [P in keyof E]: EventSerializer<E[P]> }>
       : never
     : never;

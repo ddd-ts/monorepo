@@ -20,7 +20,7 @@ export type Competitor = AsyncIterable<Attempt<EsFact>> & {
 export interface EsEvent {
   id: string;
   type: string;
-  payload: Serializable;
+  payload: any;
   revision?: bigint;
 }
 

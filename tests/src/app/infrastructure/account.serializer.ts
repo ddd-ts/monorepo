@@ -1,10 +1,7 @@
 import { Serializer, Serialized } from "@ddd-ts/model";
 import { Account } from "../domain/write/account/account";
 import { AccountId } from "../domain/write/account/account-id";
-import {
-  EventSerializer,
-  MakeEventSerializer,
-} from "@ddd-ts/event-sourcing/dist/event/event-serializer";
+import { EventSerializer, MakeEventSerializer } from "@ddd-ts/event-sourcing";
 import { Deposited } from "../domain/write/account/deposited.event";
 
 export class AccountSerializer extends Serializer<Account> {
@@ -29,7 +26,12 @@ export class AccountSerializer extends Serializer<Account> {
   }
 }
 
-export class DepositedSerializer extends MakeEventSerializer(Deposited) {
+export class DepositedSerializer
+  extends MakeEventSerializer(Deposited)
+  implements EventSerializer<Deposited>
+{
+  version = 1n;
+
   async serializePayload(payload: Deposited["payload"]) {
     return {
       accountId: payload.accountId.toString(),

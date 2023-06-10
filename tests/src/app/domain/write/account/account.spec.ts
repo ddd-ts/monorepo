@@ -1,4 +1,4 @@
-import { Event } from "@ddd-ts/event-sourcing";
+import { Change, Event } from "@ddd-ts/event-sourcing";
 import { Constructor } from "@ddd-ts/types";
 import { Account } from "./account";
 import { Deposited } from "./deposited.event";
@@ -15,7 +15,7 @@ function expectedFact(
   });
 }
 
-function expectedChange(event: Constructor<Event>, payload: any) {
+function expectedChange(event: Change<any>, payload: any) {
   return expect.objectContaining({
     type: event.name,
     id: expect.any(String),
@@ -72,7 +72,7 @@ describe("EsAggregate", () => {
       const account = Account.new();
 
       account.load(
-        Deposited.asFact(
+        Deposited.newFact(
           {
             accountId: account.id,
             amount: 10,
@@ -95,7 +95,7 @@ describe("EsAggregate", () => {
       const account = Account.new();
 
       account.load(
-        Deposited.asFact(
+        Deposited.newFact(
           {
             accountId: account.id,
             amount: 10,
@@ -111,7 +111,7 @@ describe("EsAggregate", () => {
       const account = Account.new();
 
       account.load(
-        Deposited.asFact(
+        Deposited.newFact(
           {
             accountId: account.id,
             amount: 10,
@@ -129,7 +129,7 @@ describe("EsAggregate", () => {
       // expected the 0n
       expect(() =>
         account.load(
-          Deposited.asFact(
+          Deposited.newFact(
             {
               accountId: account.id,
               amount: 10,
@@ -144,7 +144,7 @@ describe("EsAggregate", () => {
       const account = Account.new();
 
       account.load(
-        Deposited.asFact(
+        Deposited.newFact(
           {
             accountId: account.id,
             amount: 10,
@@ -156,7 +156,7 @@ describe("EsAggregate", () => {
       // expected the 1n
       expect(() =>
         account.load(
-          Deposited.asFact(
+          Deposited.newFact(
             {
               accountId: account.id,
               amount: 10,
@@ -175,7 +175,7 @@ describe("EsAggregate", () => {
       // expected the 1n
       expect(() =>
         account.load(
-          Deposited.asFact(
+          Deposited.newFact(
             {
               accountId: account.id,
               amount: 10,

@@ -1,6 +1,8 @@
 import {
   buffer,
+  EsAggregate,
   EsAggregatePersistor,
+  EsEvent,
   EsProjectedStreamReader,
   Event,
   EventStore,
@@ -22,11 +24,7 @@ import {
   TransferInitiatedSerializer,
 } from "../app/infrastructure/transfer.serializer";
 
-function expectedFact(
-  event: Constructor<Event>,
-  revision: bigint,
-  payload: any
-) {
+function expectedFact(event: Fact<any>, revision: bigint, payload: any) {
   return expect.objectContaining({
     type: event.name,
     id: expect.any(String),
@@ -43,7 +41,7 @@ type TransferInitiatedMatcher = [
 ];
 
 function expectFacts(
-  facts: Fact[],
+  facts: Fact<any>[],
   expected: (DepositedMatcher | TransferInitiatedMatcher)[]
 ) {
   const received = (facts as any).map(

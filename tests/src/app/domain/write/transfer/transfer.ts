@@ -1,18 +1,18 @@
-import { EsAggregate, Event } from "@ddd-ts/event-sourcing";
+import { EsAggregate, EsEvent, Event } from "@ddd-ts/event-sourcing";
 import { AccountId } from "../account/account-id";
 
 import { v4 } from "uuid";
 
-export class TransferInitiated extends Event<{
-  transferId: string;
-  from: AccountId;
-  to: AccountId;
-  amount: number;
-}> {}
+export class TransferInitiated extends Event({
+  transferId: String,
+  from: AccountId,
+  to: AccountId,
+  amount: Number,
+}) {}
 
-export class TransferAmountClaimed extends Event<{
-  transferId: string;
-}> {}
+export class TransferAmountClaimed extends Event({
+  transferId: String,
+}) {}
 
 export class Transfer extends EsAggregate<
   string,
@@ -38,7 +38,7 @@ export class Transfer extends EsAggregate<
   static new(from: AccountId, to: AccountId, amount: number) {
     const transfer = this.instanciate(v4());
     transfer.apply(
-      TransferInitiated.new({
+      TransferInitiated.newChange({
         amount,
         from,
         to,
@@ -49,7 +49,7 @@ export class Transfer extends EsAggregate<
   }
 
   markAmountClaimed() {
-    this.apply(TransferAmountClaimed.new({ transferId: this.id }));
+    this.apply(TransferAmountClaimed.newChange({ transferId: this.id }));
   }
 
   static deserialize(

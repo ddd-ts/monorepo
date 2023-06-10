@@ -2,7 +2,7 @@
   "name": "@ddd-ts/traits",
   "version": "0.0.1",
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "types": "src/index.ts",
   "license": "MIT",
   "scripts": {
     "build": "builder",

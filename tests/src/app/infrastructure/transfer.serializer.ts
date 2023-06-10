@@ -1,4 +1,4 @@
-import { MakeEventSerializer } from "@ddd-ts/event-sourcing/dist/event/event-serializer";
+import { MakeEventSerializer } from "@ddd-ts/event-sourcing";
 import { Serializer, Serialized } from "@ddd-ts/model";
 import { AccountId } from "../domain/write/account/account-id";
 import {
@@ -34,6 +34,8 @@ export class TransferSerializer extends Serializer<Transfer> {
 export class TransferInitiatedSerializer extends MakeEventSerializer(
   TransferInitiated
 ) {
+  version = 1n;
+
   async serializePayload(payload: TransferInitiated["payload"]) {
     return {
       transferId: payload.transferId,
@@ -56,6 +58,8 @@ export class TransferInitiatedSerializer extends MakeEventSerializer(
 export class TransferAmountClaimedSerializer extends MakeEventSerializer(
   TransferAmountClaimed
 ) {
+  version = 1n;
+
   async serializePayload(payload: TransferAmountClaimed["payload"]) {
     return {
       transferId: payload.transferId,

@@ -6,7 +6,7 @@ import {
   EventStore,
   IsolatedProjector,
 } from "@ddd-ts/event-sourcing";
-import { AllEventSerializers } from "@ddd-ts/event-sourcing/dist/es-aggregate-store/es-aggregate.persistor";
+import { AllEventSerializers } from "@ddd-ts/event-sourcing";
 import { Serializer, Store, TransactionPerformer } from "@ddd-ts/model";
 import { CashFlowProjection } from "../app/application/cashflow.projection";
 import { Account } from "../app/domain/write/account/account";

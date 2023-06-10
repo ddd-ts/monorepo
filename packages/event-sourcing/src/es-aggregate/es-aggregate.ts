@@ -1,11 +1,12 @@
 import { Constructor } from "@ddd-ts/types";
-import { Change, Event, Fact } from "../event/event";
+import { Change, Fact } from "../event/event";
+import { EsEvent } from "..";
 
 export type EsAggregateId = { toString(): string };
 
 export abstract class EsAggregate<
   Id extends EsAggregateId = EsAggregateId,
-  E extends Event[] = Event[]
+  E extends EsEvent[] = EsEvent[]
 > {
   a: E = [] as any;
   acknowledgedRevision = -1n;
@@ -64,9 +65,9 @@ export abstract class EsAggregate<
     return new this(id) as InstanceType<T>;
   }
 
-  static eventHandlers = new Map<string, (event: Event) => any>();
+  static eventHandlers = new Map<string, (event: EsEvent) => any>();
 
-  static registerHandler(eventType: string, handler: (event: Event) => any) {
+  static registerHandler(eventType: string, handler: (event: EsEvent) => any) {
     this.eventHandlers.set(eventType, handler);
   }
   private getEventHandler(event: E[number]) {
@@ -76,7 +77,7 @@ export abstract class EsAggregate<
     return handler;
   }
 
-  static on<E extends Event>(event: new (...args: any[]) => E) {
+  static on<E extends EsEvent>(event: new (...args: any[]) => E) {
     return <A extends EsAggregate<any, any>>(
       target: A,
       key: string,

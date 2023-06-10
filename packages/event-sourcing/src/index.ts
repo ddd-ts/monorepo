@@ -1,3 +1,7 @@
+export { AllEventSerializers } from "./es-aggregate-store/es-aggregate.persistor";
+
+export { MakeEventSerializer, EventSerializer } from "./event/event-serializer";
+
 export { Snapshotter } from "./es-aggregate-store/snapshotter";
 
 export {

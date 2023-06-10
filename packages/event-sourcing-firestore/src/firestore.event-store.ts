@@ -8,6 +8,7 @@ import {
   Follower,
   ProjectedStreamConfiguration,
   Queue,
+  EsEvent,
 } from "@ddd-ts/event-sourcing";
 import { Constructor } from "@ddd-ts/types";
 import * as fb from "firebase-admin";
@@ -82,7 +83,10 @@ export class FirestoreEventStore extends EventStore {
   }
 
   async *readAggregateStream(
-    AGGREGATE: Constructor<EsAggregate<{ toString(): string }, Event[]>, any[]>,
+    AGGREGATE: Constructor<
+      EsAggregate<{ toString(): string }, EsEvent[]>,
+      any[]
+    >,
     id: { toString(): string },
     from?: bigint
   ): AsyncIterable<EsFact> {

@@ -22,7 +22,7 @@ export class Account extends EsAggregate<
   }
 
   deposit(amount: number) {
-    this.apply(Deposited.new({ accountId: this.id, amount }));
+    this.apply(Deposited.newChange({ accountId: this.id, amount }));
   }
 
   @EsAggregate.on(Deposited)

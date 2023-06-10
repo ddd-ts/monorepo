@@ -11,6 +11,7 @@ import {
   EventStore,
   Follower,
   ProjectedStreamConfiguration,
+  EsEvent,
 } from "@ddd-ts/event-sourcing";
 import { Constructor } from "@ddd-ts/types";
 
@@ -65,7 +66,10 @@ export class ESDBEventStore extends EventStore {
   }
 
   async *readAggregateStream(
-    AGGREGATE: Constructor<EsAggregate<{ toString(): string }, Event[]>, any[]>,
+    AGGREGATE: Constructor<
+      EsAggregate<{ toString(): string }, EsEvent[]>,
+      any[]
+    >,
     id: { toString(): string },
     from?: bigint
   ): AsyncIterable<EsFact> {

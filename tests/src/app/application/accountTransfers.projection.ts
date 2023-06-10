@@ -4,9 +4,7 @@ import { Account } from "../domain/write/account/account";
 import { Transfer, TransferInitiated } from "../domain/write/transfer/transfer";
 import { AccountTransfersStore } from "./accountTransfers.store";
 
-export class InitiatedTransfersProjection extends Projection<
-  Account | Transfer
-> {
+export class InitiatedTransfersProjection extends Projection {
   constructor(private readonly store: AccountTransfersStore) {
     super();
   }

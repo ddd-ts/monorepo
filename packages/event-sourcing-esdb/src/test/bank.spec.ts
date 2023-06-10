@@ -11,7 +11,6 @@ import {
   InMemoryStore,
   InMemoryTransactionPerformer,
 } from "@ddd-ts/store-inmemory";
-import { AllEventSerializers } from "@ddd-ts/event-sourcing/dist/es-aggregate-store/es-aggregate.persistor";
 
 describe("EventSourcingESDB", () => {
   const es = new ESDBEventStore();

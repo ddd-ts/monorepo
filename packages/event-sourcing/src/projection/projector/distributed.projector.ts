@@ -1,6 +1,6 @@
 import { TransactionPerformer } from "@ddd-ts/model";
 import { EsProjectedStreamReader } from "../../es-aggregate-store/es-projected-stream.reader";
-import { Competitor } from "../../es-aggregate-store/event-store";
+import { Competitor, EsEvent } from "../../es-aggregate-store/event-store";
 import { Event } from "../../event/event";
 import { Checkpoint } from "../checkpoint/checkpoint";
 import { Projection } from "../projection";
@@ -40,10 +40,10 @@ export class DistributedProjector<P extends Projection> implements Projector {
     const stream = streams.map((s) => s.name).join(", ");
     const meta = { projection: name, stream };
 
-    type E = Event;
+    type E = EsEvent;
 
     const p = `DistributedProjection.${name}(${stream})`;
-    const e = (e: Event) => `Event.${e.type}(${e.id})[${e.revision}n]`;
+    const e = (e: EsEvent) => `Event.${e.type}(${e.id})[${e.revision}n]`;
 
     return {
       init: () => {

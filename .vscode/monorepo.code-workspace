@@ -5,16 +5,21 @@
       "name": "@ddd-ts/monorepo"
     },
     {
-      "name": "@ddd-ts/event-sourcing",
+      "name": "@ddd-ts/es",
       "path": "../packages/event-sourcing"
     },
     {
-      "name": "@ddd-ts/event-sourcing-esdb",
+      "name": "@ddd-ts/es-esdb",
       "path": "../packages/event-sourcing-esdb"
     },
     {
-      "name": "@ddd-ts/event-sourcing-firestore",
+      "name": "@ddd-ts/es-firestore",
       "path": "../packages/event-sourcing-firestore"
+    },
+
+    {
+      "name": "@ddd-ts/es-inmemory",
+      "path": "../packages/event-sourcing-inmemory"
     },
     {
       "name": "@ddd-ts/shape",

@@ -1,11 +1,12 @@
 import { Transaction } from "@ddd-ts/model";
-import { ProjectedStreamConfiguration } from "../es-aggregate-store/event-store";
+import {
+  EsEvent,
+  ProjectedStreamConfiguration,
+} from "../es-aggregate-store/event-store";
 import { EsAggregate } from "../es-aggregate/es-aggregate";
 import { Event, Fact } from "../event/event";
 
-export abstract class Projection<
-  A extends EsAggregate<any, any> = EsAggregate<any, any>
-> {
+export abstract class Projection {
   abstract on: ProjectedStreamConfiguration;
 
   get configuration() {
@@ -15,7 +16,7 @@ export abstract class Projection<
     };
   }
 
-  async project(event: Fact, trx?: Transaction) {
+  async project(event: Fact<any>, trx?: Transaction) {
     const handler = this.getEventHandler(event);
     if (!handler) {
       return;
@@ -43,8 +44,8 @@ export abstract class Projection<
     return handler;
   }
 
-  static on<E extends Event>(event: new (...args: any[]) => E) {
-    return <P extends Projection<any>>(
+  static on<E extends EsEvent>(event: new (...args: any[]) => E) {
+    return <P extends Projection>(
       target: P,
       key: string,
       descriptor: TypedPropertyDescriptor<(event: Fact<E>) => any>

@@ -2,7 +2,7 @@
   "name": "@ddd-ts/event-sourcing-firestore",
   "version": "0.0.2",
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "types": "src/index.ts",
   "license": "MIT",
   "scripts": {
     "pretest": "docker compose -f docker/docker-compose.yml up -d",
