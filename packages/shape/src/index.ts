@@ -50,7 +50,6 @@ type RuntimeShape<S> = S extends PrimitiveShape
 
 function serialize<S>(shape: S, runtime: RuntimeShape<S>): SerializedShape<S> {
 	if (shape === Number) {
-		shape;
 		return runtime as any;
 	}
 
