@@ -1,0 +1,1 @@
+module.exports =  require('@ddd-ts/dev/jest.config')

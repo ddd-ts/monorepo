@@ -739,6 +739,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@ddd-ts/shape@workspace:packages/shape":
+  version: 0.0.0-use.local
+  resolution: "@ddd-ts/shape@workspace:packages/shape"
+  dependencies:
+    "@ddd-ts/dev": "*"
+    "@ddd-ts/types": "*"
+  peerDependencies:
+    "@ddd-ts/traits": "*"
+  languageName: unknown
+  linkType: soft
+
 "@ddd-ts/store-firestore@*, @ddd-ts/store-firestore@workspace:packages/store-firestore":
   version: 0.0.0-use.local
   resolution: "@ddd-ts/store-firestore@workspace:packages/store-firestore"

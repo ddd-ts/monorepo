@@ -1,0 +1,7 @@
+{
+  "extends": "@ddd-ts/dev/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  }
+}
