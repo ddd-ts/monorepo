@@ -15,6 +15,10 @@
     {
       "name": "@ddd-ts/event-sourcing-firestore",
       "path": "../packages/event-sourcing-firestore"
+    },
+    {
+      "name": "@ddd-ts/shape",
+      "path": "../packages/shape"
     }
   ],
   "settings": {}
