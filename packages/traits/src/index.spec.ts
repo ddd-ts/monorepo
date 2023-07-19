@@ -52,7 +52,7 @@ describe("Traits", () => {
   });
 
   it("derives multiple traits", () => {
-    class Dog extends Derive(Swim, Walk) {}
+    class Dog extends Derive(Swim, Walk) { }
 
     const dog = new Dog({});
 
@@ -145,7 +145,7 @@ describe("Traits", () => {
       Trait(
         (base) =>
           class extends base {
-            eat(_e: E) {}
+            eat(_e: E) { }
           }
       );
 
@@ -225,7 +225,7 @@ describe("Traits", () => {
       const Walk = Trait(
         (base) =>
           class Walk extends base {
-            walk() {}
+            walk() { }
           }
       );
 
@@ -242,10 +242,10 @@ describe("Traits", () => {
       );
 
       // @ts-expect-error should not allow to create a runner without a walker
-      class ErrorAthlete extends Derive(Run) {}
+      class ErrorAthlete extends Derive(Run) { }
 
       // @ts-expect-error ordering matters: an athlete is a Runner because it is a walker
-      class ErrorAthlete2 extends Derive(Run, Walk) {}
+      class ErrorAthlete2 extends Derive(Run, Walk) { }
 
       class Athlete extends Derive(Walk, Run) {
         do() {
@@ -388,18 +388,18 @@ describe("Traits", () => {
       );
 
       // @ts-expect-error Land requires Walk & Fly
-      (class extends Derive(Land) {});
+      (class extends Derive(Land) { });
 
       // @ts-expect-error Land requires Walk & Fly
-      (class extends Derive(Walk, Land) {});
+      (class extends Derive(Walk, Land) { });
 
       // @ts-expect-error Land requires Walk & Fly
-      (class extends Derive(Fly, Land) {});
+      (class extends Derive(Fly, Land) { });
 
       // @ts-expect-error Land requires Walk & Fly in correct order
-      (class extends Derive(Land, Walk, Fly) {});
+      (class extends Derive(Land, Walk, Fly) { });
 
-      class Athlete extends Derive(Walk, Fly, Land) {}
+      class Athlete extends Derive(Walk, Fly, Land) { }
 
       // @ts-expect-error missing props
       new Athlete({ speed: 10 });
@@ -468,17 +468,17 @@ describe("Traits", () => {
       );
 
       // @ts-expect-error Land requires Walk & Fly
-      (class extends Derive(Land) {});
+      (class extends Derive(Land) { });
 
       // @ts-expect-error Land requires Walk
-      (class extends Derive(Fly, Land) {});
+      (class extends Derive(Fly, Land) { });
 
       // @ts-expect-error Land requires Walk & Fly in correct order
-      (class extends Derive(Land, Walk, Fly) {});
+      (class extends Derive(Land, Walk, Fly) { });
       // @ts-expect-error Land requires Walk & Fly in correct order
-      (class extends Derive(Fly, Land, Walk) {});
+      (class extends Derive(Fly, Land, Walk) { });
 
-      class Athlete extends Derive(Walk, Fly, Land) {}
+      class Athlete extends Derive(Walk, Fly, Land) { }
 
       // @ts-expect-error missing props
       new Athlete({ speed: 10 });
@@ -496,4 +496,20 @@ describe("Traits", () => {
       new Athlete({ speed: 10, weigth: 10, wings: 10 });
     });
   });
+
+  it('works with optional primitive param', () => {
+    const WithString = Trait((base) =>
+      class extends base {
+        constructor(props: string | undefined) {
+          super(props)
+        }
+      })
+
+
+    class A extends Derive(WithString) {
+      constructor() {
+        super(undefined)
+      }
+    }
+  })
 });

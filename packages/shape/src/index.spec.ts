@@ -39,7 +39,7 @@ describe("Value", () => {
       expect(sentence.wordCount).toEqual(2);
     });
 
-    class IsTransactionStale extends Value(Boolean) {}
+    class IsTransactionStale extends Value(Boolean) { }
 
     it("boolean: deserializes and reserializes", () => {
       const isStale = IsTransactionStale.deserialize(false);
@@ -62,6 +62,8 @@ describe("Value", () => {
       }
     }
 
+
+
     it("deserializes and reserializes", () => {
       const money = Money.deserialize(2);
 
@@ -78,6 +80,7 @@ describe("Value", () => {
   describe("Optional", () => {
     it("deserializes and reserializes", () => {
       class Amount extends Derive(Shaped(Optional(Number))) {
+
         do() {
           // @ts-expect-error - value is optional
           this.value.toExponential();
@@ -86,6 +89,11 @@ describe("Value", () => {
           this.value?.value.toExponential();
         }
       }
+
+      new (Derive(Shaped(Number)))(2);
+
+      new Amount(2);
+      new Amount(undefined);
 
       const empty = Amount.deserialize(undefined);
       expect(empty).toBeInstanceOf(Amount);
@@ -167,7 +175,7 @@ describe("Value", () => {
   });
 
   describe("Object", () => {
-    class Money extends Value(Number) {}
+    class Money extends Value(Number) { }
     class Transfer extends Value({ in: Money, out: Money }) {
       get flow() {
         return this.in.serialize() - this.out.serialize();
@@ -198,7 +206,7 @@ describe("Value", () => {
 
   describe("Array", () => {
     describe("of Primitives", () => {
-      class Prices extends Value([Number]) {}
+      class Prices extends Value([Number]) { }
 
       it("deserializes and reserializes", () => {
         const prices = Prices.deserialize([1, 2, 3]);
@@ -209,8 +217,8 @@ describe("Value", () => {
     });
 
     describe("of Values", () => {
-      class Money extends Value(Number) {}
-      class Prices extends Value([Money]) {}
+      class Money extends Value(Number) { }
+      class Prices extends Value([Money]) { }
 
       it("deserializes and reserializes", () => {
         const prices = Prices.deserialize([1, 2, 3]);
@@ -227,7 +235,7 @@ describe("Value", () => {
     });
 
     describe("of Objects", () => {
-      class Money extends Value(Number) {}
+      class Money extends Value(Number) { }
       class Transfer extends Value({ in: Money, out: Money }) {
         get flow() {
           return this.in.serialize() - this.out.serialize();
@@ -276,7 +284,7 @@ describe("Value", () => {
     });
 
     describe("of Arrays", () => {
-      class Money extends Value(Number) {}
+      class Money extends Value(Number) { }
       class Matrix extends Value([[Money]]) {
         get total() {
           let total = 0;
@@ -350,7 +358,7 @@ describe("Value", () => {
     });
 
     describe("of Values", () => {
-      class Point extends Value(Number) {}
+      class Point extends Value(Number) { }
 
       class Geo extends Value([Point, Point] as const) {
         get total() {
@@ -382,7 +390,7 @@ describe("Value", () => {
     });
 
     describe("of Objects", () => {
-      class Money extends Value(Number) {}
+      class Money extends Value(Number) { }
       class Transfer extends Value([
         { amount: Money },
         { message: String },

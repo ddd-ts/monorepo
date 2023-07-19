@@ -1,5 +1,5 @@
-export type Constructor<Props extends {} = any, Result extends {} = {}> = {
-  new (props: Props): Result;
+export type Constructor<Props extends any = any, Result extends {} = {}> = {
+  new(props: Props): Result;
 };
 
 export type Trait<
@@ -31,12 +31,16 @@ export type MergeParameter<T extends readonly Trait[]> = T extends []
   ? {}
   : T extends never[]
   ? {}
-  : UnionToIntersection<
-      ConstructorParameters<ReturnType<[...T][number]["factory"]>>[0]
-    >;
+  : ConstructorParameters<ReturnType<[...T][number]["factory"]>>[0] extends {} ?
+
+  UnionToIntersection<
+    ConstructorParameters<ReturnType<[...T][number]["factory"]>>[0]
+  > : ConstructorParameters<ReturnType<[...T][number]["factory"]>>[0]
+
+type TEST = UnionToIntersection<string | undefined>
 
 export type ApplyTraits<T extends readonly Trait[]> = {
-  new (param: MergeParameter<T>): MergeInstanceSide<T>;
+  new(param: MergeParameter<T>): MergeInstanceSide<T>;
 } & MergeStaticSide<T>;
 
 export type CheckTraitRequirements<Traits extends readonly Trait[]> =
@@ -50,34 +54,34 @@ type CheckTraitRequirementsInternal<
   ...infer Rest extends Trait[]
 ]
   ? MergeParameter<AppliedTraits> extends MergeParameter<
+    ApplyingTrait["superTraits"]
+  >
+  ? MergeInstanceSide<AppliedTraits> extends MergeInstanceSide<
+    ApplyingTrait["superTraits"]
+  >
+  ? CheckTraitRequirementsInternal<[...AppliedTraits, ApplyingTrait], Rest>
+  : {
+    error: "Instance mismatch";
+    check: "MergeInstanceSide<AppliedTraits> extends MergeInstanceSide<ApplyingTrait['superTraits']>";
+    left: MergeInstanceSide<AppliedTraits>;
+    right: MergeInstanceSide<ApplyingTrait["superTraits"]>;
+    result: MergeInstanceSide<AppliedTraits> extends MergeInstanceSide<
       ApplyingTrait["superTraits"]
     >
-    ? MergeInstanceSide<AppliedTraits> extends MergeInstanceSide<
-        ApplyingTrait["superTraits"]
-      >
-      ? CheckTraitRequirementsInternal<[...AppliedTraits, ApplyingTrait], Rest>
-      : {
-          error: "Instance mismatch";
-          check: "MergeInstanceSide<AppliedTraits> extends MergeInstanceSide<ApplyingTrait['superTraits']>";
-          left: MergeInstanceSide<AppliedTraits>;
-          right: MergeInstanceSide<ApplyingTrait["superTraits"]>;
-          result: MergeInstanceSide<AppliedTraits> extends MergeInstanceSide<
-            ApplyingTrait["superTraits"]
-          >
-            ? true
-            : false;
-        }
-    : {
-        error: "Parameter mismatch";
-        check: "MergeParameter<AppliedTraits> extends MergeParameter<[ApplyingTrait]>";
-        left: MergeParameter<AppliedTraits>;
-        right: MergeParameter<[ApplyingTrait]>;
-        result: MergeParameter<AppliedTraits> extends MergeParameter<
-          [ApplyingTrait]
-        >
-          ? true
-          : false;
-      }
+    ? true
+    : false;
+  }
+  : {
+    error: "Parameter mismatch";
+    check: "MergeParameter<AppliedTraits> extends MergeParameter<[ApplyingTrait]>";
+    left: MergeParameter<AppliedTraits>;
+    right: MergeParameter<[ApplyingTrait]>;
+    result: MergeParameter<AppliedTraits> extends MergeParameter<
+      [ApplyingTrait]
+    >
+    ? true
+    : false;
+  }
   : "success";
 
 export function Subtrait<
@@ -98,19 +102,19 @@ export type Props<T extends { __traits_props__: any } | Trait | Trait[]> =
   T extends {
     __traits_props__: any;
   }
-    ? T["__traits_props__"]
-    : T extends Trait
-    ? MergeParameter<[T]>
-    : T extends Trait[]
-    ? MergeParameter<T>
-    : never;
+  ? T["__traits_props__"]
+  : T extends Trait
+  ? MergeParameter<[T]>
+  : T extends Trait[]
+  ? MergeParameter<T>
+  : never;
 
 export function Derive<R extends Trait[], C extends CheckTraitRequirements<R>>(
   ...traits: R
 ): C extends "success"
   ? ApplyTraits<R> & { __traits__: R; __traits_props__: MergeParameter<R> }
   : C {
-  let current: Constructor = class {};
+  let current: Constructor = class { };
   for (const trait of traits) {
     current = trait.factory(current);
   }
@@ -122,7 +126,7 @@ export function Derive<R extends Trait[], C extends CheckTraitRequirements<R>>(
   return current as any;
 }
 export const Trait = <
-  T extends (base: Constructor<{}, {}>) => Constructor<any, any>
+  T extends (base: Constructor<any, {}>) => Constructor<any, any>
 >(
   factory: T
 ) => {
@@ -144,7 +148,7 @@ export type ImplementsTrait<T extends Trait> = InstanceType<
 
 export const WithProps = <P extends Record<string, any>>() =>
   Trait((base) => {
-    class Intermediate extends base {}
+    class Intermediate extends base { }
     type I = typeof Intermediate extends new (...args: infer A) => infer T
       ? new (...args: A) => T & P
       : never;

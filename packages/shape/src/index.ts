@@ -11,14 +11,14 @@ type PrimitiveShape =
 
 type PrimitiveShapeToPrimitive<T extends PrimitiveShape> =
 	T extends NumberConstructor
-		? number
-		: T extends StringConstructor
-		? string
-		: T extends BooleanConstructor
-		? boolean
-		: T extends DateConstructor
-		? Date
-		: never;
+	? number
+	: T extends StringConstructor
+	? string
+	: T extends BooleanConstructor
+	? boolean
+	: T extends DateConstructor
+	? Date
+	: never;
 
 type SerializedShape<S> = S extends PrimitiveShape
 	? PrimitiveShapeToPrimitive<S>
@@ -37,7 +37,7 @@ type SerializedShape<S> = S extends PrimitiveShape
 type RuntimeShape<S> = S extends PrimitiveShape
 	? PrimitiveShapeToPrimitive<S>
 	: S extends { optional: infer U }
-	? RuntimeShape<U>
+	? RuntimeShape<U> | undefined
 	: S extends Constructor
 	? InstanceType<S>
 	: S extends Array<infer U>
@@ -199,7 +199,7 @@ export const Shaped = <S>(shape: S) =>
 		}
 
 		return Intermediate as typeof Intermediate & {
-			new (...props: ConstructorParameters<typeof Intermediate>): InstanceType<
+			new(...props: ConstructorParameters<typeof Intermediate>): InstanceType<
 				typeof Intermediate
 			> &
 				MergedProps<S>;
