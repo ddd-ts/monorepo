@@ -120,6 +120,16 @@ describe("Traits", () => {
   });
 
   it("asserts an instance implements a trait", () => {
+
+    const Unused = Trait(
+      (base) =>
+        class extends base {
+          constructor(props: { agility: number }) {
+            super(props);
+          }
+        })
+
+
     class Athlete extends Derive(Run, Jump) {
       constructor() {
         super({ speed: 10, agility: 10 });
@@ -131,6 +141,7 @@ describe("Traits", () => {
     expect(athlete instanceof Athlete).toBe(true);
     expect(implementsTrait(athlete, Run)).toBe(true);
     expect(implementsTrait(athlete, Jump)).toBe(true);
+    expect(implementsTrait(athlete, Unused)).toBe(false);
 
     const unknown: unknown = athlete;
     if (implementsTrait(unknown, Run) && implementsTrait(unknown, Jump)) {

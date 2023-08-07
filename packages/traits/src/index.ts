@@ -37,8 +37,6 @@ export type MergeParameter<T extends readonly Trait[]> = T extends []
     ConstructorParameters<ReturnType<[...T][number]["factory"]>>[0]
   > : ConstructorParameters<ReturnType<[...T][number]["factory"]>>[0]
 
-type TEST = UnionToIntersection<string | undefined>
-
 export type ApplyTraits<T extends readonly Trait[]> = {
   new(param: MergeParameter<T>): MergeInstanceSide<T>;
 } & MergeStaticSide<T>;
@@ -92,9 +90,11 @@ export function Subtrait<
     props: ConstructorParameters<Applied>[0]
   ) => Constructor
 >(superTraits: SuperTraits, factory: Factory) {
+  const symbol = Symbol();
   return {
     factory,
     superTraits,
+    symbol
   };
 }
 
@@ -131,8 +131,7 @@ export const Trait = <
   factory: T
 ) => {
   const symbol = Symbol();
-  (factory as any).symbol = symbol;
-  return { factory, superTraits: [] as Trait[] };
+  return { factory, superTraits: [] as Trait[], symbol };
 };
 
 export function implementsTrait<I extends InstanceType<any>, T extends Trait>(
