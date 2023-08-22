@@ -31,9 +31,9 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
 
   protected async executeQuery(
     query: FirebaseFirestore.Query<any>,
-    trx?: FirebaseFirestore.Transaction
+    trx?: FirestoreTransaction
   ): Promise<Model[]> {
-    const result = trx ? await trx.get(query) : await query.get();
+    const result = trx ? await trx.transaction.get(query) : await query.get();
 
     return Promise.all(
       result.docs.map((doc) =>
