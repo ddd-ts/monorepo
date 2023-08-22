@@ -1,9 +1,9 @@
 import { Storage } from "./in-memory.storage";
 
-export type InMemoryTransaction = string;
+export type InMemoryTransactionId = string;
 
 class TransactionNotFound extends Error {
-  constructor(trx: InMemoryTransaction) {
+  constructor(trx: InMemoryTransactionId) {
     super(`Transaction "${trx}" not found`);
   }
 }
@@ -16,9 +16,9 @@ class WriteCollisionDetected extends Error {
 
 export class InMemoryDatabase {
   private storage = new Storage();
-  private transactions = new Map<InMemoryTransaction, Storage>();
+  private transactions = new Map<InMemoryTransactionId, Storage>();
 
-  getStorage(trx?: InMemoryTransaction) {
+  getStorage(trx?: InMemoryTransactionId) {
     if (trx) {
       const storage = this.transactions.get(trx);
       if (!storage) {
@@ -33,7 +33,7 @@ export class InMemoryDatabase {
     this.storage.getCollection(collectionName).clear();
   }
 
-  load(collectionName: string, id: string, trx?: InMemoryTransaction): any {
+  load(collectionName: string, id: string, trx?: InMemoryTransactionId): any {
     return this.getStorage(trx).getCollection(collectionName).get(id);
   }
 
@@ -42,7 +42,7 @@ export class InMemoryDatabase {
     this.storage.getCollection(collectionName).delete(id);
   }
 
-  loadAll(collectionName: string, trx?: InMemoryTransaction): any[] {
+  loadAll(collectionName: string, trx?: InMemoryTransactionId): any[] {
     return this.getStorage(trx).getCollection(collectionName).getAll();
   }
 
@@ -54,7 +54,7 @@ export class InMemoryDatabase {
     collectionName: string,
     id: string,
     data: any,
-    trx?: InMemoryTransaction
+    trx?: InMemoryTransactionId
   ): void {
     const globalStorage = this.storage;
     const targetStorage = this.getStorage(trx);
@@ -77,7 +77,7 @@ export class InMemoryDatabase {
     return trx;
   }
 
-  async transactionally(fn: (trx: InMemoryTransaction) => any) {
+  async transactionally(fn: (trx: InMemoryTransactionId) => any) {
     const trx = this.initiateTransaction();
     let retry = 5;
     let latestReturnValue = undefined;
@@ -105,7 +105,7 @@ export class InMemoryDatabase {
     return latestReturnValue;
   }
 
-  private commit(trx: InMemoryTransaction): void {
+  private commit(trx: InMemoryTransactionId): void {
     const snapshot = this.transactions.get(trx);
     if (!snapshot) {
       throw new TransactionNotFound(trx);

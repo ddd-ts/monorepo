@@ -1,5 +1,6 @@
 import * as fb from "firebase-admin";
 import { Checkpoint, CheckpointFurtherAway } from "@ddd-ts/event-sourcing";
+import { FirestoreTransaction } from "@ddd-ts/store-firestore";
 
 export class FirestoreCheckpoint extends Checkpoint {
   constructor(public readonly firestore: fb.firestore.Firestore) {
@@ -31,7 +32,7 @@ export class FirestoreCheckpoint extends Checkpoint {
   async set(
     name: string,
     revision: bigint,
-    trx?: FirebaseFirestore.Transaction
+    trx?: FirestoreTransaction
   ) {
     const checkpointRef = await this.firestore
       .collection("checkpoints")
@@ -47,7 +48,7 @@ export class FirestoreCheckpoint extends Checkpoint {
     }
 
     if (trx) {
-      trx.set(this.firestore.collection("checkpoints").doc(name), {
+      trx.transaction.set(this.firestore.collection("checkpoints").doc(name), {
         revision: Number(revision),
       });
     } else {

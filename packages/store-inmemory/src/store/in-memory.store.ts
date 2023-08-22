@@ -1,5 +1,6 @@
 import { Serializer, Store } from "@ddd-ts/model";
-import { InMemoryDatabase, InMemoryTransaction } from "./in-memory.database";
+import { InMemoryDatabase, InMemoryTransactionId } from "./in-memory.database";
+import { InMemoryTransaction } from "../in-memory.transaction";
 /**
  * This in memory store is a copy store. It stores a copy of the actual model.
  * It is the recommended inmemory store to use, as it reflects more closely the behaviour of a real store.
@@ -15,7 +16,7 @@ export class InMemoryStore<Model, Id extends { toString(): string }>
 
   protected async filter(
     predicate: (model: Model) => boolean,
-    trx?: InMemoryTransaction
+    trx?: InMemoryTransactionId
   ): Promise<Model[]> {
     const serialized = await this.database.loadAll(this.collection, trx);
 
@@ -35,7 +36,7 @@ export class InMemoryStore<Model, Id extends { toString(): string }>
       this.collection,
       this.serializer.getIdFromModel(model).toString(),
       await this.serializer.serialize(model),
-      trx
+      trx?.transaction
     );
   }
 
@@ -43,7 +44,7 @@ export class InMemoryStore<Model, Id extends { toString(): string }>
     const serialized = await this.database.load(
       this.collection,
       id.toString(),
-      trx
+      trx?.transaction
     );
 
     if (!serialized) {

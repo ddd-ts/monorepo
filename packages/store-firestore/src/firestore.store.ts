@@ -7,6 +7,7 @@ import {
   Transaction,
   QueryDocumentSnapshot,
 } from "firebase-admin/firestore";
+import { FirestoreTransaction } from "./firestore.transaction";
 
 export class FirestoreStore<Model, Id extends { toString(): string }>
   implements Store<Model, Id>
@@ -50,19 +51,19 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
     }
   }
 
-  async save(model: Model, trx?: Transaction): Promise<void> {
+  async save(model: Model, trx?: FirestoreTransaction): Promise<void> {
     const serialized = await this.serializer.serialize(model);
     const ref = this.collection.doc(
       this.serializer.getIdFromModel(model).toString()
     );
 
-    trx ? trx.set(ref, serialized) : await ref.set(serialized);
+    trx ? trx.transaction.set(ref, serialized) : await ref.set(serialized);
   }
 
-  async load(id: Id, trx?: Transaction): Promise<Model | undefined> {
+  async load(id: Id, trx?: FirestoreTransaction): Promise<Model | undefined> {
     const ref = this.collection.doc(id.toString());
 
-    const snapshot = trx ? await trx.get(ref) : await ref.get();
+    const snapshot = trx ? await trx.transaction.get(ref) : await ref.get();
 
     if (!snapshot.exists) {
       return undefined;

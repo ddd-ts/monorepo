@@ -9,7 +9,7 @@ export class InMemoryCheckpoint extends Checkpoint {
   }
 
   async get(name: string, trx?: InMemoryTransaction) {
-    const checkpoint = this.inMemoryDatabase.load("checkpoint", name, trx);
+    const checkpoint = this.inMemoryDatabase.load("checkpoint", name, trx?.transaction);
     if (typeof checkpoint === "bigint") {
       return checkpoint;
     }
@@ -22,7 +22,7 @@ export class InMemoryCheckpoint extends Checkpoint {
       throw new CheckpointFurtherAway(name, revision, current);
     }
 
-    this.inMemoryDatabase.save("checkpoint", name, revision, trx);
+    this.inMemoryDatabase.save("checkpoint", name, revision, trx?.transaction);
   }
 
   async clear() {

@@ -1,2 +1,2 @@
 export { FirestoreStore } from "./firestore.store";
-export { FirebaseTransactionPerformer } from "./firebase.transaction";
+export { FirestoreTransactionPerformer, FirestoreTransaction } from "./firestore.transaction";

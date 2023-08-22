@@ -7,7 +7,7 @@ import { FirestoreCheckpoint } from "../firestore.checkpoint";
 import { FirestoreSnapshotter } from "../firestore.snapshotter";
 import { EsAggregatePersistorWithSnapshots } from "@ddd-ts/event-sourcing";
 import {
-  FirebaseTransactionPerformer,
+  FirestoreTransactionPerformer,
   FirestoreStore,
 } from "@ddd-ts/store-firestore";
 import { AllEventSerializers } from "@ddd-ts/event-sourcing/dist/es-aggregate-store/es-aggregate.persistor";
@@ -17,7 +17,7 @@ describe("Firestore Bank Test", () => {
   const firestore = app.firestore();
   const es = new TestFirestoreEventStore(firestore);
   const checkpoint = new FirestoreCheckpoint(firestore);
-  const transactionPerformer = new FirebaseTransactionPerformer(es.firestore);
+  const transactionPerformer = new FirestoreTransactionPerformer(es.firestore);
 
   BankSuite(
     es,
