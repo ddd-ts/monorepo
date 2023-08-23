@@ -4,7 +4,6 @@ import {
   Firestore,
   FirestoreDataConverter,
   DocumentData,
-  Transaction,
   QueryDocumentSnapshot,
 } from "firebase-admin/firestore";
 import { FirestoreTransaction } from "./firestore.transaction";
@@ -84,9 +83,9 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
     );
   }
 
-  async delete(id: Id, trx?: Transaction): Promise<void> {
+  async delete(id: Id, trx?: FirestoreTransaction): Promise<void> {
     if (trx) {
-      trx.delete(this.collection.doc(id.toString()));
+      trx.transaction.delete(this.collection.doc(id.toString()));
     } else {
       await this.collection.doc(id.toString()).delete();
     }
