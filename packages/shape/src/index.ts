@@ -1,6 +1,7 @@
 import { Derive, Trait } from "@ddd-ts/traits";
+export { Enum } from './enum';
 
-type Constructor = new (...args: any[]) => any;
+type Constructor<T extends any = any> = new (...args: any[]) => T;
 
 type PrimitiveShape =
 	| NumberConstructor
@@ -20,12 +21,12 @@ type PrimitiveShapeToPrimitive<T extends PrimitiveShape> =
 	? Date
 	: never;
 
-type SerializedShape<S> = S extends PrimitiveShape
+export type SerializedShape<S> = S extends PrimitiveShape
 	? PrimitiveShapeToPrimitive<S>
 	: S extends { optional: infer U }
 	? SerializedShape<U> | undefined
-	: S extends Constructor & { deserialize(serialized: infer U): any }
-	? U
+	: S extends Constructor<{ serialize(): any }> & { deserialize(serialized: any): any }
+	? ReturnType<InstanceType<S>['serialize']>
 	: S extends Array<infer U>
 	? Array<SerializedShape<U>>
 	: S extends readonly [...any[]]
@@ -34,7 +35,7 @@ type SerializedShape<S> = S extends PrimitiveShape
 	? { [K in keyof S]: SerializedShape<S[K]> }
 	: any;
 
-type RuntimeShape<S> = S extends PrimitiveShape
+export type RuntimeShape<S> = S extends PrimitiveShape
 	? PrimitiveShapeToPrimitive<S>
 	: S extends { optional: infer U }
 	? RuntimeShape<U> | undefined
