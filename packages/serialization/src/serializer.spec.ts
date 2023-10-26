@@ -19,7 +19,7 @@ describe('Serializer', () => {
     it('should allow to redact multiple versions for a single domain object', () => {
 
         class Dog extends Shape({ firstName: String, lastName: String }) { }
-        class V0DogSerializer extends Serializer(Dog, 0n) {
+        class V0DogSerializer extends Serializer<Dog>(0n) {
             serialize(value: Dog) {
                 return {
                     name: `${value.firstName} ${value.lastName}`,
@@ -32,7 +32,7 @@ describe('Serializer', () => {
                 return new Dog({ firstName, lastName })
             }
         }
-        class V1DogSerializer extends Serializer(Dog, 1n) {
+        class V1DogSerializer extends Serializer<Dog>(1n) {
             serialize(value: Dog) {
                 return {
                     first: `${value.firstName}`,
@@ -73,13 +73,11 @@ describe('Serializer', () => {
         const v2Deserialized = v2Serializer.deserialize(v2Dog)
         expect(v2Deserialized).toEqual(dog)
 
-        const history = new SerializerHistory([
+        const upcastSerializer = new UpcastSerializer([
             v0Serializer,
             v1Serializer,
             v2Serializer,
         ])
-
-        const upcastSerializer = new UpcastSerializer(history)
 
         // assume no version is v0
         const unknownDog = upcastSerializer.deserialize({ name: 'Fido TheDog' })

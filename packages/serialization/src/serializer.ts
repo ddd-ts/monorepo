@@ -3,19 +3,18 @@ type Constructor<T = any> = new (...args: any[]) => T
 export type PromiseOr<T> = T | Promise<T>
 
 export abstract class ISerializer<T> {
-    abstract for: Constructor<T>
     abstract version: bigint
     abstract serialize(value: T): PromiseOr<unknown & { version: bigint }>
     abstract deserialize(value: { version: bigint }): PromiseOr<T>
 }
 
-export const Serializer = <T extends Constructor, const V extends bigint>(ctor: T, version: V) => {
-    abstract class I extends ISerializer<InstanceType<T>> {
-        for = ctor
+export const Serializer = <T>(version: bigint) => {
+    abstract class I extends ISerializer<T> {
         version = version
     }
     return I
 }
+
 
 export type Serialized<T extends { serialize(...args: any[]): any }> = Awaited<ReturnType<T['serialize']>>
 
@@ -25,7 +24,7 @@ type Serializable = (Constructor<{ serialize(): any }>) & {
 }
 
 export const AutoSerializer = <T extends Serializable, const V extends bigint>(serializable: T, version: V) => {
-    return class extends Serializer(serializable, version) {
+    return class extends Serializer<InstanceType<T>>(version) {
         serialize(value: InstanceType<T>): ReturnType<InstanceType<T>['serialize']> & { version: V } {
             return {
                 ...value.serialize(),
@@ -42,11 +41,10 @@ export const AutoSerializer = <T extends Serializable, const V extends bigint>(s
 
 export class SerializerHistory<T> {
     public serializers: Map<bigint, ISerializer<T>>
-    public for: Constructor<T>
 
     constructor(serializers: ISerializer<T>[]) {
         this.serializers = new Map()
-        this.for = serializers[0].for
+
         for (const serializer of serializers) {
             this.serializers.set(serializer.version, serializer)
         }
@@ -70,9 +68,10 @@ export class SerializerHistory<T> {
 }
 
 export class UpcastSerializer<T> {
-    public for: Constructor<T>
-    constructor(protected history: SerializerHistory<T>) {
-        this.for = history.for
+    protected history: SerializerHistory<T>
+    constructor(protected serializers: ISerializer<T>[]) {
+        this.history = new SerializerHistory<T>(this.serializers)
+
     }
 
     serialize(value: T) {
