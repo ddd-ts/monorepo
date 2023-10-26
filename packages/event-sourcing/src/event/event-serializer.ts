@@ -1,4 +1,4 @@
-import { Serialized } from "@ddd-ts/model";
+import { Serialized } from "@ddd-ts/serialization";
 import { Constructor } from "@ddd-ts/types";
 import { Event, Fact } from "./event";
 

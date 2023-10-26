@@ -15,7 +15,8 @@
   },
   "peerDependencies": {
     "@ddd-ts/event-sourcing": "*",
-    "@ddd-ts/model": "*"
+    "@ddd-ts/model": "*",
+    "@ddd-ts/serialization": "*"
   },
   "devDependencies": {
     "@ddd-ts/dev": "*",

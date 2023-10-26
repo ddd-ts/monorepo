@@ -523,4 +523,17 @@ describe("Traits", () => {
       }
     }
   })
+
+  it('allow abstract traits', () => {
+    const SomeTrait = Trait((base) => {
+      abstract class I extends base {
+        abstract do(): void;
+      }
+      return I
+    })
+
+
+    // @ts-expect-error it should implement the abstract method
+    class A extends Derive(SomeTrait) { }
+  })
 });

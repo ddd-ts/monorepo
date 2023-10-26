@@ -11,7 +11,8 @@
     "firebase-admin": "^11.5.0"
   },
   "peerDependencies": {
-    "@ddd-ts/model": "*"
+    "@ddd-ts/model": "*",
+    "@ddd-ts/serialization": "*"
   },
   "devDependencies": {
     "@ddd-ts/dev": "*",

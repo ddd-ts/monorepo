@@ -1,0 +1,4 @@
+{
+  "jest.shell": "zsh",
+  "jest.jestCommandLine": "yarn test"
+}

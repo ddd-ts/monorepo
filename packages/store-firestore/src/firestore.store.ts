@@ -1,4 +1,4 @@
-import { Serializer, Store } from "@ddd-ts/model";
+import { Store, Model } from "@ddd-ts/model";
 import {
   CollectionReference,
   Firestore,
@@ -7,16 +7,17 @@ import {
   QueryDocumentSnapshot,
 } from "firebase-admin/firestore";
 import { FirestoreTransaction } from "./firestore.transaction";
+import { ISerializer } from "@ddd-ts/serialization";
 
-export class FirestoreStore<Model, Id extends { toString(): string }>
-  implements Store<Model, Id>
+export class FirestoreStore<M extends Model>
+  implements Store<M>
 {
   collection: CollectionReference;
 
   constructor(
     public readonly collectionName: string,
     public readonly firestore: Firestore,
-    public readonly serializer: Serializer<Model>,
+    public readonly serializer: ISerializer<M>,
     public readonly converter?: FirestoreDataConverter<DocumentData>
   ) {
     if (this.converter) {
@@ -28,10 +29,19 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
     }
   }
 
+  private getIdFromModel(m: M) {
+    if (Object.getOwnPropertyNames(m.id).includes('serialize')) {
+      if ('serialize' in m.id) {
+        return m.id.serialize()
+      }
+    }
+    return m.id.toString()
+  }
+
   protected async executeQuery(
     query: FirebaseFirestore.Query<any>,
     trx?: FirestoreTransaction
-  ): Promise<Model[]> {
+  ): Promise<M[]> {
     const result = trx ? await trx.transaction.get(query) : await query.get();
 
     return Promise.all(
@@ -43,23 +53,21 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
 
   protected async *streamQuery(
     query: FirebaseFirestore.Query<any>
-  ): AsyncIterable<Model> {
+  ): AsyncIterable<M> {
     const stream: AsyncIterable<QueryDocumentSnapshot> = query.stream() as any;
     for await (const doc of stream) {
-      yield this.serializer.deserialize({ id: doc.id, ...doc.data() });
+      yield this.serializer.deserialize({ id: doc.id, ...doc.data() as any });
     }
   }
 
-  async save(model: Model, trx?: FirestoreTransaction): Promise<void> {
+  async save(model: M, trx?: FirestoreTransaction): Promise<void> {
     const serialized = await this.serializer.serialize(model);
-    const ref = this.collection.doc(
-      this.serializer.getIdFromModel(model).toString()
-    );
+    const ref = this.collection.doc(this.getIdFromModel(model));
 
     trx ? trx.transaction.set(ref, serialized) : await ref.set(serialized);
   }
 
-  async load(id: Id, trx?: FirestoreTransaction): Promise<Model | undefined> {
+  async load(id: M['id'], trx?: FirestoreTransaction): Promise<M | undefined> {
     const ref = this.collection.doc(id.toString());
 
     const snapshot = trx ? await trx.transaction.get(ref) : await ref.get();
@@ -74,7 +82,7 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
     });
   }
 
-  async loadAll(): Promise<Model[]> {
+  async loadAll(): Promise<M[]> {
     const snapshot = await this.collection.get();
     return Promise.all(
       snapshot.docs.map((doc) =>
@@ -83,7 +91,7 @@ export class FirestoreStore<Model, Id extends { toString(): string }>
     );
   }
 
-  async delete(id: Id, trx?: FirestoreTransaction): Promise<void> {
+  async delete(id: M['id'], trx?: FirestoreTransaction): Promise<void> {
     if (trx) {
       trx.transaction.delete(this.collection.doc(id.toString()));
     } else {

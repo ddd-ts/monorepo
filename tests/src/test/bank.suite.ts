@@ -7,7 +7,7 @@ import {
   IsolatedProjector,
 } from "@ddd-ts/event-sourcing";
 import { AllEventSerializers } from "@ddd-ts/event-sourcing/dist/es-aggregate-store/es-aggregate.persistor";
-import { Serializer, Store, TransactionPerformer } from "@ddd-ts/model";
+import { Store, TransactionPerformer } from "@ddd-ts/model";
 import { CashFlowProjection } from "../app/application/cashflow.projection";
 import { Account } from "../app/domain/write/account/account";
 import {
@@ -16,10 +16,11 @@ import {
   WithdrawnSerializer,
 } from "../app/infrastructure/account.serializer";
 import { CashflowSerializer } from "../app/infrastructure/cashflow.serializer";
+import { ISerializer, Serializer } from "@ddd-ts/serialization";
 
 function WriteModelConsistencySuite(es: EventStore) {
   describe("Write model consistency", () => {
-    class AccountPersistor extends EsAggregatePersistor(Account) {}
+    class AccountPersistor extends EsAggregatePersistor(Account) { }
     const persistor = new AccountPersistor(es, [
       new DepositedSerializer(),
       new WithdrawnSerializer(),
@@ -77,16 +78,15 @@ export function BankSuite(
   es: EventStore,
   checkpoint: Checkpoint,
   transaction: TransactionPerformer,
-  createStore: <S extends Serializer<any>>(
+  createStore: <S extends ISerializer<any>>(
     serializer: S,
     name: string
   ) => Store<
-    S extends Serializer<infer M> ? M : never,
-    S extends Serializer<any> ? ReturnType<S["getIdFromModel"]> : never
+    S extends ISerializer<infer M> ? M : never
   >,
   createPersistor: <A extends EsAggregateType<any>>(
     AGGREGATE: A,
-    serializer: Serializer<InstanceType<A>>,
+    serializer: ISerializer<InstanceType<A>>,
     eventSerializers: AllEventSerializers<InstanceType<A>>
   ) => EsAggregatePersistor<InstanceType<A>>
 ) {

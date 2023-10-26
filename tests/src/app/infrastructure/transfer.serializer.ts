@@ -1,5 +1,5 @@
 import { MakeEventSerializer } from "@ddd-ts/event-sourcing/dist/event/event-serializer";
-import { Serializer, Serialized } from "@ddd-ts/model";
+import { Serializer, Serialized } from "@ddd-ts/serialization";
 import { AccountId } from "../domain/write/account/account-id";
 import {
   Transfer,
@@ -7,7 +7,7 @@ import {
   TransferInitiated,
 } from "../domain/write/transfer/transfer";
 
-export class TransferSerializer extends Serializer<Transfer> {
+export class TransferSerializer extends Serializer(Transfer, 1n) {
   async serialize(model: Transfer) {
     return {
       id: model.id.toString(),
@@ -15,6 +15,7 @@ export class TransferSerializer extends Serializer<Transfer> {
       to: model.to.toString(),
       amount: model.amount,
       amountClaimed: model.amountClaimed,
+      version: this.version,
     };
   }
 
@@ -24,16 +25,8 @@ export class TransferSerializer extends Serializer<Transfer> {
       AccountId.deserialize(serialized.from),
       AccountId.deserialize(serialized.to),
       serialized.amount,
-      serialized.amountClaimed
+      serialized.amountClaimed,
     );
-  }
-
-  getIdFromModel(model: Transfer) {
-    return model.id;
-  }
-
-  getIdFromSerialized(serialized: Serialized<this>) {
-    return serialized.id;
   }
 }
 

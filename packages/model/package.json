@@ -5,8 +5,11 @@
   "types": "dist/index.d.ts",
   "license": "MIT",
   "scripts": {
-    "test": "test-runner",
+    "test": "echo no-tests",
     "build": "builder"
+  },
+  "peerDependencies": {
+    "@ddd-ts/serialization": "*"
   },
   "devDependencies": {
     "@ddd-ts/dev": "*"

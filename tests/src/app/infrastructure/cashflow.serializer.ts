@@ -1,18 +1,11 @@
-import { Serializer, Serialized } from "@ddd-ts/model";
+import { Serializer, Serialized } from "@ddd-ts/serialization";
 import { Cashflow } from "../domain/read/cashflow/cashflow";
 
-export class CashflowSerializer extends Serializer<Cashflow> {
-  async serialize(model: Cashflow) {
-    return { id: model.id, flow: model.flow };
+export class CashflowSerializer extends Serializer(Cashflow, 1n) {
+  serialize(model: Cashflow) {
+    return { id: model.id, flow: model.flow, version: this.version };
   }
-  async deserialize(serialized: Serialized<this>) {
+  deserialize(serialized: Serialized<this>) {
     return new Cashflow(serialized.id, serialized.flow);
-  }
-  getIdFromModel(model: Cashflow) {
-    return model.id;
-  }
-
-  getIdFromSerialized(serialized: Serialized<this>) {
-    return serialized.id;
   }
 }

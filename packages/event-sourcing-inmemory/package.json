@@ -11,6 +11,7 @@
   "peerDependencies": {
     "@ddd-ts/event-sourcing": "*",
     "@ddd-ts/model": "*",
+    "@ddd-ts/serialization": "*",
     "@ddd-ts/store-inmemory": "*"
   },
   "devDependencies": {

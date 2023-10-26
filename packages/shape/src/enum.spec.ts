@@ -19,7 +19,7 @@ describe('Enum', () => {
             yes: async () => 'yeap' as const,
             no: async () => 'nope' as const
         })
-        expect(test).toBe('yes')
+        expect(test).toBe('yeap')
 
         // @ts-expect-error it should not be possible to pattern match with incomplete cases
         Bool.deserialize('yes').match({

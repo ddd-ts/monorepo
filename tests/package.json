@@ -9,7 +9,9 @@
     "build": "builder"
   },
   "dependencies": {
-    "@ddd-ts/event-sourcing": "*"
+    "@ddd-ts/cqs": "*",
+    "@ddd-ts/event-sourcing": "*",
+    "@ddd-ts/serialization": "*"
   },
   "devDependencies": {
     "@ddd-ts/dev": "*",

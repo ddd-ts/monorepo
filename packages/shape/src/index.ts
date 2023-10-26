@@ -3,6 +3,8 @@ export { Enum } from './enum';
 
 type Constructor<T extends any = any> = new (...args: any[]) => T;
 
+export type ShapeConstructor<T extends any = any> = Constructor<{ serialize(): T }> & { deserialize(serialized: any): T }
+
 type PrimitiveShape =
 	| NumberConstructor
 	| StringConstructor
@@ -13,6 +15,8 @@ type PrimitiveShape =
 type PrimitiveShapeToPrimitive<T extends PrimitiveShape> =
 	T extends NumberConstructor
 	? number
+	: T extends BigIntConstructor
+	? bigint
 	: T extends StringConstructor
 	? string
 	: T extends BooleanConstructor
@@ -25,7 +29,7 @@ export type SerializedShape<S> = S extends PrimitiveShape
 	? PrimitiveShapeToPrimitive<S>
 	: S extends { optional: infer U }
 	? SerializedShape<U> | undefined
-	: S extends Constructor<{ serialize(): any }> & { deserialize(serialized: any): any }
+	: S extends ShapeConstructor
 	? ReturnType<InstanceType<S>['serialize']>
 	: S extends Array<infer U>
 	? Array<SerializedShape<U>>

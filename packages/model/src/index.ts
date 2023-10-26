@@ -1,3 +1,5 @@
+export { Model, ModelId } from "./model/model";
+
 export {
   TransactionPerformer,
   Transaction,
@@ -5,10 +7,3 @@ export {
 } from "./model/transaction";
 
 export { Store } from "./model/store";
-export {
-  Serializer,
-  Serialized,
-  VersionnedSerializer,
-  V0VersionnedSerializer,
-  UpcastSerializer,
-} from "./model/serializer";

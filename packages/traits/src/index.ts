@@ -1,9 +1,8 @@
-export type Constructor<Props extends any = any, Result extends {} = {}> = {
-  new(props: Props): Result;
-};
+export type Constructor<Props extends any = any, Result extends {} = {}> = new (props: Props) => Result
+export type AbstractConstructor<Props extends any = any, Result extends {} = {}> = abstract new (props: Props) => Result
 
 export type Trait<
-  Factory extends <Base extends Constructor>(base: Base) => Constructor = any
+  Factory extends <Base extends AbstractConstructor>(base: Base) => AbstractConstructor = any
 > = {
   factory: Factory;
   superTraits: readonly Trait<any>[];
@@ -88,7 +87,7 @@ export function Subtrait<
   const Factory extends (
     base: Applied,
     props: ConstructorParameters<Applied>[0]
-  ) => Constructor
+  ) => AbstractConstructor
 >(superTraits: SuperTraits, factory: Factory) {
   const symbol = Symbol();
   return {
@@ -126,7 +125,7 @@ export function Derive<R extends Trait[], C extends CheckTraitRequirements<R>>(
   return current as any;
 }
 export const Trait = <
-  T extends (base: Constructor<any, {}>) => Constructor<any, any>
+  T extends (base: AbstractConstructor<any, {}>) => AbstractConstructor<any, any>
 >(
   factory: T
 ) => {
@@ -140,6 +139,8 @@ export function implementsTrait<I extends InstanceType<any>, T extends Trait>(
 ): instance is ImplementsTrait<T> {
   return (instance as any).constructor[(trait as any).symbol] === true;
 }
+
+export type HasTrait<T extends Trait> = ReturnType<T["factory"]>
 
 export type ImplementsTrait<T extends Trait> = InstanceType<
   ReturnType<T["factory"]>
