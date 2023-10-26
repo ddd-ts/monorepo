@@ -3,13 +3,14 @@ type Constructor<T = any> = new (...args: any[]) => T
 export type PromiseOr<T> = T | Promise<T>
 
 export abstract class ISerializer<T> {
-    abstract version: bigint
     abstract serialize(value: T): PromiseOr<unknown & { version: bigint }>
     abstract deserialize(value: { version: bigint }): PromiseOr<T>
 }
 
+type VersionnedSerializer<T> = ISerializer<T> & { version: bigint }
+
 export const Serializer = <T>(version: bigint) => {
-    abstract class I extends ISerializer<T> {
+    abstract class I extends ISerializer<T> implements VersionnedSerializer<T> {
         version = version
     }
     return I
@@ -42,7 +43,7 @@ export const AutoSerializer = <T extends Serializable, const V extends bigint>(s
 export class SerializerHistory<T> {
     public serializers: Map<bigint, ISerializer<T>>
 
-    constructor(serializers: ISerializer<T>[]) {
+    constructor(serializers: VersionnedSerializer<T>[]) {
         this.serializers = new Map()
 
         for (const serializer of serializers) {
@@ -69,7 +70,7 @@ export class SerializerHistory<T> {
 
 export class UpcastSerializer<T> {
     protected history: SerializerHistory<T>
-    constructor(protected serializers: ISerializer<T>[]) {
+    constructor(protected serializers: VersionnedSerializer<T>[]) {
         this.history = new SerializerHistory<T>(this.serializers)
 
     }
