@@ -2,30 +2,32 @@ type Constructor<T = any> = new (...args: any[]) => T
 
 export type PromiseOr<T> = T | Promise<T>
 
-export abstract class ISerializer<T> {
-    abstract serialize(value: T): PromiseOr<unknown & { version: bigint }>
-    abstract deserialize(value: { version: bigint }): PromiseOr<T>
+export abstract class ISerializer<T, V extends bigint = bigint> {
+    abstract serialize(value: T): PromiseOr<unknown & { version: V }>
+    abstract deserialize(value: { version: V }): PromiseOr<T>
 }
 
-type VersionnedSerializer<T> = ISerializer<T> & { version: bigint }
+type VersionnedSerializer<T, V extends bigint> = ISerializer<T, V> & { version: V }
 
-export const Serializer = <T>(version: bigint) => {
-    abstract class I extends ISerializer<T> implements VersionnedSerializer<T> {
+export const Serializer = <T>(t?: T) => <const V extends bigint>(version: V) => {
+    type Instance = T extends Constructor ? InstanceType<T> : T
+    abstract class I extends ISerializer<Instance, V> implements VersionnedSerializer<Instance, V> {
         version = version
     }
     return I
 }
 
-
 export type Serialized<T extends { serialize(...args: any[]): any }> = Awaited<ReturnType<T['serialize']>>
+
+
 
 
 type Serializable = (Constructor<{ serialize(): any }>) & {
     deserialize(value: any): any
 }
 
-export const AutoSerializer = <T extends Serializable, const V extends bigint>(serializable: T, version: V) => {
-    return class extends Serializer<InstanceType<T>>(version) {
+export const AutoSerializer = <T extends Serializable>(of: T) => <const V extends bigint>(version: V) => {
+    return class extends Serializer({} as T)(version) {
         serialize(value: InstanceType<T>): ReturnType<InstanceType<T>['serialize']> & { version: V } {
             return {
                 ...value.serialize(),
@@ -35,15 +37,15 @@ export const AutoSerializer = <T extends Serializable, const V extends bigint>(s
 
         deserialize(serialized: ReturnType<this['serialize']>): InstanceType<T> {
             const { version, ...rest } = serialized
-            return serializable.deserialize(rest)
+            return of.deserialize(rest)
         }
     }
 }
 
 export class SerializerHistory<T> {
-    public serializers: Map<bigint, ISerializer<T>>
+    public serializers: Map<bigint, ISerializer<T, bigint>>
 
-    constructor(serializers: VersionnedSerializer<T>[]) {
+    constructor(serializers: VersionnedSerializer<T, bigint>[]) {
         this.serializers = new Map()
 
         for (const serializer of serializers) {
@@ -70,7 +72,7 @@ export class SerializerHistory<T> {
 
 export class UpcastSerializer<T> {
     protected history: SerializerHistory<T>
-    constructor(protected serializers: VersionnedSerializer<T>[]) {
+    constructor(protected serializers: VersionnedSerializer<T, bigint>[]) {
         this.history = new SerializerHistory<T>(this.serializers)
 
     }

@@ -6,7 +6,7 @@ describe('Serializer', () => {
     it('should serialize and deserialize a class at a specific version', () => {
 
         class Dog extends Shape({ name: String }) { }
-        class V1DogSerializer extends AutoSerializer(Dog, 1n) { }
+        class V1DogSerializer extends AutoSerializer(Dog)(1n) { }
 
         const serializer = new V1DogSerializer()
 
@@ -19,7 +19,7 @@ describe('Serializer', () => {
     it('should allow to redact multiple versions for a single domain object', () => {
 
         class Dog extends Shape({ firstName: String, lastName: String }) { }
-        class V0DogSerializer extends Serializer<Dog>(0n) {
+        class V0DogSerializer extends Serializer<Dog>()(0n) {
             serialize(value: Dog) {
                 return {
                     name: `${value.firstName} ${value.lastName}`,
@@ -32,7 +32,7 @@ describe('Serializer', () => {
                 return new Dog({ firstName, lastName })
             }
         }
-        class V1DogSerializer extends Serializer<Dog>(1n) {
+        class V1DogSerializer extends Serializer(Dog)(1n) {
             serialize(value: Dog) {
                 return {
                     first: `${value.firstName}`,
@@ -46,7 +46,7 @@ describe('Serializer', () => {
             }
         }
 
-        class V2DogSerializer extends AutoSerializer(Dog, 2n) { }
+        class V2DogSerializer extends AutoSerializer(Dog)(2n) { }
 
 
         const dog = new Dog({ firstName: 'Fido', lastName: 'TheDog' })

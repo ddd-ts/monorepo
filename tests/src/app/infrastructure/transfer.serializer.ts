@@ -7,7 +7,7 @@ import {
   TransferInitiated,
 } from "../domain/write/transfer/transfer";
 
-export class TransferSerializer extends Serializer<Transfer>(1n) {
+export class TransferSerializer extends Serializer(Transfer)(1n) {
   async serialize(model: Transfer) {
     return {
       id: model.id.toString(),

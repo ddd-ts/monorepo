@@ -9,7 +9,7 @@ import { Serialized, Serializer } from "@ddd-ts/serialization";
 
 type A = Serialized<AccountSerializer>;
 
-export class AccountSerializer extends Serializer<Account>(1n) {
+export class AccountSerializer extends Serializer<Account>()(1n) {
   async serialize(model: Account) {
     return {
       id: model.id.toString(),
