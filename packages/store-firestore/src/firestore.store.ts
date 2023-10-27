@@ -5,6 +5,7 @@ import {
   FirestoreDataConverter,
   DocumentData,
   QueryDocumentSnapshot,
+  FieldPath,
 } from "firebase-admin/firestore";
 import { FirestoreTransaction } from "./firestore.transaction";
 import { ISerializer } from "@ddd-ts/serialization";
@@ -97,5 +98,14 @@ export class FirestoreStore<M extends Model>
     } else {
       await this.collection.doc(id.toString()).delete();
     }
+  }
+
+  async loadMany(ids: M['id'][], trx?: FirestoreTransaction): Promise<M[]> {
+    const result = await Promise.all(ids.map(id => this.load(id, trx)))
+    return result.filter(m => m !== undefined) as M[]
+  }
+
+  streamAll(): AsyncIterable<M> {
+    return this.streamQuery(this.collection);
   }
 }

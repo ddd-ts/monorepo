@@ -15,13 +15,13 @@ export class InMemoryStore<M extends Model>
     public readonly serializer: ISerializer<M>
   ) { }
 
-  private getIdFromModel(m: Model) {
-    if (Object.getOwnPropertyNames(m.id).includes('serialize')) {
-      if ('serialize' in m.id) {
-        return m.id.serialize()
+  private serializeId(id: M['id']) {
+    if (Object.getOwnPropertyNames(id).includes('serialize')) {
+      if ('serialize' in id) {
+        return id.serialize()
       }
     }
-    return m.id.toString()
+    return id.toString()
   }
 
   protected async filter(
@@ -44,7 +44,7 @@ export class InMemoryStore<M extends Model>
   async save(model: M, trx?: InMemoryTransaction): Promise<void> {
     await this.database.save(
       this.collection,
-      this.getIdFromModel(model),
+      this.serializeId(model.id),
       await this.serializer.serialize(model),
       trx?.transaction
     );
@@ -70,7 +70,19 @@ export class InMemoryStore<M extends Model>
     return Promise.all(serialized.map((s) => this.serializer.deserialize(s)));
   }
 
+
+  async loadMany(ids: M['id'][], trx?: InMemoryTransaction): Promise<M[]> {
+    const result = await Promise.all(ids.map(id => this.load(id, trx)))
+    return result.filter(m => m !== undefined) as M[]
+  }
+
   async delete(id: M['id']): Promise<void> {
     this.database.delete(this.collection, id.toString());
+  }
+
+  async * streamAll(): AsyncIterable<M> {
+    for (const item of await this.filter(() => true)) {
+      yield item
+    }
   }
 }
