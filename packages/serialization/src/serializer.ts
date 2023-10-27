@@ -43,48 +43,41 @@ export const AutoSerializer = <T extends Serializable>(of: T) => <const V extend
 }
 
 export class SerializerHistory<T> {
-    public serializers: Map<bigint, ISerializer<T, bigint>>
-
+    latest: VersionnedSerializer<T, bigint>
+    oldest: VersionnedSerializer<T, bigint>
+    versions: Map<number, VersionnedSerializer<T, bigint>>
     constructor(serializers: VersionnedSerializer<T, bigint>[]) {
-        this.serializers = new Map()
-
-        for (const serializer of serializers) {
-            this.serializers.set(serializer.version, serializer)
+        const sorted = serializers.sort((a, b) => Number(a.version - b.version))
+        const oldest = sorted[0]
+        const latest = sorted[sorted.length - 1]
+        if (!oldest || !latest) {
+            throw new Error('No serializer registered')
         }
+        this.oldest = oldest
+        this.latest = latest
+
+        this.versions = new Map(sorted.map(serializer => [Number(serializer.version), serializer]))
     }
 
     get(version: bigint) {
-        return this.serializers.get(version)
-    }
-
-    latest() {
-        const version = Array.from(this.serializers.keys()).sort().pop()
-        if (!version) {
-            throw new Error('No serializers registered')
-        }
-        const serializer = this.serializers.get(version)
-        if (!serializer) {
-            throw new Error(`No serializer registered for version ${version}`)
-        }
-        return serializer
+        return this.versions.get(Number(version))
     }
 }
 
 export class UpcastSerializer<T> {
-    protected history: SerializerHistory<T>
-    constructor(protected serializers: VersionnedSerializer<T, bigint>[]) {
-        this.history = new SerializerHistory<T>(this.serializers)
-
+    public history: SerializerHistory<T>
+    constructor(serializers: VersionnedSerializer<T, bigint>[]) {
+        this.history = new SerializerHistory<T>(serializers)
     }
 
     serialize(value: T) {
-        return this.history.latest().serialize(value)
+        return this.history.latest.serialize(value)
     }
 
     deserialize(value: any) {
         let version = value.version
 
-        if (typeof version !== 'bigint') {
+        if (typeof version !== 'bigint' && typeof version !== 'number') {
             version = 0n
         }
 

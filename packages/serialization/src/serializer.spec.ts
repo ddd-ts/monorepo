@@ -74,9 +74,9 @@ describe('Serializer', () => {
         expect(v2Deserialized).toEqual(dog)
 
         const upcastSerializer = new UpcastSerializer([
+            v2Serializer,
             v0Serializer,
             v1Serializer,
-            v2Serializer,
         ])
 
         // assume no version is v0
