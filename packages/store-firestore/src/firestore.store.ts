@@ -54,18 +54,28 @@ export class FirestoreStore<M extends Model> implements Store<M> {
     query: FirebaseFirestore.Query<any>,
     pageSize: number
   ) {
-    let lastSize = 0;
     let last: DocumentSnapshot | undefined;
-    do {
-      const paginatedQuery = last
+    let nextPagePromise:
+      | Promise<FirebaseFirestore.QuerySnapshot<any>>
+      | undefined;
+
+    function getNextPagePromise(cursor: DocumentSnapshot | undefined) {
+      return cursor
         ? query.limit(pageSize).get()
         : query.startAfter(last).limit(pageSize).get();
-      const { size, docs } = await paginatedQuery;
-      lastSize = size;
+    }
+
+    do {
+      const paginatedQuery = nextPagePromise ?? getNextPagePromise(last);
+      const { docs } = await paginatedQuery;
+      last = docs[pageSize - 1];
+      if (last) {
+        nextPagePromise = getNextPagePromise(last);
+      }
       for (const doc of docs) {
         yield doc;
       }
-    } while (lastSize === pageSize);
+    } while (last);
   }
 
   protected async *streamQuery(
