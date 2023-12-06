@@ -51,7 +51,7 @@ describe("InMemoryStore", () => {
 
     const element = new MyElement("myid", "timothee");
     await store.save(element);
-    const pristine = await store.load("myid");
+    const pristine = await store.load(element.id);
     expect(pristine).toEqual(element);
   });
 
@@ -60,7 +60,7 @@ describe("InMemoryStore", () => {
 
     const element = new MyElement("myid", "timothee");
     await store.save(element);
-    const pristine = await store.delete("myid");
+    const pristine = await store.delete(element.id);
     expect(pristine).toEqual(undefined);
   });
 
@@ -71,8 +71,25 @@ describe("InMemoryStore", () => {
     await transactionPerformer.perform(async (transaction) => {
       await store.save(element, transaction);
     });
-    const pristine = await store.load("myid");
+    const pristine = await store.load(element.id);
     expect(pristine).toEqual(element);
+  });
+
+  it("transactionally deletes", async () => {
+    const { store, transactionPerformer } = getStore();
+
+    const element = new MyElement("myid", "timothee");
+    await store.save(element);
+    await transactionPerformer.perform(async (transaction) => {
+      const pristine = await store.load(element.id, transaction);
+      expect(pristine).toBeTruthy();
+      if (!pristine) {
+        return;
+      }
+      await store.delete(pristine.id, transaction);
+    });
+    const pristine = await store.load(element.id);
+    expect(pristine).toEqual(undefined);
   });
 
   it("fails transactionally read after write", async () => {
@@ -82,7 +99,7 @@ describe("InMemoryStore", () => {
       transactionPerformer.perform(async (transaction) => {
         const element = new MyElement("myid", "timothee");
         await store.save(element, transaction);
-        await store.load("myid", transaction);
+        await store.load(element.id, transaction);
       })
     ).rejects.toThrow(CannotReadAfterWrites);
   });
@@ -98,11 +115,11 @@ describe("InMemoryStore", () => {
     await expect(
       transactionPerformer.perform(async (transaction) => {
         effectCalled += 1;
-        await store.load("myid", transaction);
+        await store.load(element.id, transaction);
         element.setName("elies");
 
         uniqueId += 1;
-        await store.save(new MyElement("myid", uniqueId.toString()));
+        await store.save(new MyElement(element.id, uniqueId.toString()));
 
         await store.save(element, transaction);
       })
@@ -120,7 +137,7 @@ describe("InMemoryStore", () => {
     let effectCalled = 0;
     await transactionPerformer.perform(async (transaction) => {
       effectCalled += 1;
-      const loadedElement = await store.load("myid", transaction);
+      const loadedElement = await store.load(element.id, transaction);
 
       expect(loadedElement).toBeTruthy();
       if (!loadedElement) {
@@ -130,12 +147,45 @@ describe("InMemoryStore", () => {
       loadedElement.setName("elies");
 
       if (uniqueId === 0) {
-        await store.save(new MyElement("myid", uniqueId.toString()));
+        await store.save(new MyElement(element.id, uniqueId.toString()));
         uniqueId += 1;
       }
 
       await store.save(loadedElement, transaction);
     });
     expect(effectCalled).toBe(2);
+  });
+
+  it("transactionally writes after 1 fail and calls onCommit only once", async () => {
+    let uniqueId = 0;
+    const { store, transactionPerformer } = getStore();
+
+    const element = new MyElement("myid", "timothee");
+    await store.save(element);
+
+    let onCommitCalled = 0;
+    await transactionPerformer.perform(async (transaction) => {
+      transaction.onCommit(() => {
+        onCommitCalled += 1;
+      });
+
+      const loadedElement = await store.load(element.id, transaction);
+
+      expect(loadedElement).toBeTruthy();
+      if (!loadedElement) {
+        return;
+      }
+
+      loadedElement.setName("elies");
+
+      if (uniqueId === 0) {
+        await store.save(new MyElement(element.id, uniqueId.toString()));
+        uniqueId += 1;
+      }
+
+      await store.save(loadedElement, transaction);
+    });
+
+    expect(onCommitCalled).toBe(1);
   });
 });
