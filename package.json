@@ -14,7 +14,7 @@
     "clean:cache": "yarn workspaces foreach exec rm -rf .turbo",
     "clean:nm": "rm -rf node_modules",
     "clean:hard": "yarn clean:cache && yarn clean && yarn clean:nm",
-    "release": "yarn build && yarn test && yarn bump && npm publish --access public --workspaces",
+    "release": "sh scripts/release.sh",
     "bump": "npm version -ws $(npm view @ddd-ts/model dist-tags.latest | tr -d '\"' | awk -F'[.-]' '{ print $1 \".\" $2 \".\" $3 \"-\" $4+1 }')"
   },
   "devDependencies": {
