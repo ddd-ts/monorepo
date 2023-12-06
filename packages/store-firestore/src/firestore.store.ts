@@ -113,10 +113,16 @@ export class FirestoreStore<M extends Model> implements Store<M> {
     });
   }
 
-  async loadAll(): Promise<M[]> {
-    const snapshot = await this.collection.get();
+  async loadAll(transaction?: FirestoreTransaction): Promise<M[]> {
+    let docs: DocumentSnapshot[];
+
+    if (transaction) {
+      docs = await transaction.transaction.getAll();
+    } else {
+      ({ docs } = await this.collection.get());
+    }
     return Promise.all(
-      snapshot.docs.map((doc) =>
+      docs.map((doc) =>
         this.serializer.deserialize({ id: doc.id, ...(doc.data() as any) })
       )
     );

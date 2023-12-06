@@ -1,10 +1,10 @@
 import { Model, Transaction } from "../index";
 
 export interface Store<M extends Model> {
-  save(model: M, trx?: Transaction): Promise<void>;
-  load(id: M['id'], trx?: Transaction): Promise<M | undefined>;
+  save(model: M, transaction?: Transaction): Promise<void>;
+  load(id: M['id'], transaction?: Transaction): Promise<M | undefined>;
   loadMany(ids: M['id'][]): Promise<M[]>;
-  loadAll(): Promise<M[]>;
-  delete(id: M['id']): Promise<void>;
+  loadAll(transaction?: Transaction): Promise<M[]>;
+  delete(id: M['id'], transaction?: Transaction): Promise<void>;
   streamAll(): AsyncIterable<M>;
 }
