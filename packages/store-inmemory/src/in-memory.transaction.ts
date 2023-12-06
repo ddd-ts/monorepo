@@ -1,7 +1,7 @@
 import { TransactionPerformer } from "@ddd-ts/model";
 import {
   InMemoryDatabase,
-  InMemoryTransactionId as InMemoryUnderlyingTransaction,
+  InMemoryUnderlyingTransaction,
 } from "./store/in-memory.database";
 
 export class InMemoryTransaction {
@@ -20,7 +20,7 @@ export class InMemoryTransaction {
 
 export class InMemoryTransactionPerformer extends TransactionPerformer<InMemoryTransaction> {
   constructor(db: InMemoryDatabase) {
-    super((effect) => db.transactionally((trx) => effect(new InMemoryTransaction(trx))));
+    super((effect) => db.transactionally((trx) => effect(trx)));
   }
 }
 

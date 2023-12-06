@@ -37,8 +37,16 @@ export class Collection {
     this.data.delete(id);
   }
 
+  getRaw(id: string) {
+    return this.data.get(id)
+  }
+
   get(id: string): any {
     return this.data.get(id)?.data;
+  }
+
+  getAllRaw() {
+    return [...this.data.entries()].map(([id, data]) => ({id, data}));
   }
 
   getAll(): any[] {
@@ -46,9 +54,8 @@ export class Collection {
   }
 
   save(id: string, data: any): void {
-    const now = process.hrtime();
-    const total = now[0] * 1e9 + now[1];
-    this.data.set(id, { savedAt: total, data });
+    const now = process.hrtime.bigint();
+    this.data.set(id, { savedAt: Number(now), data });
   }
 
   toPretty() {
