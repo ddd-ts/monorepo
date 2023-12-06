@@ -7,7 +7,7 @@
   "scripts": {
     "build": "builder"
   },
-  "peerDependencies": {
+  "dependencies": {
     "@ddd-ts/model": "*",
     "@ddd-ts/serialization": "*"
   },

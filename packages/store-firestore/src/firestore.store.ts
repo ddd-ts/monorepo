@@ -5,14 +5,12 @@ import {
   FirestoreDataConverter,
   DocumentData,
   QueryDocumentSnapshot,
-  FieldPath,
+  DocumentSnapshot,
 } from "firebase-admin/firestore";
 import { FirestoreTransaction } from "./firestore.transaction";
 import { ISerializer } from "@ddd-ts/serialization";
 
-export class FirestoreStore<M extends Model>
-  implements Store<M>
-{
+export class FirestoreStore<M extends Model> implements Store<M> {
   collection: CollectionReference;
 
   constructor(
@@ -31,12 +29,12 @@ export class FirestoreStore<M extends Model>
   }
 
   private getIdFromModel(m: M) {
-    if (Object.getOwnPropertyNames(m.id).includes('serialize')) {
-      if ('serialize' in m.id) {
-        return m.id.serialize()
+    if (Object.getOwnPropertyNames(m.id).includes("serialize")) {
+      if ("serialize" in m.id) {
+        return m.id.serialize();
       }
     }
-    return m.id.toString()
+    return m.id.toString();
   }
 
   protected async executeQuery(
@@ -52,12 +50,34 @@ export class FirestoreStore<M extends Model>
     );
   }
 
+  private async *streamPages(
+    query: FirebaseFirestore.Query<any>,
+    pageSize: number
+  ) {
+    let lastSize = 0;
+    let last: DocumentSnapshot | undefined;
+    do {
+      const paginatedQuery = last
+        ? query.limit(pageSize).get()
+        : query.startAfter(last).limit(pageSize).get();
+      const { size, docs } = await paginatedQuery;
+      lastSize = size;
+      for (const doc of docs) {
+        yield doc;
+      }
+    } while (lastSize === pageSize);
+  }
+
   protected async *streamQuery(
-    query: FirebaseFirestore.Query<any>
+    query: FirebaseFirestore.Query<any>,
+    pageSize?: number
   ): AsyncIterable<M> {
-    const stream: AsyncIterable<QueryDocumentSnapshot> = query.stream() as any;
+    const stream =
+      pageSize === 1
+        ? (query.stream() as AsyncIterable<QueryDocumentSnapshot>)
+        : this.streamPages(query, pageSize ?? 50);
     for await (const doc of stream) {
-      yield this.serializer.deserialize({ id: doc.id, ...doc.data() as any });
+      yield this.serializer.deserialize({ id: doc.id, ...(doc.data() as any) });
     }
   }
 
@@ -68,7 +88,7 @@ export class FirestoreStore<M extends Model>
     trx ? trx.transaction.set(ref, serialized) : await ref.set(serialized);
   }
 
-  async load(id: M['id'], trx?: FirestoreTransaction): Promise<M | undefined> {
+  async load(id: M["id"], trx?: FirestoreTransaction): Promise<M | undefined> {
     const ref = this.collection.doc(id.toString());
 
     const snapshot = trx ? await trx.transaction.get(ref) : await ref.get();
@@ -92,7 +112,7 @@ export class FirestoreStore<M extends Model>
     );
   }
 
-  async delete(id: M['id'], trx?: FirestoreTransaction): Promise<void> {
+  async delete(id: M["id"], trx?: FirestoreTransaction): Promise<void> {
     if (trx) {
       trx.transaction.delete(this.collection.doc(id.toString()));
     } else {
@@ -100,9 +120,9 @@ export class FirestoreStore<M extends Model>
     }
   }
 
-  async loadMany(ids: M['id'][], trx?: FirestoreTransaction): Promise<M[]> {
-    const result = await Promise.all(ids.map(id => this.load(id, trx)))
-    return result.filter(m => m !== undefined) as M[]
+  async loadMany(ids: M["id"][], trx?: FirestoreTransaction): Promise<M[]> {
+    const result = await Promise.all(ids.map((id) => this.load(id, trx)));
+    return result.filter((m) => m !== undefined) as M[];
   }
 
   streamAll(): AsyncIterable<M> {

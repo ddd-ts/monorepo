@@ -8,9 +8,6 @@
     "test": "echo no-tests",
     "build": "builder"
   },
-  "peerDependencies": {
-    "@ddd-ts/serialization": "*"
-  },
   "devDependencies": {
     "@ddd-ts/dev": "*"
   }

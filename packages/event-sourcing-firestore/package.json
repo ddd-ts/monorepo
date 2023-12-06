@@ -11,12 +11,10 @@
     "build": "builder"
   },
   "dependencies": {
-    "firebase-admin": "^11.5.0"
-  },
-  "peerDependencies": {
     "@ddd-ts/event-sourcing": "*",
     "@ddd-ts/model": "*",
-    "@ddd-ts/serialization": "*"
+    "@ddd-ts/serialization": "*",
+    "firebase-admin": "^11.5.0"
   },
   "devDependencies": {
     "@ddd-ts/dev": "*",

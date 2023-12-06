@@ -8,7 +8,7 @@
     "test": "test-runner --maxWorkers=1",
     "build": "builder"
   },
-  "peerDependencies": {
+  "dependencies": {
     "@ddd-ts/event-sourcing": "*",
     "@ddd-ts/model": "*",
     "@ddd-ts/serialization": "*",

@@ -8,11 +8,9 @@
     "test": "test-runner",
     "build": "builder"
   },
-  "peerDependencies": {
-    "@ddd-ts/model": "*",
-    "@ddd-ts/serialization": "*"
-  },
   "dependencies": {
+    "@ddd-ts/model": "*",
+    "@ddd-ts/serialization": "*",
     "uuid": "^8.3.2"
   },
   "devDependencies": {

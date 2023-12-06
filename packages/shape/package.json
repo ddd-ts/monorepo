@@ -8,7 +8,7 @@
     "build": "builder",
     "test": "test-runner"
   },
-  "peerDependencies": {
+  "dependencies": {
     "@ddd-ts/traits": "*"
   },
   "devDependencies": {
