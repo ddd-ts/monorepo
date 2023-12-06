@@ -20,28 +20,28 @@ export class TransactionCollidedTooManyTimes extends Error {
   }
 }
 
-type ReadItem = {
+type ReadOperation = {
   type: 'read'
   collectionName: string;
   id: string;
   savedAt: number | undefined
 }
 
-type WriteItem = {
+type WriteOperation = {
   type: 'write'
   collectionName: string;
   id: string;
   data: any
 }
 
-type DeletedItem = {
+type DeleteOperation = {
   type: 'delete'
   collectionName: string
   id: string
   savedAt: number | undefined
 }
 
-type TransactionOperation = ReadItem | WriteItem | DeletedItem
+type TransactionOperation = ReadOperation | WriteOperation | DeleteOperation
 
 export class InMemoryUnderlyingTransaction {
   public readonly operations: TransactionOperation[] = []
