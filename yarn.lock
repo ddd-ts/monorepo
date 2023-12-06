@@ -652,19 +652,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ddd-ts/cqs@*, @ddd-ts/cqs@workspace:packages/cqs":
-  version: 0.0.0-use.local
-  resolution: "@ddd-ts/cqs@workspace:packages/cqs"
-  dependencies:
-    "@ddd-ts/dev": "*"
-    "@ddd-ts/types": "*"
-  peerDependencies:
-    "@ddd-ts/model": "*"
-    "@ddd-ts/shape": "*"
-    "@ddd-ts/traits": "*"
-  languageName: unknown
-  linkType: soft
-
 "@ddd-ts/dev@*, @ddd-ts/dev@workspace:tools/dev":
   version: 0.0.0-use.local
   resolution: "@ddd-ts/dev@workspace:tools/dev"
@@ -814,7 +801,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@ddd-ts/tests@workspace:tests"
   dependencies:
-    "@ddd-ts/cqs": "*"
     "@ddd-ts/dev": "*"
     "@ddd-ts/event-sourcing": "*"
     "@ddd-ts/serialization": "*"
