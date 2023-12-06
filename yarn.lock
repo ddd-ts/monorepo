@@ -657,6 +657,7 @@ __metadata:
   resolution: "@ddd-ts/dev@workspace:tools/dev"
   dependencies:
     "@types/jest": ^29.2.5
+    "@types/node": ^20.10.3
     jest: ^29.3.1
     ts-jest: ^29.0.3
     ts-node: ^10.9.1
@@ -672,11 +673,10 @@ __metadata:
   resolution: "@ddd-ts/event-sourcing-esdb@workspace:packages/event-sourcing-esdb"
   dependencies:
     "@ddd-ts/dev": "*"
+    "@ddd-ts/event-sourcing": "*"
     "@ddd-ts/event-sourcing-inmemory": "*"
     "@ddd-ts/tests": "*"
     "@eventstore/db-client": ^5.0.0
-  peerDependencies:
-    "@ddd-ts/event-sourcing": "*"
   languageName: unknown
   linkType: soft
 
@@ -685,14 +685,13 @@ __metadata:
   resolution: "@ddd-ts/event-sourcing-firestore@workspace:packages/event-sourcing-firestore"
   dependencies:
     "@ddd-ts/dev": "*"
+    "@ddd-ts/event-sourcing": "*"
+    "@ddd-ts/model": "*"
+    "@ddd-ts/serialization": "*"
     "@ddd-ts/store-firestore": "*"
     "@ddd-ts/tests": "*"
     "@ddd-ts/types": "*"
     firebase-admin: ^11.5.0
-  peerDependencies:
-    "@ddd-ts/event-sourcing": "*"
-    "@ddd-ts/model": "*"
-    "@ddd-ts/serialization": "*"
   languageName: unknown
   linkType: soft
 
@@ -701,13 +700,12 @@ __metadata:
   resolution: "@ddd-ts/event-sourcing-inmemory@workspace:packages/event-sourcing-inmemory"
   dependencies:
     "@ddd-ts/dev": "*"
-    "@ddd-ts/tests": "*"
-    "@ddd-ts/types": "*"
-  peerDependencies:
     "@ddd-ts/event-sourcing": "*"
     "@ddd-ts/model": "*"
     "@ddd-ts/serialization": "*"
     "@ddd-ts/store-inmemory": "*"
+    "@ddd-ts/tests": "*"
+    "@ddd-ts/types": "*"
   languageName: unknown
   linkType: soft
 
@@ -716,22 +714,19 @@ __metadata:
   resolution: "@ddd-ts/event-sourcing@workspace:packages/event-sourcing"
   dependencies:
     "@ddd-ts/dev": "*"
+    "@ddd-ts/model": "*"
+    "@ddd-ts/serialization": "*"
     "@ddd-ts/types": "*"
     "@types/uuid": ^8.3.4
     uuid: ^8.3.2
-  peerDependencies:
-    "@ddd-ts/model": "*"
-    "@ddd-ts/serialization": "*"
   languageName: unknown
   linkType: soft
 
-"@ddd-ts/model@workspace:packages/model":
+"@ddd-ts/model@*, @ddd-ts/model@workspace:packages/model":
   version: 0.0.0-use.local
   resolution: "@ddd-ts/model@workspace:packages/model"
   dependencies:
     "@ddd-ts/dev": "*"
-  peerDependencies:
-    "@ddd-ts/serialization": "*"
   languageName: unknown
   linkType: soft
 
@@ -750,25 +745,23 @@ __metadata:
   resolution: "@ddd-ts/serialization@workspace:packages/serialization"
   dependencies:
     "@ddd-ts/dev": "*"
-    "@ddd-ts/types": "*"
-    ts-morph: ^19.0.0
-  peerDependencies:
     "@ddd-ts/model": "*"
     "@ddd-ts/shape": "*"
     "@ddd-ts/traits": "*"
+    "@ddd-ts/types": "*"
+    ts-morph: ^19.0.0
   bin:
     freeze: dist/freeze.js
   languageName: unknown
   linkType: soft
 
-"@ddd-ts/shape@workspace:packages/shape":
+"@ddd-ts/shape@*, @ddd-ts/shape@workspace:packages/shape":
   version: 0.0.0-use.local
   resolution: "@ddd-ts/shape@workspace:packages/shape"
   dependencies:
     "@ddd-ts/dev": "*"
-    "@ddd-ts/types": "*"
-  peerDependencies:
     "@ddd-ts/traits": "*"
+    "@ddd-ts/types": "*"
   languageName: unknown
   linkType: soft
 
@@ -777,23 +770,21 @@ __metadata:
   resolution: "@ddd-ts/store-firestore@workspace:packages/store-firestore"
   dependencies:
     "@ddd-ts/dev": "*"
-    "@ddd-ts/types": "*"
-    firebase-admin: ^11.5.0
-  peerDependencies:
     "@ddd-ts/model": "*"
     "@ddd-ts/serialization": "*"
+    "@ddd-ts/types": "*"
+    firebase-admin: ^11.5.0
   languageName: unknown
   linkType: soft
 
-"@ddd-ts/store-inmemory@workspace:packages/store-inmemory":
+"@ddd-ts/store-inmemory@*, @ddd-ts/store-inmemory@workspace:packages/store-inmemory":
   version: 0.0.0-use.local
   resolution: "@ddd-ts/store-inmemory@workspace:packages/store-inmemory"
   dependencies:
     "@ddd-ts/dev": "*"
-    "@ddd-ts/types": "*"
-  peerDependencies:
     "@ddd-ts/model": "*"
     "@ddd-ts/serialization": "*"
+    "@ddd-ts/types": "*"
   languageName: unknown
   linkType: soft
 
@@ -808,7 +799,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@ddd-ts/traits@workspace:packages/traits":
+"@ddd-ts/traits@*, @ddd-ts/traits@workspace:packages/traits":
   version: 0.0.0-use.local
   resolution: "@ddd-ts/traits@workspace:packages/traits"
   dependencies:
@@ -1769,6 +1760,15 @@ __metadata:
   version: 16.11.32
   resolution: "@types/node@npm:16.11.32"
   checksum: 21f1bcd4f47a443f8a78a58b6ca3488dd9418c71b1185ba067d02222047fb194a3bfba244c32259bcb0cae4d55870b43a908b1f2832ec4aa4f31158f809625fe
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^20.10.3":
+  version: 20.10.3
+  resolution: "@types/node@npm:20.10.3"
+  dependencies:
+    undici-types: ~5.26.4
+  checksum: 34a329494f0ea239af05eeb6f00f396963725b3eb9a2f79c5e6a6d37e823f2ab85e1079c2ee56723a37d8b89e7bbe2bd050c97144e5bb06dab93fd1cace65c97
   languageName: node
   linkType: hard
 
@@ -5656,6 +5656,13 @@ prettier@latest:
   version: 1.13.6
   resolution: "underscore@npm:1.13.6"
   checksum: d5cedd14a9d0d91dd38c1ce6169e4455bb931f0aaf354108e47bd46d3f2da7464d49b2171a5cf786d61963204a42d01ea1332a903b7342ad428deaafaf70ec36
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:~5.26.4":
+  version: 5.26.5
+  resolution: "undici-types@npm:5.26.5"
+  checksum: 3192ef6f3fd5df652f2dc1cd782b49d6ff14dc98e5dced492aa8a8c65425227da5da6aafe22523c67f035a272c599bb89cfe803c1db6311e44bed3042fc25487
   languageName: node
   linkType: hard
 

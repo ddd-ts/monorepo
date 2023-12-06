@@ -11,7 +11,7 @@
     "build": "builder",
     "test": "test-runner"
   },
-  "peerDependencies": {
+  "dependencies": {
     "@ddd-ts/model": "*",
     "@ddd-ts/shape": "*",
     "@ddd-ts/traits": "*"

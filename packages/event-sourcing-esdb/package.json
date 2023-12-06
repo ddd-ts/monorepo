@@ -6,15 +6,13 @@
   "license": "MIT",
   "scripts": {
     "pretest": "docker compose -f docker/docker-compose.yml up -d",
-    "test": "yarn pretest; test-runner; e=$?;yarn posttest; exit $e",
+    "test": "yarn pretest; sleep 5; test-runner; e=$?;yarn posttest; exit $e",
     "posttest": "docker compose -f docker/docker-compose.yml down",
     "build": "builder"
   },
   "dependencies": {
+    "@ddd-ts/event-sourcing": "*",
     "@eventstore/db-client": "^5.0.0"
-  },
-  "peerDependencies": {
-    "@ddd-ts/event-sourcing": "*"
   },
   "devDependencies": {
     "@ddd-ts/dev": "*",

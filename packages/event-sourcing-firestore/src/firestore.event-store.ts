@@ -29,7 +29,7 @@ export class FirestoreEventStore extends EventStore {
     );
   }
 
-  runningSubscriptions = new Set<any>();
+  runningSubscriptions = new Set<() => void>();
 
   get aggregateCollection() {
     return this.firestore.collection("events");
@@ -40,8 +40,6 @@ export class FirestoreEventStore extends EventStore {
       unsubscribe();
       this.runningSubscriptions.delete(unsubscribe);
     }
-
-    await this.firestore.terminate();
   }
 
   async appendToAggregateStream(
