@@ -1,5 +1,5 @@
 import { Store, Model } from "@ddd-ts/model";
-import { InMemoryDatabase, InMemoryTransactionId } from "./in-memory.database";
+import { InMemoryDatabase } from "./in-memory.database";
 import { InMemoryTransaction } from "../in-memory.transaction";
 import { ISerializer } from "@ddd-ts/serialization";
 /**
@@ -26,9 +26,9 @@ export class InMemoryStore<M extends Model>
 
   protected async filter(
     predicate: (model: M) => boolean,
-    trx?: InMemoryTransactionId
+    trx?: InMemoryTransaction
   ): Promise<M[]> {
-    const serialized = await this.database.loadAll(this.collection, trx);
+    const serialized = await this.database.loadAll(this.collection, trx?.transaction);
 
     const all = await Promise.all(
       serialized.map((s) => this.serializer.deserialize(s))
@@ -64,8 +64,8 @@ export class InMemoryStore<M extends Model>
     return this.serializer.deserialize(serialized);
   }
 
-  loadAll(): Promise<M[]> {
-    const serialized = this.database.loadAll(this.collection);
+  loadAll(trx?: InMemoryTransaction): Promise<M[]> {
+    const serialized = this.database.loadAll(this.collection, trx?.transaction);
 
     return Promise.all(serialized.map((s) => this.serializer.deserialize(s)));
   }
@@ -76,8 +76,8 @@ export class InMemoryStore<M extends Model>
     return result.filter(m => m !== undefined) as M[]
   }
 
-  async delete(id: M['id']): Promise<void> {
-    this.database.delete(this.collection, id.toString());
+  async delete(id: M['id'], trx?: InMemoryTransaction): Promise<void> {
+    this.database.delete(this.collection, id.toString(), trx?.transaction);
   }
 
   async * streamAll(): AsyncIterable<M> {

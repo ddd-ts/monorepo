@@ -5,6 +5,6 @@ export {
 } from "./in-memory.transaction";
 export {
   InMemoryDatabase,
-  InMemoryTransactionId,
+  InMemoryUnderlyingTransaction,
 } from "./store/in-memory.database";
 export { InMemoryStore } from "./store/in-memory.store";

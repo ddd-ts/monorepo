@@ -1,49 +1,124 @@
+import { InMemoryTransaction } from "..";
+import { Collection } from "./in-memory.collection";
 import { Storage } from "./in-memory.storage";
 
-export type InMemoryTransactionId = string;
-
-class TransactionNotFound extends Error {
-  constructor(trx: InMemoryTransactionId) {
-    super(`Transaction "${trx}" not found`);
+export class CannotReadAfterWrites extends Error {
+  constructor() {
+    super('Cannot read after having written into a transaction')
   }
 }
 
-class WriteCollisionDetected extends Error {
-  constructor(id: string) {
-    super(`Write collision detected for key "${id}"`);
+export class TransactionCollision extends Error {
+  constructor() {
+    super('Transaction has collided with other extern writes')
+  }
+}
+
+export class TransactionCollidedTooManyTimes extends Error {
+  constructor(tries: number) {
+    super(`Transaction collided too many times (${tries})`)
+  }
+}
+
+type ReadItem = {
+  type: 'read'
+  collectionName: string;
+  id: string;
+  savedAt: number | undefined
+}
+
+type WriteItem = {
+  type: 'write'
+  collectionName: string;
+  id: string;
+  data: any
+}
+
+type DeletedItem = {
+  type: 'delete'
+  collectionName: string
+  id: string
+  savedAt: number | undefined
+}
+
+type TransactionOperation = ReadItem | WriteItem | DeletedItem
+
+export class InMemoryUnderlyingTransaction {
+  public readonly operations: TransactionOperation[] = []
+
+  public readonly id = Math.random().toString().substring(2)
+
+  public markRead(collectionName: string, id: string, savedAt: number | undefined) {
+    if (this.operations.some(operation => operation.type === 'write' || operation.type === 'delete')) {
+      throw new CannotReadAfterWrites()
+    }
+    this.operations.push({ type: "read", collectionName, id, savedAt })
+  }
+
+  public markAllRead(collectionName: string, collection: Collection) {
+    collection.getAllRaw().forEach(({ id, data }) => {
+      this.operations.push({ type: "read", collectionName, id, savedAt: data.savedAt })
+    })
+  }
+
+  public markWritten(collectionName: string, id: any, data: any) {
+    this.operations.push({ type: "write", collectionName, id, data })
+  }
+
+  public markDeleted(collectionName: string, id: any, savedAt: number | undefined) {
+    this.operations.push({ type: "delete", collectionName, id, savedAt })
+  }
+
+  public checkConsistency(storage: Storage) {
+    for (const operation of this.operations) {
+      if (operation.type !== "read") {
+        continue
+      }
+
+      const collection = storage.getCollection(operation.collectionName);
+
+      if (!collection) {
+        return false;
+      }
+
+      if (operation.savedAt !== collection.getRaw(operation.id)?.savedAt) {
+        return false
+      }
+    }
+    return true
   }
 }
 
 export class InMemoryDatabase {
   private storage = new Storage();
-  private transactions = new Map<InMemoryTransactionId, Storage>();
-
-  getStorage(trx?: InMemoryTransactionId) {
-    if (trx) {
-      const storage = this.transactions.get(trx);
-      if (!storage) {
-        throw new TransactionNotFound(trx);
-      }
-      return storage;
-    }
-    return this.storage;
-  }
 
   clear(collectionName: string) {
     this.storage.getCollection(collectionName).clear();
   }
 
-  load(collectionName: string, id: string, trx?: InMemoryTransactionId): any {
-    return this.getStorage(trx).getCollection(collectionName).get(id);
+  load(collectionName: string, id: string, trx?: InMemoryUnderlyingTransaction): any {
+    const collection = this.storage.getCollection(collectionName)
+    const data = collection.get(id)
+    if (trx) {
+      const doc = collection.getRaw(id)
+      trx.markRead(collectionName, id, doc?.savedAt)
+    }
+    return data;
   }
 
-  delete(collectionName: string, id: string): void {
-    // TODO: implement transactional delete
-    this.storage.getCollection(collectionName).delete(id);
+  delete(collectionName: string, id: string, trx?: InMemoryUnderlyingTransaction): void {
+    if (trx) {
+      const doc = this.storage.getCollection(collectionName).getRaw(id)
+      trx.markDeleted(collectionName, id, doc?.savedAt)
+    } else {
+      this.storage.getCollection(collectionName).delete(id);
+    }
   }
 
-  loadAll(collectionName: string, trx?: InMemoryTransactionId): any[] {
-    return this.getStorage(trx).getCollection(collectionName).getAll();
+  loadAll(collectionName: string, trx?: InMemoryUnderlyingTransaction): any[] {
+    const collection = this.storage.getCollection(collectionName)
+    trx?.markAllRead(collectionName, collection)
+    return collection.getAll();
   }
 
   loadLatestSnapshot(id: string) {
@@ -54,32 +129,20 @@ export class InMemoryDatabase {
     collectionName: string,
     id: string,
     data: any,
-    trx?: InMemoryTransactionId
+    trx?: InMemoryUnderlyingTransaction
   ): void {
-    const globalStorage = this.storage;
-    const targetStorage = this.getStorage(trx);
-
-    if (
-      globalStorage.getCollection(collectionName).get(id) &&
-      globalStorage.getCollection(collectionName).get(id) !==
-        targetStorage.getCollection(collectionName).get(id)
-    ) {
-      throw new WriteCollisionDetected(id);
+    if (trx) {
+      trx.markWritten(collectionName, id, data);
+    } else {
+      this.storage.getCollection(collectionName).save(id, data);
     }
-
-    targetStorage.getCollection(collectionName).save(id, data);
   }
 
-  private initiateTransaction(trx = Math.random().toString().substring(2)) {
-    const snapshot = this.storage.clone();
+  private static transactionTries = 5
 
-    this.transactions.set(trx, snapshot);
-    return trx;
-  }
-
-  async transactionally(fn: (trx: InMemoryTransactionId) => any) {
-    const trx = this.initiateTransaction();
-    let retry = 5;
+  async transactionally(fn: (trx: InMemoryTransaction) => any) {
+    let trx = new InMemoryTransaction(new InMemoryUnderlyingTransaction())
+    let retry = InMemoryDatabase.transactionTries;
     let latestReturnValue = undefined;
     while (retry--) {
       try {
@@ -88,10 +151,9 @@ export class InMemoryDatabase {
         break;
       } catch (error) {
         if (
-          error instanceof WriteCollisionDetected ||
-          error instanceof TransactionNotFound
+          error instanceof TransactionCollision
         ) {
-          this.initiateTransaction(trx);
+          trx = new InMemoryTransaction(new InMemoryUnderlyingTransaction())
         } else {
           throw error;
         }
@@ -99,20 +161,28 @@ export class InMemoryDatabase {
     }
 
     if (retry === -1) {
-      throw new Error("failed to execute transaction after 5 retries");
+      throw new TransactionCollidedTooManyTimes(InMemoryDatabase.transactionTries)
     }
 
     return latestReturnValue;
   }
 
-  private commit(trx: InMemoryTransactionId): void {
-    const snapshot = this.transactions.get(trx);
-    if (!snapshot) {
-      throw new TransactionNotFound(trx);
+  private commit(trx: InMemoryTransaction): void {
+    if (!trx.transaction.checkConsistency(this.storage)) {
+      throw new TransactionCollision()
     }
 
-    this.storage = this.storage.clone().merge(snapshot);
-    this.transactions.delete(trx);
+    for (const operation of trx.transaction.operations) {
+      if (operation.type === 'read') {
+        continue;
+      }
+      if (operation.type === "write") {
+        this.save(operation.collectionName, operation.id, operation.data)
+      }
+      if (operation.type === 'delete') {
+        this.delete(operation.collectionName, operation.id)
+      }
+    }
   }
 
   print() {
@@ -120,11 +190,6 @@ export class InMemoryDatabase {
       [
         "Database:",
         this.storage.toPretty(),
-        "",
-        "Transactions:",
-        ...[...this.transactions.entries()].map(
-          ([trx, storage]) => `\t${trx}: ${storage.toPretty()}`
-        ),
       ].join("\n")
     );
   }
