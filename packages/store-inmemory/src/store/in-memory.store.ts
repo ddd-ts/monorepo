@@ -26,15 +26,17 @@ export class InMemoryStore<M extends Model> implements Store<M> {
     predicate: (model: M) => boolean,
     trx?: InMemoryTransaction
   ): Promise<M[]> {
-    return Promise.all(
-      (
-        await this.database.loadFiltered(
-          this.collection,
-          async (item) => predicate(await this.serializer.deserialize(item)),
-          trx?.transaction
-        )
-      ).map((e) => this.serializer.deserialize(e.data.data))
+    const filtered = await Promise.all(
+      this.database.loadAll(this.collection).map(async (e) => {
+        const deserialized = await this.serializer.deserialize(e.data.data);
+        if (!predicate(deserialized)) {
+          return undefined;
+        }
+        trx?.transaction.markRead(this.collection, e.id, e.data.savedAt);
+        return deserialized;
+      })
     );
+    return filtered.filter((e): e is NonNullable<typeof e> => Boolean(e));
   }
 
   clear() {
@@ -65,9 +67,14 @@ export class InMemoryStore<M extends Model> implements Store<M> {
   }
 
   loadAll(trx?: InMemoryTransaction): Promise<M[]> {
-    const serialized = this.database.loadAll(this.collection, trx?.transaction);
+    const serialized = this.database.loadAll(this.collection);
 
-    return Promise.all(serialized.map((s) => this.serializer.deserialize(s)));
+    return Promise.all(
+      serialized.map(async (s) => {
+        trx?.transaction.markRead(this.collection, s.id, s.data.savedAt);
+        return this.serializer.deserialize(s.data.data);
+      })
+    );
   }
 
   async loadMany(ids: M["id"][], trx?: InMemoryTransaction): Promise<M[]> {

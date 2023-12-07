@@ -134,44 +134,8 @@ export class InMemoryDatabase {
     }
   }
 
-  loadAll(
-    collectionName: string,
-    trx?: InMemoryUnderlyingTransaction,
-    filterResult?: (data: any) => boolean
-  ): any[] {
-    const collection = this.storage.getCollection(collectionName);
-    let filtered: ReturnType<(typeof collection)["getAllRaw"]>;
-    if (filterResult) {
-      filtered = collection.getAllRaw().filter((e) => filterResult(e));
-    } else {
-      filtered = collection.getAllRaw();
-    }
-    filtered.forEach(
-      (filteredResult) =>
-        trx?.markRead(
-          collectionName,
-          filteredResult.id,
-          filteredResult.data.savedAt
-        )
-    );
-    return filtered;
-  }
-
-  async loadFiltered(
-    collectionName: string,
-    filterResult: (data: any) => PromiseOr<boolean>,
-    trx?: InMemoryUnderlyingTransaction
-  ) {
-    const collection = this.storage.getCollection(collectionName);
-    const filtered: ReturnType<(typeof collection)["getAllRaw"]> = [];
-    for (const item of collection.getAllRaw()) {
-      if (!(await filterResult(item.data.data))) {
-        continue;
-      }
-      trx?.markRead(collectionName, item.id, item.data.savedAt);
-      filtered.push(item.data.data);
-    }
-    return filtered;
+  loadAll(collectionName: string) {
+    return this.storage.getCollection(collectionName).getAllRaw();
   }
 
   loadLatestSnapshot(id: string) {

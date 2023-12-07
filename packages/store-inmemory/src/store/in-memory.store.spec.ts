@@ -10,7 +10,10 @@ import {
 } from "./in-memory.database";
 
 class MyElement {
-  constructor(public readonly id: string, public name: string) {}
+  constructor(
+    public readonly id: string,
+    public name: string
+  ) {}
 
   public setName(name: string) {
     this.name = name;
@@ -27,14 +30,20 @@ class MyElementSerializer extends Serializer(MyElement)(1n) {
   }
 }
 
+class MyElementStore extends InMemoryStore<MyElement> {
+  constructor(database: InMemoryDatabase) {
+    super("my_collection", database, new MyElementSerializer());
+  }
+
+  loadEven() {
+    return this.filter((e) => +(e.name.split("-")[1] ?? -1) % 2 === 0);
+  }
+}
+
 describe("InMemoryStore", () => {
   function getStore() {
     const database = new InMemoryDatabase();
-    const store = new InMemoryStore<MyElement>(
-      "my_collection",
-      database,
-      new MyElementSerializer()
-    );
+    const store = new MyElementStore(database);
     const transactionPerformer = new InMemoryTransactionPerformer(database);
     return { store, transactionPerformer };
   }
@@ -53,6 +62,22 @@ describe("InMemoryStore", () => {
     await store.save(element);
     const pristine = await store.load(element.id);
     expect(pristine).toEqual(element);
+  });
+
+  it("filters", async () => {
+    const { store } = getStore();
+
+    const elements = [...Array.from({ length: 100 }).keys()].map(
+      (e) => new MyElement(e.toString(), `name-${e.toString()}`)
+    );
+    await Promise.all(elements.map((e) => store.save(e)));
+    const onlyEven = await store.loadEven();
+    expect(onlyEven.length).toBe(50);
+    expect(onlyEven.map((e) => e.name)).toEqual(
+      [...Array.from({ length: 50 }).keys()].map(
+        (e) => `name-${(e * 2).toString()}`
+      )
+    );
   });
 
   it("deletes", async () => {
