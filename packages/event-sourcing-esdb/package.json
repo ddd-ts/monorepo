@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "pretest": "docker compose -f docker/docker-compose.yml up -d",
-    "test": "yarn pretest; sleep 5; test-runner; e=$?;yarn posttest; exit $e",
+    "test": "yarn pretest; sleep 10; test-runner; e=$?;yarn posttest; exit $e",
     "posttest": "docker compose -f docker/docker-compose.yml down",
     "build": "builder"
   },
