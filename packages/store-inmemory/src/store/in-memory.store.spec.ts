@@ -1,7 +1,7 @@
-import { Serialized, Serializer } from "@ddd-ts/serialization";
+import { StoreSuite, MyElementSerializer, MyElement } from "@ddd-ts/tests";
 import {
-  InMemoryDatabase,
   InMemoryStore,
+  InMemoryDatabase,
   InMemoryTransactionPerformer,
 } from "..";
 import {
@@ -9,120 +9,33 @@ import {
   TransactionCollidedTooManyTimes,
 } from "./in-memory.database";
 
-class MyElement {
-  constructor(
-    public readonly id: string,
-    public name: string
-  ) {}
-
-  public setName(name: string) {
-    this.name = name;
-  }
-}
-
-class MyElementSerializer extends Serializer(MyElement)(1n) {
-  serialize(value: MyElement) {
-    return { version: this.version, id: value.id, name: value.name };
-  }
-
-  deserialize(value: Serialized<this>) {
-    return new MyElement(value.id, value.name);
-  }
-}
-
 class MyElementStore extends InMemoryStore<MyElement> {
   constructor(database: InMemoryDatabase) {
     super("my_collection", database, new MyElementSerializer());
   }
 
   loadEven() {
-    return this.filter((e) => +(e.name.split("-")[1] ?? -1) % 2 === 0);
+    return this.filter((e) => e.even);
   }
 }
 
 describe("InMemoryStore", () => {
   function getStore() {
     const database = new InMemoryDatabase();
-    const store = new MyElementStore(database);
-    const transactionPerformer = new InMemoryTransactionPerformer(database);
-    return { store, transactionPerformer };
+    return {
+      store: new MyElementStore(database),
+      transactionPerformer: new InMemoryTransactionPerformer(database),
+    };
   }
 
-  it("saves", async () => {
-    const { store } = getStore();
-
-    const element = new MyElement("myid", "timothee");
-    await store.save(element);
-  });
-
-  it("loads", async () => {
-    const { store } = getStore();
-
-    const element = new MyElement("myid", "timothee");
-    await store.save(element);
-    const pristine = await store.load(element.id);
-    expect(pristine).toEqual(element);
-  });
-
-  it("filters", async () => {
-    const { store } = getStore();
-
-    const elements = [...Array.from({ length: 100 }).keys()].map(
-      (e) => new MyElement(e.toString(), `name-${e.toString()}`)
-    );
-    await Promise.all(elements.map((e) => store.save(e)));
-    const onlyEven = await store.loadEven();
-    expect(onlyEven.length).toBe(50);
-    expect(onlyEven.map((e) => e.name)).toEqual(
-      [...Array.from({ length: 50 }).keys()].map(
-        (e) => `name-${(e * 2).toString()}`
-      )
-    );
-  });
-
-  it("deletes", async () => {
-    const { store } = getStore();
-
-    const element = new MyElement("myid", "timothee");
-    await store.save(element);
-    const pristine = await store.delete(element.id);
-    expect(pristine).toEqual(undefined);
-  });
-
-  it("transactionally writes", async () => {
-    const { store, transactionPerformer } = getStore();
-
-    const element = new MyElement("myid", "timothee");
-    await transactionPerformer.perform(async (transaction) => {
-      await store.save(element, transaction);
-    });
-    const pristine = await store.load(element.id);
-    expect(pristine).toEqual(element);
-  });
-
-  it("transactionally deletes", async () => {
-    const { store, transactionPerformer } = getStore();
-
-    const element = new MyElement("myid", "timothee");
-    await store.save(element);
-    await transactionPerformer.perform(async (transaction) => {
-      const pristine = await store.load(element.id, transaction);
-      expect(pristine).toBeTruthy();
-      if (!pristine) {
-        return;
-      }
-      await store.delete(pristine.id, transaction);
-    });
-    const pristine = await store.load(element.id);
-    expect(pristine).toEqual(undefined);
-  });
+  StoreSuite(getStore);
 
   it("fails transactionally read after write", async () => {
     const { store, transactionPerformer } = getStore();
 
     await expect(
       transactionPerformer.perform(async (transaction) => {
-        const element = new MyElement("myid", "timothee");
+        const element = new MyElement("myid", "timothee", false);
         await store.save(element, transaction);
         await store.load(element.id, transaction);
       })
@@ -133,7 +46,7 @@ describe("InMemoryStore", () => {
     let uniqueId = 0;
     const { store, transactionPerformer } = getStore();
 
-    const element = new MyElement("myid", "timothee");
+    const element = new MyElement("myid", "timothee", false);
     await store.save(element);
 
     let effectCalled = 0;
@@ -144,7 +57,7 @@ describe("InMemoryStore", () => {
         element.setName("elies");
 
         uniqueId += 1;
-        await store.save(new MyElement(element.id, uniqueId.toString()));
+        await store.save(new MyElement(element.id, uniqueId.toString(), false));
 
         await store.save(element, transaction);
       })
@@ -156,7 +69,7 @@ describe("InMemoryStore", () => {
     let uniqueId = 0;
     const { store, transactionPerformer } = getStore();
 
-    const element = new MyElement("myid", "timothee");
+    const element = new MyElement("myid", "timothee", false);
     await store.save(element);
 
     let effectCalled = 0;
@@ -172,7 +85,7 @@ describe("InMemoryStore", () => {
       loadedElement.setName("elies");
 
       if (uniqueId === 0) {
-        await store.save(new MyElement(element.id, uniqueId.toString()));
+        await store.save(new MyElement(element.id, uniqueId.toString(), false));
         uniqueId += 1;
       }
 
@@ -185,7 +98,7 @@ describe("InMemoryStore", () => {
     let uniqueId = 0;
     const { store, transactionPerformer } = getStore();
 
-    const element = new MyElement("myid", "timothee");
+    const element = new MyElement("myid", "timothee", false);
     await store.save(element);
 
     let onCommitCalled = 0;
@@ -204,7 +117,7 @@ describe("InMemoryStore", () => {
       loadedElement.setName("elies");
 
       if (uniqueId === 0) {
-        await store.save(new MyElement(element.id, uniqueId.toString()));
+        await store.save(new MyElement(element.id, uniqueId.toString(), false));
         uniqueId += 1;
       }
 

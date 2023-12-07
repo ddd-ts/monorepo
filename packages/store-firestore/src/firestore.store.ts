@@ -61,8 +61,8 @@ export class FirestoreStore<M extends Model> implements Store<M> {
 
     function getNextPagePromise(cursor: DocumentSnapshot | undefined) {
       return cursor
-        ? query.limit(pageSize).get()
-        : query.startAfter(cursor).limit(pageSize).get();
+        ? query.limit(pageSize).startAfter(cursor).get()
+        : query.limit(pageSize).get();
     }
 
     do {

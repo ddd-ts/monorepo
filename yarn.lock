@@ -784,6 +784,7 @@ __metadata:
     "@ddd-ts/dev": "*"
     "@ddd-ts/model": "*"
     "@ddd-ts/serialization": "*"
+    "@ddd-ts/tests": "*"
     "@ddd-ts/types": "*"
   languageName: unknown
   linkType: soft
