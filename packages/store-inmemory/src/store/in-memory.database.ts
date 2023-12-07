@@ -1,78 +1,89 @@
+import { PromiseOr } from "@ddd-ts/serialization";
 import { InMemoryTransaction } from "..";
 import { Collection } from "./in-memory.collection";
 import { Storage } from "./in-memory.storage";
 
 export class CannotReadAfterWrites extends Error {
   constructor() {
-    super('Cannot read after having written into a transaction')
+    super("Cannot read after having written into a transaction");
   }
 }
 
 export class TransactionCollision extends Error {
   constructor() {
-    super('Transaction has collided with other extern writes')
+    super("Transaction has collided with other extern writes");
   }
 }
 
 export class TransactionCollidedTooManyTimes extends Error {
   constructor(tries: number) {
-    super(`Transaction collided too many times (${tries})`)
+    super(`Transaction collided too many times (${tries})`);
   }
 }
 
 type ReadOperation = {
-  type: 'read'
+  type: "read";
   collectionName: string;
   id: string;
-  savedAt: number | undefined
-}
+  savedAt: number | undefined;
+};
 
 type WriteOperation = {
-  type: 'write'
+  type: "write";
   collectionName: string;
   id: string;
-  data: any
-}
+  data: any;
+};
 
 type DeleteOperation = {
-  type: 'delete'
-  collectionName: string
-  id: string
-  savedAt: number | undefined
-}
+  type: "delete";
+  collectionName: string;
+  id: string;
+  savedAt: number | undefined;
+};
 
-type TransactionOperation = ReadOperation | WriteOperation | DeleteOperation
+type TransactionOperation = ReadOperation | WriteOperation | DeleteOperation;
 
 export class InMemoryUnderlyingTransaction {
-  public readonly operations: TransactionOperation[] = []
+  public readonly operations: TransactionOperation[] = [];
 
-  public readonly id = Math.random().toString().substring(2)
+  public readonly id = Math.random().toString().substring(2);
 
-  public markRead(collectionName: string, id: string, savedAt: number | undefined) {
-    if (this.operations.some(operation => operation.type === 'write' || operation.type === 'delete')) {
-      throw new CannotReadAfterWrites()
+  private ensureNoWrites() {
+    if (
+      this.operations.some(
+        (operation) => operation.type === "write" || operation.type === "delete"
+      )
+    ) {
+      throw new CannotReadAfterWrites();
     }
-    this.operations.push({ type: "read", collectionName, id, savedAt })
   }
 
-  public markAllRead(collectionName: string, collection: Collection) {
-    collection.getAllRaw().forEach(({ id, data }) => {
-      this.operations.push({ type: "read", collectionName, id, savedAt: data.savedAt })
-    })
+  public markRead(
+    collectionName: string,
+    id: string,
+    savedAt: number | undefined
+  ) {
+    this.ensureNoWrites();
+    this.operations.push({ type: "read", collectionName, id, savedAt });
   }
 
   public markWritten(collectionName: string, id: any, data: any) {
-    this.operations.push({ type: "write", collectionName, id, data })
+    this.operations.push({ type: "write", collectionName, id, data });
   }
 
-  public markDeleted(collectionName: string, id: any, savedAt: number | undefined) {
-    this.operations.push({ type: "delete", collectionName, id, savedAt })
+  public markDeleted(
+    collectionName: string,
+    id: any,
+    savedAt: number | undefined
+  ) {
+    this.operations.push({ type: "delete", collectionName, id, savedAt });
   }
 
   public checkConsistency(storage: Storage) {
     for (const operation of this.operations) {
       if (operation.type !== "read") {
-        continue
+        continue;
       }
 
       const collection = storage.getCollection(operation.collectionName);
@@ -82,10 +93,10 @@ export class InMemoryUnderlyingTransaction {
       }
 
       if (operation.savedAt !== collection.getRaw(operation.id)?.savedAt) {
-        return false
+        return false;
       }
     }
-    return true
+    return true;
   }
 }
 
@@ -96,29 +107,71 @@ export class InMemoryDatabase {
     this.storage.getCollection(collectionName).clear();
   }
 
-  load(collectionName: string, id: string, trx?: InMemoryUnderlyingTransaction): any {
-    const collection = this.storage.getCollection(collectionName)
-    const data = collection.get(id)
+  load(
+    collectionName: string,
+    id: string,
+    trx?: InMemoryUnderlyingTransaction
+  ): any {
+    const collection = this.storage.getCollection(collectionName);
+    const data = collection.get(id);
     if (trx) {
-      const doc = collection.getRaw(id)
-      trx.markRead(collectionName, id, doc?.savedAt)
+      const doc = collection.getRaw(id);
+      trx.markRead(collectionName, id, doc?.savedAt);
     }
     return data;
   }
 
-  delete(collectionName: string, id: string, trx?: InMemoryUnderlyingTransaction): void {
+  delete(
+    collectionName: string,
+    id: string,
+    trx?: InMemoryUnderlyingTransaction
+  ): void {
     if (trx) {
-      const doc = this.storage.getCollection(collectionName).getRaw(id)
-      trx.markDeleted(collectionName, id, doc?.savedAt)
+      const doc = this.storage.getCollection(collectionName).getRaw(id);
+      trx.markDeleted(collectionName, id, doc?.savedAt);
     } else {
       this.storage.getCollection(collectionName).delete(id);
     }
   }
 
-  loadAll(collectionName: string, trx?: InMemoryUnderlyingTransaction): any[] {
-    const collection = this.storage.getCollection(collectionName)
-    trx?.markAllRead(collectionName, collection)
-    return collection.getAll();
+  loadAll(
+    collectionName: string,
+    trx?: InMemoryUnderlyingTransaction,
+    filterResult?: (data: any) => boolean
+  ): any[] {
+    const collection = this.storage.getCollection(collectionName);
+    let filtered: ReturnType<(typeof collection)["getAllRaw"]>;
+    if (filterResult) {
+      filtered = collection.getAllRaw().filter((e) => filterResult(e));
+    } else {
+      filtered = collection.getAllRaw();
+    }
+    filtered.forEach(
+      (filteredResult) =>
+        trx?.markRead(
+          collectionName,
+          filteredResult.id,
+          filteredResult.data.savedAt
+        )
+    );
+    return filtered;
+  }
+
+  async loadFiltered(
+    collectionName: string,
+    filterResult: (data: any) => PromiseOr<boolean>,
+    trx?: InMemoryUnderlyingTransaction
+  ) {
+    const collection = this.storage.getCollection(collectionName);
+    const filtered: ReturnType<(typeof collection)["getAllRaw"]> = [];
+    for (const item of collection.getAllRaw()) {
+      if (!(await filterResult(item.data.data))) {
+        continue;
+      }
+      trx?.markRead(collectionName, item.id, item.data.savedAt);
+      filtered.push(item.data.data);
+    }
+    return filtered;
   }
 
   loadLatestSnapshot(id: string) {
@@ -138,10 +191,10 @@ export class InMemoryDatabase {
     }
   }
 
-  private static transactionTries = 5
+  private static transactionTries = 5;
 
   async transactionally(fn: (trx: InMemoryTransaction) => any) {
-    let trx = new InMemoryTransaction(new InMemoryUnderlyingTransaction())
+    let trx = new InMemoryTransaction(new InMemoryUnderlyingTransaction());
     let retry = InMemoryDatabase.transactionTries;
     let latestReturnValue = undefined;
     while (retry--) {
@@ -150,10 +203,8 @@ export class InMemoryDatabase {
         this.commit(trx);
         break;
       } catch (error) {
-        if (
-          error instanceof TransactionCollision
-        ) {
-          trx = new InMemoryTransaction(new InMemoryUnderlyingTransaction())
+        if (error instanceof TransactionCollision) {
+          trx = new InMemoryTransaction(new InMemoryUnderlyingTransaction());
         } else {
           throw error;
         }
@@ -161,7 +212,9 @@ export class InMemoryDatabase {
     }
 
     if (retry === -1) {
-      throw new TransactionCollidedTooManyTimes(InMemoryDatabase.transactionTries)
+      throw new TransactionCollidedTooManyTimes(
+        InMemoryDatabase.transactionTries
+      );
     }
 
     return latestReturnValue;
@@ -169,28 +222,23 @@ export class InMemoryDatabase {
 
   private commit(trx: InMemoryTransaction): void {
     if (!trx.transaction.checkConsistency(this.storage)) {
-      throw new TransactionCollision()
+      throw new TransactionCollision();
     }
 
     for (const operation of trx.transaction.operations) {
-      if (operation.type === 'read') {
+      if (operation.type === "read") {
         continue;
       }
       if (operation.type === "write") {
-        this.save(operation.collectionName, operation.id, operation.data)
+        this.save(operation.collectionName, operation.id, operation.data);
       }
-      if (operation.type === 'delete') {
-        this.delete(operation.collectionName, operation.id)
+      if (operation.type === "delete") {
+        this.delete(operation.collectionName, operation.id);
       }
     }
   }
 
   print() {
-    console.log(
-      [
-        "Database:",
-        this.storage.toPretty(),
-      ].join("\n")
-    );
+    console.log(["Database:", this.storage.toPretty()].join("\n"));
   }
 }
