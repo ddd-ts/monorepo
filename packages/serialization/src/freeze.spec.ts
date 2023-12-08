@@ -28,9 +28,9 @@ function testFreeze(id: string, value: any) {
 
 describe("freeze", () => {
 	it("should freeze a value", () => {
-		const result = testFreeze("1", { a: 1, b: 2 });
+		const result = testFreeze("1", { a: 1, b: new Date() });
 
-		expect(result).toEqual("\ntype Output = { a: number; b: number; };");
+		expect(result).toEqual("\ntype Output = { a: number; b: Date; };");
 	});
 
 	it("should freeze a value with a nested object", () => {
@@ -160,6 +160,36 @@ describe("freeze", () => {
 			].join("\n"),
 		);
 	});
+
+	it("should support indexed object types", () => {
+		type Thing = { [key: string]: number; test: number };
+		const result = testFreeze("11", {} as Thing);
+		expect(result).toEqual(
+			[
+				"type Thing = { [key: string]: number; test: number; }",
+				"type Output = Thing;",
+			].join("\n"),
+		);
+	});
+
+	it("should support records", () => {
+		type Thing = Record<string, number>;
+		const result = testFreeze("12", {} as Thing);
+		expect(result).toEqual(
+			["", "type Output = Record<string, number>;"].join("\n"),
+		);
+	});
+
+	// it("should freeze a value referencing a generic", () => {
+	// 	const thing = (a: number) => ({ a });
+	// 	type OtherThing = { b: ReturnType<typeof thing> };
+
+	// 	const result = testFreeze("13", {} as OtherThing);
+
+	// 	expect(result).toEqual(
+	// 		["type Thing<T> = { a: T; }", "type Output = Thing<number>;"].join("\n"),
+	// 	);
+	// });
 
 	it.skip("should freeze a generic", () => {
 		type Thing<T> = { a: T };

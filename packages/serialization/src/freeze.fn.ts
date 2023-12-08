@@ -15,29 +15,23 @@ export function freeze(
 
 	// Explore the type definition
 	const other = new Map();
-	const explored = exploreType(type, checker, new Set(), other);
+	const explored = exploreType(type, checker, other);
 	const typeDefinitions = [...other.values()].join("\n");
 	return `${typeDefinitions}\ntype Output = ${explored};`;
 }
 
-// const file = process.argv[2];
-
-// // Load source files and create program
-// const program = ts.createProgram([file], {});
-
-// // Get type checker
-// const checker = program.getTypeChecker();
-
-// // Find the type declaration
-// const sourceFile = program.getSourceFiles().find(s => s.fileName.includes(file))!;
-
-// // Find the "Serialized" exported type
-// const serializedType = sourceFile.statements
-//     .filter(ts.isTypeAliasDeclaration)
-//     .find(s => s.name.getText() === 'Serialized')
-// if (!serializedType) throw new Error('Could not find Serialized type');
-
-function listFlagsNames(flags: number) {
+function listTypeFlagsNames(flags: number) {
+	const names = [];
+	for (const flagName in ts.TypeFlags) {
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+		if ((ts.TypeFlags[flagName as any] as any) & flags) {
+			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+			names.push([flagName, ts.TypeFlags[flagName as any]]);
+		}
+	}
+	return names;
+}
+function listSymbolFlagsNames(flags: number) {
 	const names = [];
 	for (const flagName in ts.TypeFlags) {
 		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -52,37 +46,44 @@ function listFlagsNames(flags: number) {
 export function exploreType(
 	type: ts.Type,
 	checker: ts.TypeChecker,
-	seen: Set<ts.Symbol> = new Set(),
 	declarations: Map<ts.Symbol, string> = new Map(),
+	seen: Set<string> = new Set(["Date", "Record"]),
 ): string {
-	if (type.aliasSymbol && seen.has(type.aliasSymbol)) {
-		return type.aliasSymbol.name;
+	if (type.aliasSymbol && seen.has(type.aliasSymbol.getName())) {
+		const a = type.aliasTypeArguments;
+		return `${type.aliasSymbol.name}${
+			a
+				? `<${a
+						.map((a) => exploreType(a, checker, declarations, seen))
+						.join(", ")}>`
+				: ""
+		}`;
 	}
 
 	if (type.aliasSymbol) {
 		const aliasType = checker.getDeclaredTypeOfSymbol(type.aliasSymbol);
-		seen.add(type.aliasSymbol);
+		seen.add(type.aliasSymbol.getName());
 		const definition = exploreNativeType(
 			aliasType,
 			checker,
-			seen,
 			declarations,
+			seen,
 		);
 		declarations.set(
 			type.aliasSymbol,
 			`type ${type.aliasSymbol.name} = ${definition}`,
 		);
-		return type.aliasSymbol.name;
+		return exploreType(aliasType, checker, declarations, seen);
 	}
 
-	return exploreNativeType(type, checker, seen, declarations);
+	return exploreNativeType(type, checker, declarations, seen);
 }
 
 function exploreNativeType(
 	type: ts.Type,
 	checker: ts.TypeChecker,
-	seen: Set<ts.Symbol> = new Set(),
 	declarations: Map<ts.Symbol, string> = new Map(),
+	seen: Set<string> = new Set(),
 ): string {
 	if (type.flags & 402784252) {
 		return checker.typeToString(type);
@@ -90,7 +91,7 @@ function exploreNativeType(
 	if (type.isUnionOrIntersection()) {
 		const operator = type.isUnion() ? "|" : "&";
 		return type.types
-			.map((t) => exploreType(t, checker, seen, declarations))
+			.map((t) => exploreType(t, checker, declarations, seen))
 			.join(` ${operator} `);
 	}
 
@@ -100,7 +101,7 @@ function exploreNativeType(
 			? typeReference.typeArguments[0]
 			: undefined;
 		return elementType
-			? `readonly (${exploreType(elementType, checker, seen, declarations)})[]`
+			? `readonly (${exploreType(elementType, checker, declarations, seen)})[]`
 			: "ReadonlyArray<any>";
 	}
 
@@ -108,7 +109,7 @@ function exploreNativeType(
 		const typeReference = type as ts.TypeReference;
 		const elementTypes = typeReference.typeArguments || [];
 		return `[${elementTypes
-			.map((t) => exploreType(t, checker, seen, declarations))
+			.map((t) => exploreType(t, checker, declarations, seen))
 			.join(", ")}]`;
 	}
 
@@ -118,9 +119,17 @@ function exploreNativeType(
 			? typeReference.typeArguments[0]
 			: undefined;
 		return elementType
-			? `(${exploreType(elementType, checker, seen, declarations)})[]`
+			? `(${exploreType(elementType, checker, declarations, seen)})[]`
 			: "any[]";
 	}
+
+	// if (type.aliasTypeArguments) {
+	// 	const typeReference = type as ts.TypeReference;
+	// 	const elementTypes = typeReference.aliasTypeArguments || [];
+	// 	return `${type.aliasSymbol?.name}<${elementTypes
+	// 		.map((t) => exploreType(t, checker, declarations, seen))
+	// 		.join(", ")}>`;
+	// }
 
 	if (type.getSymbol()?.getName() === "Date") {
 		return "Date";
@@ -129,7 +138,29 @@ function exploreNativeType(
 	if (type.flags & ts.TypeFlags.Object) {
 		const properties = checker.getPropertiesOfType(type);
 
-		return `{ ${properties.reduce((acc, property) => {
+		const indexInfos = checker.getIndexInfosOfType(type);
+
+		let index = "";
+		if (indexInfos.length > 0) {
+			const indexInfo = indexInfos[0];
+			const indexType = indexInfo.keyType;
+			const indexTypeString = exploreType(
+				indexType,
+				checker,
+				declarations,
+				seen,
+			);
+			const valueType = indexInfo.type;
+			const valueTypeString = exploreType(
+				valueType,
+				checker,
+				declarations,
+				seen,
+			);
+			index = `[key: ${indexTypeString}]: ${valueTypeString}; `;
+		}
+
+		return `{ ${index}${properties.reduce((acc, property) => {
 			const propertyType = checker.getTypeOfSymbol(property);
 			const optional = property.flags & ts.SymbolFlags.Optional ? "?" : "";
 			const readonly = property
@@ -148,8 +179,8 @@ function exploreNativeType(
 				`${readonly}${property.name}${optional}: ${exploreType(
 					propertyType,
 					checker,
-					seen,
 					declarations,
+					seen,
 				)}; `
 			);
 		}, "")}}`;
@@ -161,6 +192,6 @@ function exploreNativeType(
 
 	return JSON.stringify({
 		name: checker.typeToString(type),
-		flags: listFlagsNames(type.flags),
+		flags: listTypeFlagsNames(type.flags),
 	});
 }

@@ -41,7 +41,7 @@ export function freeze(
 
 	// Explore the type definition
 	const other = new Map();
-	const explored = exploreType(type, checker, new Set(), other);
+	const explored = exploreType(type, checker, other);
 	const typeDefinitions = [...other.values()].join("\n");
 	return `${typeDefinitions}\ntype Output = ${explored};`;
 }
@@ -105,20 +105,23 @@ for (const ref of references) {
 			.getTypeChecker()
 			.getTypeOfSymbolAtLocation(serializeProperty, classDeclaration)
 			.getCallSignatures()[0];
-		const serialized = serializeMethod.getReturnType();
+
+		let serialized = serializeMethod.getReturnType();
+		if (serialized.getSymbol()?.getName() === "Promise") {
+			serialized = serialized.getTypeArguments()[0];
+		}
 
 		const other = new Map();
 		const result = exploreType(
 			serialized.compilerType,
 			project.getTypeChecker().compilerObject,
-			new Set(),
 			other,
 		);
 
 		const name = serializeMethod
 			.getParameters()[0]
 			.getTypeAtLocation(classDeclaration)
-			.getSymbol()
+			.getAliasSymbol()
 			?.getName();
 
 		if (!name) {
