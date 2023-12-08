@@ -19,6 +19,10 @@
     {
       "name": "@ddd-ts/shape",
       "path": "../packages/shape"
+    },
+    {
+      "name": "@ddd-ts/serialization",
+      "path": "../packages/serialization"
     }
   ],
   "settings": {}

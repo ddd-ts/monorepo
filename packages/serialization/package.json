@@ -1,24 +1,24 @@
 {
-  "name": "@ddd-ts/serialization",
-  "version": "0.0.2",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "license": "MIT",
-  "bin": {
-    "freeze": "dist/freeze.js"
-  },
-  "scripts": {
-    "build": "builder",
-    "test": "test-runner"
-  },
-  "dependencies": {
-    "@ddd-ts/model": "*",
-    "@ddd-ts/shape": "*",
-    "@ddd-ts/traits": "*"
-  },
-  "devDependencies": {
-    "@ddd-ts/dev": "*",
-    "@ddd-ts/types": "*",
-    "ts-morph": "^19.0.0"
-  }
+	"name": "@ddd-ts/serialization",
+	"version": "0.0.2",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"license": "MIT",
+	"bin": {
+		"freeze": "dist/freeze.js"
+	},
+	"scripts": {
+		"build": "builder",
+		"test": "test-runner"
+	},
+	"dependencies": {
+		"@ddd-ts/model": "*",
+		"@ddd-ts/shape": "*",
+		"@ddd-ts/traits": "*"
+	},
+	"devDependencies": {
+		"@ddd-ts/dev": "*",
+		"@ddd-ts/types": "*",
+		"ts-morph": "^19.0.0"
+	}
 }
