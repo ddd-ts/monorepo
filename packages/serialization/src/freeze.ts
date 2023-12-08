@@ -129,7 +129,9 @@ for (const ref of references) {
 		}
 
 		const serializedName = `${name}Serialized${version}`;
-		const serializedFilename = `${name}.serialized.${version}`;
+		const serializedFilename = lowercasefirstletter(
+			`${name}.serialized.${version}`,
+		);
 
 		const directory = refref.getSourceFile().getDirectory();
 
@@ -147,9 +149,6 @@ for (const ref of references) {
 			`type ${serializedName} = ${result}`,
 		].join("\n");
 
-		fs.writeFileSync(
-			`${directory.getPath()}/${lowercasefirstletter(serializedFilename)}.ts`,
-			output,
-		);
+		fs.writeFileSync(`${directory.getPath()}/${serializedFilename}.ts`, output);
 	}
 }
