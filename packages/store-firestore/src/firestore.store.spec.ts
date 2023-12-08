@@ -13,10 +13,6 @@ class MyElementStore extends FirestoreStore<MyElement> {
   loadEven() {
     return this.executeQuery(this.collection.where("even", "==", true));
   }
-
-  streamFast() {
-    return this.streamQuery(this.collection.orderBy("id"), 10);
-  }
 }
 
 describe("FirestoreStore", () => {
@@ -45,7 +41,7 @@ describe("FirestoreStore", () => {
     );
     await Promise.all(elements.map((e) => store.save(e)));
     const streamed: string[] = [];
-    for await (const element of store.streamFast()) {
+    for await (const element of store.streamAll(10)) {
       streamed.push(element.name);
     }
     expect(streamed.length).toBe(100);

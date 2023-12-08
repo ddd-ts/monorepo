@@ -141,7 +141,7 @@ export class FirestoreStore<M extends Model> implements Store<M> {
     return result.filter((m) => m !== undefined) as M[];
   }
 
-  streamAll(): AsyncIterable<M> {
-    return this.streamQuery(this.collection);
+  streamAll(pageSize?: number): AsyncIterable<M> {
+    return this.streamQuery(this.collection, pageSize);
   }
 }
