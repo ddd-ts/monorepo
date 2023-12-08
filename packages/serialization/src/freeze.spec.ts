@@ -180,6 +180,19 @@ describe("freeze", () => {
 		);
 	});
 
+	it("should coalesce enum members to their value", () => {
+		enum Thing {
+			A = "0",
+			B = 1,
+			C = 2,
+		}
+		const resultA = testFreeze("13", Thing.A);
+		expect(resultA).toEqual(["", 'type Output = "0";'].join("\n"));
+
+		const resultB = testFreeze("14", Thing.B);
+		expect(resultB).toEqual(["", "type Output = 1;"].join("\n"));
+	});
+
 	// it("should freeze a value referencing a generic", () => {
 	// 	const thing = (a: number) => ({ a });
 	// 	type OtherThing = { b: ReturnType<typeof thing> };

@@ -79,13 +79,23 @@ export function exploreType(
 	return exploreNativeType(type, checker, declarations, seen);
 }
 
+const PrimitiveFlag = 402784252;
+
 function exploreNativeType(
 	type: ts.Type,
 	checker: ts.TypeChecker,
 	declarations: Map<ts.Symbol, string> = new Map(),
 	seen: Set<string> = new Set(),
 ): string {
-	if (type.flags & 402784252) {
+	if (type.flags & ts.TypeFlags.EnumLiteral) {
+		const v = (type as any).value;
+		if (typeof v === "string") {
+			return `"${v}"`;
+		}
+		return v;
+	}
+
+	if (type.flags & PrimitiveFlag) {
 		return checker.typeToString(type);
 	}
 	if (type.isUnionOrIntersection()) {
