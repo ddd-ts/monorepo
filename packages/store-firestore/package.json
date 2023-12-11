@@ -1,22 +1,19 @@
 {
-  "name": "@ddd-ts/store-firestore",
-  "version": "0.0.2",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "license": "MIT",
-  "scripts": {
-    "pretest": "docker compose -f docker/docker-compose.yml up -d",
-    "test": "yarn pretest; test-runner; e=$? ;yarn posttest; exit $e",
-    "posttest": "docker compose -f docker/docker-compose.yml down",
-    "build": "builder"
-  },
-  "dependencies": {
-    "@ddd-ts/model": "*",
-    "@ddd-ts/serialization": "*",
-    "firebase-admin": "^11.5.0"
-  },
-  "devDependencies": {
-    "@ddd-ts/dev": "*",
-    "@ddd-ts/types": "*"
-  }
+	"name": "@ddd-ts/store-firestore",
+	"version": "0.0.2",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"license": "MIT",
+	"scripts": {
+		"build": "builder"
+	},
+	"dependencies": {
+		"@ddd-ts/model": "*",
+		"@ddd-ts/serialization": "*",
+		"firebase-admin": "^11.5.0"
+	},
+	"devDependencies": {
+		"@ddd-ts/dev": "*",
+		"@ddd-ts/types": "*"
+	}
 }

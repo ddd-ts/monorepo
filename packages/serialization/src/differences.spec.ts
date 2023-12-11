@@ -151,3 +151,7 @@ import { Differences } from "./differences";
 	type R = { a: { b: { c: { d: number } } } };
 	type D = Differences<L, R>;
 }
+
+it("this is a type test file", () => {
+	expect(true).toBe(true);
+});
