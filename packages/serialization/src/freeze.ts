@@ -149,7 +149,7 @@ for (const ref of references) {
 
 		const output = [
 			...other.values(),
-			`type ${serializedName} = ${result}`,
+			`export type ${serializedName} = ${result}`,
 		].join("\n");
 
 		fs.writeFileSync(`${directory.getPath()}/${serializedFilename}.ts`, output);
