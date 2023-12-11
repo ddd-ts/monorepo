@@ -8,7 +8,4 @@ services:
       - "./firebase.json:/home/node/firebase.json"
     ports:
       - 4000:4000 # emulator ui
-      - 9099:9099 # auth emulator
       - 8080:8080 # firestore emulator
-      - 8085:8085 # pubsub emulator
-      - 9199:9199 # storage emulator

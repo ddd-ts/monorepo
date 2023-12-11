@@ -7,7 +7,8 @@
 	"scripts": {
 		"build": "builder",
 		"pretest": "docker compose -f docker/docker-compose.yml up -d",
-		"test": "yarn pretest; test-runner; e=$? ;yarn posttest; exit $e",
+		"wait": "sh -c 'until curl --silent localhost:8080; do sleep 1; done;'",
+		"test": "yarn pretest; yarn wait; test-runner; e=$? ;yarn posttest; exit $e",
 		"posttest": "docker compose -f docker/docker-compose.yml down"
 	},
 	"dependencies": {

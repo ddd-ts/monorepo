@@ -1,22 +1,23 @@
 {
-  "name": "@ddd-ts/event-sourcing-esdb",
-  "version": "0.0.2",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "license": "MIT",
-  "scripts": {
-    "pretest": "docker compose -f docker/docker-compose.yml up -d",
-    "test": "yarn pretest; sleep 10; test-runner; e=$?;yarn posttest; exit $e",
-    "posttest": "docker compose -f docker/docker-compose.yml down",
-    "build": "builder"
-  },
-  "dependencies": {
-    "@ddd-ts/event-sourcing": "*",
-    "@eventstore/db-client": "^5.0.0"
-  },
-  "devDependencies": {
-    "@ddd-ts/dev": "*",
-    "@ddd-ts/event-sourcing-inmemory": "*",
-    "@ddd-ts/tests": "*"
-  }
+	"name": "@ddd-ts/event-sourcing-esdb",
+	"version": "0.0.2",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"license": "MIT",
+	"scripts": {
+		"pretest": "docker compose -f docker/docker-compose.yml up -d",
+		"wait": "sh -c 'until curl --silent localhost:2113/health; do sleep 1; done;'",
+		"test": "yarn pretest; yarn wait; test-runner; e=$?;yarn posttest; exit $e",
+		"posttest": "docker compose -f docker/docker-compose.yml down",
+		"build": "builder"
+	},
+	"dependencies": {
+		"@ddd-ts/event-sourcing": "*",
+		"@eventstore/db-client": "^5.0.0"
+	},
+	"devDependencies": {
+		"@ddd-ts/dev": "*",
+		"@ddd-ts/event-sourcing-inmemory": "*",
+		"@ddd-ts/tests": "*"
+	}
 }
