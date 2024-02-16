@@ -118,11 +118,23 @@ for (const ref of references) {
       other,
     );
 
-    const name = serializeMethod
-      .getParameters()[0]
-      .getTypeAtLocation(classDeclaration)
-      .getAliasSymbol()
-      ?.getName();
+		const type = serializeMethod
+			.getParameters()[0]
+			.getTypeAtLocation(classDeclaration);
+		const symbol = type.getSymbol()?.getName();
+		const aliasSymbol = type.getAliasSymbol()?.getName();
+		let name: string | undefined;
+		if (symbol) {
+			name = symbol;
+			console.log(
+				`${rpath} - ${classDeclaration.getName()}: Using symbol ${symbol}`,
+			);
+		} else if (aliasSymbol) {
+			name = aliasSymbol;
+			console.log(
+				`${rpath} - ${classDeclaration.getName()}: Using aliasSymbol ${aliasSymbol}`,
+			);
+		}
 
     if (!name) {
       console.log(
