@@ -19,6 +19,6 @@
 	"devDependencies": {
 		"@ddd-ts/dev": "*",
 		"@ddd-ts/types": "*",
-		"ts-morph": "^19.0.0"
+		"ts-morph": "^21.0.1"
 	}
 }
