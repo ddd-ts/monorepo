@@ -1,3 +1,4 @@
+import { Constructor } from "..";
 import { Definition } from "./definition";
 
 type Matcher<cases extends string> = {
@@ -41,18 +42,28 @@ export type StringEnumDefinition<C extends StringEnumConfiguration = StringEnumC
     is: <M extends Matchable<C[number]>>(m: M) => M['is'];
   }, {
     values: C;
-  }>;
+  } & { [k in C[number]]: <T extends Constructor<any>>(this: T) => InstanceType<T> }>;
 export function StringEnum<const C extends StringEnumConfiguration>(
   ...configuration: C
 ): StringEnumDefinition<C> {
+
+  const creators = configuration.reduce((acc, value) => {
+      acc[value] = function <T extends Constructor<any>>(this: T) {
+        return new this(value);
+      }
+      return acc;
+    }
+  , {} as { [key: string]: <T extends Constructor<any>>(this: T) => InstanceType<T> })
+
   return {
     instanceMethods: {
       is: (runtime) => runtime.is.bind(runtime),
       match: (runtime) => runtime.match.bind(runtime),
     },
     staticProperties: {
-      values: configuration
-    },
+      values: configuration,
+      ...creators,
+    } as any,
     paramToRuntime: (param) => new Matchable(param),
     serialize: (runtime) => {
       return runtime.value;

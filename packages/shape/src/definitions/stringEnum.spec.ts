@@ -72,11 +72,18 @@ describe("Definition: StringEnum", () => {
 	it('uses direct notation', () => {
 		class Test extends Primitive(['A', 'B']) {}
 
+		expect(Test.A()).toBeInstanceOf(Test);
+		expect(Test.A().serialize()).toBe('A');
+		expect(Test.B()).toBeInstanceOf(Test);
+		expect(Test.B().serialize()).toBe('B');
+
 		const valid = new Test('A');
 
 		if(valid.is('A')){
 			valid.serialize()
 		}
+
+		console.log(valid)
 
 		const matched = valid.match({
 			_: () => 'fallback',
