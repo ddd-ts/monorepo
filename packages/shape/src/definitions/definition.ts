@@ -1,8 +1,15 @@
-export type Definition<R = any, S = any, P = R> = {
-	paramToRuntime: (param: P) => R;
-	serialize(runtime: R): S;
-	deserialize(serialized: S): P;
-	__used?: P;
+export type Definition<
+	Runtime = any, 
+	Serialized = any, 
+	Param = Runtime, 
+	InstanceMethods extends Record<string, any> = {}, 
+	StaticProperties extends Record<string, any> = {}> = {
+	paramToRuntime: (param: Param) => Runtime;
+	serialize(runtime: Runtime): Serialized;
+	deserialize(serialized: Serialized): Param;
+	instanceMethods: InstanceMethods;
+	staticProperties: StaticProperties;
+	__used?: Param;
 	isDict?: true;
 };
 

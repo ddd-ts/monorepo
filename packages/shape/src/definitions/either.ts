@@ -11,6 +11,8 @@ export function Either<C extends EitherConfiguration>(
   ...configuration: C
 ): EitherDefinition<C> {
   return {
+    instanceMethods: {},
+    staticProperties: {},
     paramToRuntime: (param) => param,
     serialize: (runtime) => {
       const index = configuration.findIndex((c) => runtime.constructor === c);

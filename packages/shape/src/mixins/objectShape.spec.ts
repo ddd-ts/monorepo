@@ -99,7 +99,6 @@ describe("Shape", () => {
 		const Event = <const D extends DictShorthand | DictDefinition<any>>(
 			payloadDefinition: D,
 		) => {
-			// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
 			return ObjectShape(
 				{ id: String, payload: payloadDefinition },
 				class I {

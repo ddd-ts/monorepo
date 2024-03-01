@@ -1,4 +1,6 @@
+import { Shape } from "..";
 import { ObjectShape } from "../mixins/objectShape";
+import { Primitive } from "../mixins/primitive";
 import { check } from "../testUtils";
 import { StringEnum } from "./stringEnum";
 
@@ -66,4 +68,31 @@ describe("Definition: StringEnum", () => {
 		expect(a.enum.value).toBe("A");
 		check(Test, a);
 	});
+
+	it('uses direct notation', () => {
+		class Test extends Primitive(['A', 'B']) {}
+
+		const valid = new Test('A');
+
+		if(valid.is('A')){
+			valid.serialize()
+		}
+
+		const matched = valid.match({
+			_: () => 'fallback',
+			A: () => 'A'
+		});
+
+		expect(matched).toBe('A');
+
+		const fallback = valid.match({
+			B: () => 'B',
+			_: () => 'fallback'
+		});
+
+		expect(fallback).toBe('fallback');
+		
+		expect(Test.values).toEqual(['A', 'B']);
+		expect(valid.is('A')).toBe(true);
+	})
 });

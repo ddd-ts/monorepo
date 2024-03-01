@@ -18,6 +18,8 @@ export function Multiple<C extends MultipleConfiguration>(
   const longhand = shorthandToLonghand(configuration);
 
   return {
+    instanceMethods: {},
+    staticProperties: {},
     paramToRuntime: (param) => param.map((p) => longhand.paramToRuntime(p)),
     serialize: (runtime) => {
       return runtime.map(longhand.serialize);

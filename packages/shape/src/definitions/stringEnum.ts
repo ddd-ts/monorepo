@@ -36,17 +36,29 @@ class Matchable<C extends string> {
 export type StringEnumConfiguration = string[];
 export type StringEnumShorthand = StringEnumConfiguration;
 export type StringEnumDefinition<C extends StringEnumConfiguration = StringEnumConfiguration> =
-  Definition<Matchable<C[number]>, C[number], C[number]>;
+  Definition<Matchable<C[number]>, C[number], C[number], {
+    match: <M extends Matchable<C[number]>>(m: M) => M['match'];
+    is: <M extends Matchable<C[number]>>(m: M) => M['is'];
+  }, {
+    values: C;
+  }>;
 export function StringEnum<const C extends StringEnumConfiguration>(
   ...configuration: C
 ): StringEnumDefinition<C> {
   return {
+    instanceMethods: {
+      is: (runtime) => runtime.is.bind(runtime),
+      match: (runtime) => runtime.match.bind(runtime),
+    },
+    staticProperties: {
+      values: configuration
+    },
     paramToRuntime: (param) => new Matchable(param),
     serialize: (runtime) => {
       return runtime.value;
     },
     deserialize: (serialized) => {
       return serialized;
-    }
+    },
   };
 }

@@ -61,6 +61,8 @@ export function Dict<C extends DictConfiguration>(
 	}, {});
 
 	return {
+    instanceMethods: {},
+		staticProperties: {},
 		paramToRuntime: (param) => {
 			return Object.entries(longhand).reduce<Record<string, any>>(
 				(acc, [key, value]) => {
@@ -76,7 +78,7 @@ export function Dict<C extends DictConfiguration>(
 			const serialized = {} as any;
 			for (const key in longhand) {
 				const typedKey = key as keyof DictRuntime<C>;
-				serialized[key] = longhand[key]!.serialize(runtime[typedKey]);
+				serialized[key] = longhand[key].serialize(runtime[typedKey]);
 			}
 			return serialized;
 		},
@@ -84,7 +86,7 @@ export function Dict<C extends DictConfiguration>(
 			const runtime = {} as any;
 			for (const key in longhand) {
 				const typedKey = key as keyof DictRuntime<C>;
-				runtime[key] = longhand[key]!.deserialize(serialized[typedKey]);
+				runtime[key] = longhand[key].deserialize(serialized[typedKey]);
 			}
 			return runtime;
 		},

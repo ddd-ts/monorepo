@@ -24,6 +24,8 @@ export function Literal<C extends LiteralConfiguration>(
   configuration: C
 ): LiteralDefinition<C> {
   return {
+    instanceMethods: {},
+    staticProperties: {},
     paramToRuntime: (param) => param,
     serialize: (runtime) => runtime,
     deserialize: (serialized) => serialized

@@ -50,11 +50,11 @@ function expectFacts(
     (f: Fact<Deposited> | Fact<TransferInitiated>) => {
       if (f.type === Deposited.name) {
         return `${f.type} ${f.revision} ${f.payload.amount}`;
-      } else if (f.type === TransferInitiated.name) {
+      } 
+      if (f.type === TransferInitiated.name) {
         return `${f.type} ${f.revision} ${f.payload.amount}`;
-      } else {
-        throw new Error(`Unexpected type ${f.type}`);
       }
+      throw new Error(`Unexpected type ${f.type}`);
     }
   );
 
@@ -99,9 +99,9 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
 
       const loaded = await accountPersistor.load(account.id);
 
-      expect(loaded!.id).toEqual(account.id);
-      expect(loaded!.balance).toEqual(account.balance);
-      expect(loaded!.acknowledgedRevision).toEqual(3n);
+      expect(loaded.id).toEqual(account.id);
+      expect(loaded.balance).toEqual(account.balance);
+      expect(loaded.acknowledgedRevision).toEqual(3n);
     });
 
     it("should throw if the aggregate stream is not at the expected revision", async () => {
@@ -113,9 +113,9 @@ export function EsAggregateStoreSuite(es: EventStore & { clear(): void }) {
       const loadedA = await accountPersistor.load(account.id);
       const loadedB = await accountPersistor.load(account.id);
 
-      loadedA!.deposit(100);
-      await accountPersistor.persist(loadedA!);
-      await expect(accountPersistor.persist(loadedB!)).rejects.toThrow();
+      loadedA.deposit(100);
+      await accountPersistor.persist(loadedA);
+      await expect(accountPersistor.persist(loadedB)).rejects.toThrow();
     });
   });
 

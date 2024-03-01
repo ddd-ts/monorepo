@@ -49,16 +49,41 @@ export const ObjectShape = <
 		}
 	}
 
+
+  for (const method in longhand.instanceMethods) {
+    Intermediate.prototype[method] = function (...args: any[]) {
+      return (longhand as any).instanceMethods[method as any](this.value)(
+        ...args,
+      );
+    };
+  }
+
+  for (const property in longhand.staticProperties) {
+    (Intermediate as any)[property] = (longhand as any).staticProperties[
+      property
+    ];
+  }
+
+  type InstanceMethods = {
+    [k in keyof typeof longhand.instanceMethods]: ReturnType<
+      ShorthandToLonghand<D>["instanceMethods"][k]
+    >;
+  };
+
+  type StaticProperties = {
+    [k in keyof typeof longhand.staticProperties]: ShorthandToLonghand<D>["staticProperties"][k];
+  };
+
 	return Intermediate as unknown as {
 		isShape: true;
 		new (
 			data: Expand<DefinitionParameter<ShorthandToLonghand<D>>>,
 		): DefinitionRuntime<ShorthandToLonghand<D>> & {
 			serialize(): Expand<DefinitionSerialized<ShorthandToLonghand<D>>>;
-		} & InstanceType<B>;
+		} & InstanceType<B> & InstanceMethods;
 		deserialize<T extends Constructor<any>>(
 			this: T,
 			serialized: Expand<DefinitionSerialized<ShorthandToLonghand<D>>>,
 		): InstanceType<T>;
-	} & Omit<B, "">;
+	} & Omit<B, ""> & StaticProperties;
 };

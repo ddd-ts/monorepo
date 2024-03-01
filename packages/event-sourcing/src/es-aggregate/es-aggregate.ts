@@ -67,9 +67,9 @@ export abstract class EsAggregate<Id extends EsAggregateId, E extends Event[]> {
     this.eventHandlers.set(eventType, handler);
   }
   private getEventHandler(event: E[number]) {
-    const constructor = this.constructor as typeof EsAggregate;
+    const ctor = this.constructor as typeof EsAggregate;
     const eventType = event.type;
-    const handler = constructor.eventHandlers.get(eventType);
+    const handler = ctor.eventHandlers.get(eventType);
     return handler;
   }
 
@@ -79,8 +79,8 @@ export abstract class EsAggregate<Id extends EsAggregateId, E extends Event[]> {
       key: string,
       descriptor: TypedPropertyDescriptor<(event: E) => any>
     ) => {
-      const constructor = target.constructor as typeof EsAggregate;
-      constructor.registerHandler(event.name, descriptor.value as any);
+      const ctor = target.constructor as typeof EsAggregate;
+      ctor.registerHandler(event.name, descriptor.value as any);
       return descriptor;
     };
   }

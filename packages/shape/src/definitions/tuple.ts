@@ -23,13 +23,15 @@ export function Tuple<C extends TupleConfiguration>(
   const longhand = configuration.map(shorthandToLonghand);
 
   return {
+    instanceMethods: {},
+    staticProperties: {},
     paramToRuntime: (param) => param,
     serialize: (runtime) => {
-      return runtime.map((r, index) => longhand[index]!.serialize(r)) as any;
+      return runtime.map((r, index) => longhand[index].serialize(r)) as any;
     },
     deserialize: (serialized) => {
       return serialized.map((s, index) =>
-        longhand[index]!.deserialize(s)
+        longhand[index].deserialize(s)
       ) as any;
     }
   };

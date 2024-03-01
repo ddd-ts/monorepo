@@ -12,6 +12,8 @@ export function Child<C extends ChildConfiguration>(
 	configuration: C,
 ): ChildDefinition<C> {
 	return {
+		instanceMethods: {},
+		staticProperties: {},
 		paramToRuntime: (param) => param,
 		serialize: (runtime) => {
 			return runtime.serialize();

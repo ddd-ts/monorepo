@@ -1,17 +1,17 @@
-import { IsShapeConstructor, ObjectShape } from "./mixins/objectShape";
+import { IsShapeConstructor } from "./mixins/objectShape";
 import { Definition } from "./definitions/definition";
 import { IsPrimitiveConstructor } from "./mixins/primitive";
 
 export function check<D extends Definition>(
-	constructor: IsShapeConstructor<D>,
+	ctor: IsShapeConstructor<D>,
 	instance: InstanceType<IsShapeConstructor<D>>,
 ) {
-	expect(instance).toEqual(constructor.deserialize(instance.serialize()));
+	expect(instance).toEqual(ctor.deserialize(instance.serialize()));
 }
 
 export function checkPrimitive<D extends Definition>(
-	constructor: IsPrimitiveConstructor<D>,
+	ctor: IsPrimitiveConstructor<D>,
 	instance: InstanceType<IsPrimitiveConstructor<D>>,
 ) {
-	expect(instance).toEqual(constructor.deserialize(instance.serialize()));
+	expect(instance).toEqual(ctor.deserialize(instance.serialize()));
 }

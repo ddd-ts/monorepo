@@ -9,6 +9,8 @@ export function Nothing<C extends NothingConfiguration>(
 	configuration: C,
 ): NothingDefinition<C> {
 	return {
+    instanceMethods: {},
+		staticProperties: {},
 		paramToRuntime: (param) => param,
 		serialize: (runtime) => runtime,
 		deserialize: (serialized) => serialized,

@@ -22,7 +22,9 @@ export type SerializableClassDefinition<
 export function SerializableClass<C extends SerializableClassConfiguration>(
   configuration: C
 ): SerializableClassDefinition<C> {
-  return {
+  return {    
+    instanceMethods: {},
+    staticProperties: {},
     paramToRuntime: (param) => param,
     serialize: (runtime) => {
       return runtime.serialize() as any;
