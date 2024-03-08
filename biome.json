@@ -9,7 +9,8 @@
       "recommended": true,
       "suspicious": {
         "noExplicitAny": "off",
-        "noEmptyInterface": "off"
+        "noEmptyInterface": "off",
+        "noConfusingVoidType": "off",
       },
       "complexity": {
         "noStaticOnlyClass": "off",
