@@ -20,15 +20,13 @@ export const Optional = <
   of: S,
   base: B = Empty as any,
 ) => {
-  type Definition = DefinitionOf<S>;
+  type Definition = DefinitionOf<S, B>;
   type Serialized = ReturnType<Definition["$serialize"]> | undefined;
 
   abstract class $Optional extends (base as any as Constructor<{}>) {
     constructor(public value: Expand<Definition["$inline"]> | undefined) {
       super();
     }
-
-    static inline: Expand<Definition["$inline"]> | undefined;
 
     static $name = "optional" as const;
 

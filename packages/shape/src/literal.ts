@@ -35,11 +35,11 @@ export const Literal = <
       return this.value;
     }
 
-    static deserialize<T extends Concrete<typeof $Literal>>(
+    static deserialize<T extends typeof $Literal>(
       this: T,
       value: Inline,
     ): InstanceType<T> {
-      return new this(this.$deserialize(value)) as InstanceType<T>;
+      return new (this as any)(this.$deserialize(value)) as InstanceType<T>;
     }
 
     static $serialize(value: Inline): Inline {

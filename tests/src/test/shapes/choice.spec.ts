@@ -1,4 +1,4 @@
-import { Choice, Dict } from "@ddd-ts/shape";
+import { Choice, Dict, Shape } from "@ddd-ts/shape";
 import { ex } from "./test";
 
 describe("Choice", () => {
@@ -56,7 +56,7 @@ describe("Choice", () => {
   });
 
   it("inlined definition", () => {
-    class Test extends Dict({ nested: Choice(["a", "b", "c"]) }) {}
+    class Test extends Shape({ nested: Choice(["a", "b", "c"]) }) {}
 
     type Serialized = { nested: "a" | "b" | "c" };
 

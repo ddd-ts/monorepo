@@ -18,7 +18,7 @@ export const Dict = <
   definition: S,
   base: B = Empty as any,
 ) => {
-  type Def = { [K in keyof S]: DefinitionOf<S[K]> };
+  type Def = { [K in keyof S]: DefinitionOf<S[K], B> };
 
   type Serialized = {
     [K in keyof S]: ReturnType<Def[K]["$serialize"]>;
