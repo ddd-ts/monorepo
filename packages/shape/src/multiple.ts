@@ -23,7 +23,7 @@ export const Multiple = <
   of: S,
   base: B = Empty as any,
 ) => {
-  type Def = DefinitionOf<S>;
+  type Def = DefinitionOf<S, B>;
   type Serialized = ReturnType<Def["$serialize"]>[];
   type Inline = Def["$inline"][];
 
@@ -39,7 +39,7 @@ export const Multiple = <
       return $Multiple.$serialize(this.value) as any;
     }
 
-    static deserialize<T extends typeof $Multiple>(
+    static deserialize<T extends Constructor>(
       this: T,
       value: Expand<Serialized>,
     ): InstanceType<T> {
@@ -48,7 +48,7 @@ export const Multiple = <
       ) as InstanceType<T>;
     }
 
-    static $deserialize<T extends typeof $Multiple>(
+    static $deserialize<T extends Constructor>(
       this: T,
       value: Serialized,
     ): InstanceType<T> {
@@ -64,42 +64,111 @@ export const Multiple = <
     }
 
     static $inline: Inline;
-  }
 
-  const forwarded = forward($Multiple, [
-    "map",
-    "reduce",
-    "filter",
-    "forEach",
-    "some",
-    "every",
-    "find",
-    "findIndex",
-    "indexOf",
-    "lastIndexOf",
-    "includes",
-    "keys",
-    "values",
-    "entries",
-    "length",
-    "at",
-    "concat",
-    "flat",
-    "splice",
-    "flatMap",
-    "push",
-    "pop",
-    "sort",
-    "slice",
-  ] as const);
+    get map() {
+      return this.value.map.bind(this.value);
+    }
+
+    get reduce() {
+      return this.value.reduce.bind(this.value);
+    }
+
+    get filter() {
+      return this.value.filter.bind(this.value);
+    }
+
+    get forEach() {
+      return this.value.forEach.bind(this.value);
+    }
+
+    get some() {
+      return this.value.some.bind(this.value);
+    }
+
+    get every() {
+      return this.value.every.bind(this.value);
+    }
+
+    get find() {
+      return this.value.find.bind(this.value);
+    }
+
+    get findIndex() {
+      return this.value.findIndex.bind(this.value);
+    }
+
+    get indexOf() {
+      return this.value.indexOf.bind(this.value);
+    }
+
+    get lastIndexOf() {
+      return this.value.lastIndexOf.bind(this.value);
+    }
+
+    get includes() {
+      return this.value.includes.bind(this.value);
+    }
+
+    get keys() {
+      return this.value.keys.bind(this.value);
+    }
+
+    get values() {
+      return this.value.values.bind(this.value);
+    }
+
+    get entries() {
+      return this.value.entries.bind(this.value);
+    }
+
+    get at() {
+      return this.value.at.bind(this.value);
+    }
+
+    get concat() {
+      return this.value.concat.bind(this.value);
+    }
+
+    get flat() {
+      return this.value.flat.bind(this.value);
+    }
+
+    get splice() {
+      return this.value.splice.bind(this.value);
+    }
+
+    get flatMap() {
+      return this.value.flatMap.bind(this.value);
+    }
+
+    get push() {
+      return this.value.push.bind(this.value);
+    }
+
+    get pop() {
+      return this.value.pop.bind(this.value);
+    }
+
+    get sort() {
+      return this.value.sort.bind(this.value);
+    }
+
+    get slice() {
+      return this.value.slice.bind(this.value);
+    }
+
+    get length() {
+      return this.value.length;
+    }
+  }
 
   type MultipleConstructor = abstract new (
     value: Expand<Inline>,
-  ) => InstanceType<B> & $Multiple & InstanceType<typeof forwarded>;
+  ) => InstanceType<B> & $Multiple;
 
   type Multiple = Omit<B, "prototype"> &
-    Omit<typeof forwarded, ""> &
+    Omit<typeof $Multiple, ""> &
     MultipleConstructor;
 
-  return forwarded as any as Multiple;
+  return $Multiple as any as Multiple;
 };

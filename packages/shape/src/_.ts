@@ -57,7 +57,7 @@ export type DefinitionOf<
         ? ReturnType<typeof Multiple<T[0], B>>
         : T extends ClassShorthand
           ? ReturnType<typeof Class<T, B>>
-          : T extends { prototype: any }
+          : T extends Definition
             ? T
             : T extends DictShorthand
               ? ReturnType<typeof Dict<T, B>>
@@ -134,3 +134,10 @@ export function forward<
   }
   return base as any;
 }
+
+export type MergeClasses<
+  B extends AbstractConstructor,
+  Current extends AbstractConstructor,
+> = abstract new (
+  ...args: ConstructorParameters<Current>
+) => InstanceType<B> & InstanceType<Current>;

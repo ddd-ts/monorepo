@@ -30,11 +30,6 @@ export const Dict = <
   abstract class $Dict extends (base as any as AbstractConstructor<{}>) {
     static $name = "dict" as const;
 
-    static shape: S;
-    static serialized: {
-      [K in keyof S]: DefinitionOf<S[K]>;
-    };
-
     constructor(...args: any[]) {
       super();
       Object.assign(this, args[0]);
@@ -86,6 +81,6 @@ export const Dict = <
   type DictConstructor = abstract new (
     value: Expand<Inline>,
   ) => InstanceType<B> & $Dict & Inline;
-  type WithConstructor = Omit<B, "prototype"> & typeof $Dict & DictConstructor;
+  type WithConstructor = Omit<B, ""> & Omit<typeof $Dict, ""> & DictConstructor;
   return $Dict as any as WithConstructor;
 };

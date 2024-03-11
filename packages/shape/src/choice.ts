@@ -1,4 +1,11 @@
-import { AbstractConstructor, Empty, Concrete, Expand, Constructor } from "./_";
+import {
+  AbstractConstructor,
+  Empty,
+  Concrete,
+  Expand,
+  Constructor,
+  MergeClasses,
+} from "./_";
 
 type Matcher<S extends string[]> =
   | {
@@ -14,13 +21,6 @@ type MatcherResult<M extends Matcher<any>> = M[keyof M] extends () => infer R
   ? R
   : never;
 
-type ActuallyGenerateAllTheThings<
-  B extends AbstractConstructor,
-  Current extends AbstractConstructor,
-> = abstract new (
-  ...args: ConstructorParameters<Current>
-) => InstanceType<B> & InstanceType<Current>;
-
 export const Choice = <
   const S extends string[],
   B extends AbstractConstructor<{}> = typeof Empty,
@@ -32,6 +32,8 @@ export const Choice = <
 
   abstract class $Choice extends (base as any as Constructor<{}>) {
     static $name = "choice" as const;
+
+    static values = config;
 
     constructor(public value: Expand<Inline>) {
       super();
@@ -87,7 +89,7 @@ export const Choice = <
     }
   }
 
-  return $Choice as any as ActuallyGenerateAllTheThings<B, typeof $Choice> &
+  return $Choice as any as MergeClasses<B, typeof $Choice> &
     Omit<B, ""> &
     Omit<typeof $Choice, ""> & {
       [K in S[number]]: <T extends Constructor>(this: T) => InstanceType<T>;

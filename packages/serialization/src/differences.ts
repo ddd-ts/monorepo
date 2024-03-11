@@ -2,7 +2,9 @@ type Path<
   Current extends string,
   T extends string | number | symbol,
 > = Current extends ""
-  ? T
+  ? T extends string | number
+    ? `${T}`
+    : "some symbol"
   : `${Current}.${T extends string | number ? T : "some symbol"}`;
 
 type Difference = { path: string };

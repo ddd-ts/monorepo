@@ -25,5 +25,7 @@
       "path": "../packages/serialization"
     }
   ],
-  "settings": {}
+  "settings": {
+    "typescript.tsdk": "@ddd-ts/monorepo/node_modules/typescript/lib"
+  }
 }
