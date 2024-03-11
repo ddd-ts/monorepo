@@ -9,9 +9,9 @@ export function Freeze<T = any>() {
 		target: C,
 	): C extends Constructor<Freezable<any>>
 		? InstanceType<C> extends Freezable<infer G>
-			? Equals<T, G> extends true
+			? Equals<T, Awaited<G>> extends true
 				? C
-				: Differences<T, G>
+				: Differences<T, Awaited<G>>
 			: never
 		: never => {
 		return target as any;
