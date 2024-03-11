@@ -14,6 +14,13 @@ type MatcherResult<M extends Matcher<any>> = M[keyof M] extends () => infer R
   ? R
   : never;
 
+type ActuallyGenerateAllTheThings<
+  B extends AbstractConstructor,
+  Current extends AbstractConstructor,
+> = abstract new (
+  ...args: ConstructorParameters<Current>
+) => InstanceType<B> & InstanceType<Current>;
+
 export const Choice = <
   const S extends string[],
   B extends AbstractConstructor<{}> = typeof Empty,
@@ -23,7 +30,7 @@ export const Choice = <
 ) => {
   type Inline = S[number];
 
-  abstract class $Choice extends (base as any) {
+  abstract class $Choice extends (base as any as Constructor<{}>) {
     static $name = "choice" as const;
 
     constructor(public value: Expand<Inline>) {
@@ -50,13 +57,13 @@ export const Choice = <
       return this.value;
     }
 
-    static deserialize<T extends Concrete<typeof $Choice>>(
+    static deserialize<T extends typeof $Choice>(
       this: T,
       value: Inline,
     ): InstanceType<T> {
-      return new this(value as any) as InstanceType<T>;
+      return new (this as any)(value as any) as InstanceType<T>;
     }
-    static $deserialize<T extends Concrete<typeof $Choice>>(
+    static $deserialize<T extends typeof $Choice>(
       this: T,
       value: Inline,
     ): Inline {
@@ -73,22 +80,16 @@ export const Choice = <
 
     static {
       for (const choice of config) {
-        this[choice] = function <T extends Constructor>(this: T) {
+        (this as any)[choice] = function <T extends Constructor>(this: T) {
           return new this(choice as any);
         };
       }
     }
   }
 
-  type ChoiceConstructor = abstract new (
-    value: Expand<Inline>,
-  ) => InstanceType<B> & $Choice;
-  type ChoiceStatics = {
-    [key in S[number]]: <T extends Constructor>(this: T) => InstanceType<T>;
-  };
-  type Choice = Omit<B, "prototype" | ""> &
-    ChoiceStatics &
-    ChoiceConstructor & { [K in keyof typeof $Choice]: (typeof $Choice)[K] };
-
-  return $Choice as Choice;
+  return $Choice as any as ActuallyGenerateAllTheThings<B, typeof $Choice> &
+    Omit<B, ""> &
+    Omit<typeof $Choice, ""> & {
+      [K in S[number]]: <T extends Constructor>(this: T) => InstanceType<T>;
+    };
 };

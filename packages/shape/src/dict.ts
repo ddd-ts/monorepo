@@ -27,7 +27,7 @@ export const Dict = <
     [K in keyof Def]: Def[K]["$inline"];
   };
 
-  abstract class $Dict extends (base as any) {
+  abstract class $Dict extends (base as any as AbstractConstructor<{}>) {
     static $name = "dict" as const;
 
     static shape: S;
@@ -52,7 +52,7 @@ export const Dict = <
       return new this(runtime as any) as any;
     }
 
-    static $deserialize<T extends Concrete<typeof $Dict>>(
+    static $deserialize<T extends typeof $Dict>(
       this: T,
       value: Serialized,
     ): Inline {

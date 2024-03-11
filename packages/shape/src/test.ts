@@ -6,7 +6,7 @@ type IfEquals<T, U, Y = unknown, N = never> = (<G>() => G extends T
   ? Y
   : N;
 
-type Equals<X, Y> = IfEquals<X, Y, true, false>;
+export type Equals<X, Y> = IfEquals<X, Y, true, false>;
 
 type tests = {
   // Booleans

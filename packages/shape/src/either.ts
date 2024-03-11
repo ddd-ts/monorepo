@@ -13,10 +13,6 @@ import { LiteralShorthand } from "./literal";
 
 type StrToNumber<T> = T extends `${infer U extends number}` ? U : never;
 
-type WithoutConstructor<T> = {
-  [K in keyof T]: T[K];
-};
-
 export type EitherConfiguration = (LiteralShorthand | ClassShorthand)[];
 
 export const Either = <
