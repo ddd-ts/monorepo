@@ -1,19 +1,38 @@
 import {
-  Concrete,
   Constructor,
   Expand,
   DefinitionOf,
   Shape,
   AbstractConstructor,
   Empty,
-  Shorthand,
 } from "./_";
 import { ClassShorthand } from "./class";
 import { LiteralShorthand } from "./literal";
 
-type StrToNumber<T> = T extends `${infer U extends number}` ? U : never;
+type Config = { [key: string]: any };
 
-export type EitherConfiguration = (LiteralShorthand | ClassShorthand)[];
+type ExhaustiveMatcher<C extends Config> = {
+  [key in keyof C]: (value: InstanceType<C[key]>) => any;
+};
+
+type UnsafeFallthroughMatcher<C extends Config> = {
+  [key in keyof C]?: (value: InstanceType<C[key]>) => any;
+} & {
+  _: (value: InstanceType<C[keyof C]>) => any;
+};
+
+type PartialMatcher<C extends Config> = {
+  [key in keyof C]?: (value: InstanceType<C[key]>) => any;
+};
+
+type Matcher<C extends Config> =
+  | ExhaustiveMatcher<C>
+  | UnsafeFallthroughMatcher<C>
+  | PartialMatcher<C>;
+
+export type EitherConfiguration = {
+  [key: string]: LiteralShorthand | ClassShorthand;
+};
 
 export const Either = <
   const S extends EitherConfiguration,
@@ -23,20 +42,23 @@ export const Either = <
   base: B = Empty as any,
 ) => {
   type Serialized = {
-    [K in keyof S]: [
-      StrToNumber<K>,
-      ReturnType<DefinitionOf<S[K]>["$serialize"]>,
-    ];
-  }[number];
+    [K in keyof S]: [K, ReturnType<DefinitionOf<S[K]>["$serialize"]>];
+  }[keyof S];
 
-  type Inline = DefinitionOf<S[number]>["$inline"];
+  type Inline = DefinitionOf<S[keyof S]>["$inline"];
 
-  const definitions = (of as any).map((i: any) => Shape(i));
+  const definitions = Object.fromEntries(
+    Object.entries(of).map(([key, value]) => {
+      return [key, Shape(value)] as const;
+    }),
+  );
 
   abstract class $Either extends (base as any as Constructor<{}>) {
     constructor(public value: Inline) {
       super();
     }
+
+    static serialized: Serialized;
 
     static of = of;
 
@@ -45,6 +67,36 @@ export const Either = <
     serialize(): Expand<Serialized> {
       return ($Either as any).$serialize(this.value) as any;
     }
+
+
+    match<
+    M extends Matcher<S>,
+    F extends M extends ExhaustiveMatcher<S>
+      ? []
+      : M extends UnsafeFallthroughMatcher<S>
+        ? []
+        : M extends PartialMatcher<S>
+          ? [fallback: (value: InstanceType<Omit<S, keyof M>[keyof Omit<S, keyof M>]>) => any]
+          : [],
+  >(
+    ...[matcher, fallback]: [matcher: M, ...F]
+  ): (M[keyof M] extends (...args: any[]) => any ? ReturnType<M[keyof M]> : never) | (F[0] extends (...args: any[]) => any ? ReturnType<F[0]> : never) {
+    const key: any = Object.entries(of).find(
+      ([_, v]) => v === ((this.value as any).constructor as any),
+      )?.[0] as any
+      
+    const handler = matcher[key]
+    if (handler) {
+      return handler(this.value as any);
+    }
+    if(fallback) {
+      return fallback(this.value as any);
+    }
+    if (matcher._) {
+      return matcher._(this.value as any);
+    }
+    throw new Error("Non-exhaustive match");
+  };
 
     static deserialize<T extends typeof $Either>(
       this: T,
@@ -57,8 +109,8 @@ export const Either = <
       this: T,
       value: Serialized,
     ): Inline {
-      const [index, serialized] = value as any;
-      const definition = definitions[index];
+      const [key, serialized] = value as any;
+      const definition = definitions[key];
       if (!definition) {
         throw new Error("Cannot deserialize Either");
       }
@@ -69,12 +121,18 @@ export const Either = <
       this: T,
       value: Inline,
     ): Serialized {
-      const index = of.indexOf((value as any).constructor as any);
-      const definition = definitions[index];
+      const key = Object.entries(of).find(
+        ([_, v]) => v === ((value as any).constructor as any),
+      )?.[0];
+      if (!key) {
+        throw new Error("Cannot serialize Either, no matching key");
+      }
+
+      const definition = definitions[key];
       if (!definition) {
         throw new Error("Cannot serialize Either");
       }
-      return [index, (definition as any).$serialize(value)] as any;
+      return [key, (definition as any).$serialize(value)] as any;
     }
 
     static $inline: Inline;
