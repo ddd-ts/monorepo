@@ -1,7 +1,7 @@
 export class Collection {
   constructor(
     private data: Map<string, { savedAt: number; data: any }> = new Map()
-  ) {}
+  ) { }
 
   clear() {
     this.data.clear();
@@ -41,12 +41,16 @@ export class Collection {
     return this.data.get(id)
   }
 
+  countAll() {
+    return this.data.size;
+  }
+
   get(id: string): any {
     return this.data.get(id)?.data;
   }
 
   getAllRaw() {
-    return [...this.data.entries()].map(([id, data]) => ({id, data}));
+    return [...this.data.entries()].map(([id, data]) => ({ id, data }));
   }
 
   getAll(): any[] {

@@ -86,6 +86,10 @@ export class InMemoryStore<M extends Model> implements Store<M> {
     this.database.delete(this.collection, id.toString(), trx?.transaction);
   }
 
+  async countAll() {
+    return this.database.countAll(this.collection);
+  }
+
   async *streamAll(): AsyncIterable<M> {
     for (const item of await this.filter(() => true)) {
       yield item;
