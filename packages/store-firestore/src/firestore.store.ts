@@ -154,12 +154,18 @@ export class FirestoreStore<M extends Model> implements Store<M> {
     return (await this.collection.count().get()).data().count;
   }
 
-  async streamAllConcurrent(concurrency: number, pageSize: number): Promise<AsyncIterable<M>> {
+  async streamConcurrent(concurrency: number, pageSize: number, baseQuery?: FirebaseFirestore.Query<DocumentData>): Promise<AsyncIterable<M>> {
     const totalCount = await this.countAll();
     const partSize = Math.floor(totalCount / concurrency);
     const queries: any[] = [];
+
     for (let i = 0; i < concurrency; i += 1) {
-      queries.push(this.collection.offset(i * partSize).limit(partSize));
+      const offset = i * partSize;
+      if (baseQuery) {
+        queries.push(baseQuery.offset(offset).limit(partSize));
+      } else {
+        queries.push(this.collection.offset(i * partSize).limit(partSize));
+      }
     }
     return combine(queries.map((query) => this.streamQuery(query, pageSize)));
   }
