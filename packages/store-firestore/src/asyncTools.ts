@@ -1,20 +1,21 @@
-export async function* combine<T>(iterable: AsyncIterable<T>[]) {
-  const asyncIterators = Array.from(iterable, (o) => o[Symbol.asyncIterator]());
-  let count = asyncIterators.length;
-  const never = new Promise<any>(() => { });
+export async function* combine<T>(iterables: AsyncIterable<T>[]) {
+  const asyncIterators = iterables.map((iterable) => iterable[Symbol.asyncIterator]());
+
   function getNext(asyncIterator: AsyncIterator<any>, index: number) {
     return asyncIterator.next().then((result) => ({
       index,
       result,
     }));
   }
+
   const nextPromises = asyncIterators.map(getNext);
+  const finished = new Set<number>()
+
   try {
-    while (count) {
+    while (finished.size !== asyncIterators.length) {
       const { index, result } = await Promise.race(nextPromises);
       if (result.done) {
-        nextPromises[index] = never;
-        count--;
+        finished.add(index)
       } else {
         nextPromises[index] = getNext(asyncIterators[index]!, index);
         yield result.value;
@@ -22,11 +23,10 @@ export async function* combine<T>(iterable: AsyncIterable<T>[]) {
     }
   } finally {
     for (const [index, iterator] of asyncIterators.entries()) {
-      if (nextPromises[index] !== never && iterator.return != null) {
+      if (finished.has(index) && iterator.return) {
         iterator.return().catch(console.error);
       }
     }
-    // no await here - see https://github.com/tc39/proposal-async-iteration/issues/126
   }
 }
 
