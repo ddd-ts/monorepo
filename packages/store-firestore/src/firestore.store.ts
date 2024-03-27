@@ -10,6 +10,21 @@ import {
 import { FirestoreTransaction } from "./firestore.transaction";
 import { ISerializer } from "@ddd-ts/serialization";
 
+async function* batch<T>(iterator: AsyncIterable<T>, size: number) {
+  let batch = [];
+
+  for await (const item of iterator) {
+    batch.push(item);
+    if (batch.length === size) {
+      yield batch;
+      batch = [];
+    }
+  }
+  if (batch.length > 0) {
+    yield batch;
+  }
+}
+
 export class FirestoreStore<M extends Model> implements Store<M> {
   collection: CollectionReference;
 
@@ -82,12 +97,16 @@ export class FirestoreStore<M extends Model> implements Store<M> {
     query: FirebaseFirestore.Query<any>,
     pageSize?: number
   ): AsyncIterable<M> {
+    const finalPageSize = pageSize ?? 50
     const stream =
-      pageSize === 1
+      finalPageSize === 1
         ? (query.stream() as AsyncIterable<QueryDocumentSnapshot>)
-        : this.streamPages(query, pageSize ?? 50);
-    for await (const doc of stream) {
-      yield this.serializer.deserialize({ id: doc.id, ...(doc.data() as any) });
+        : this.streamPages(query, finalPageSize);
+    for await (const docs of batch(stream, finalPageSize)) {
+      const deserializedDocs = await Promise.all(docs.map(doc => this.serializer.deserialize({ id: doc.id, ...(doc.data() as any) })));
+      for (const deserializedDoc of deserializedDocs) {
+        yield deserializedDoc;
+      }
     }
   }
 
