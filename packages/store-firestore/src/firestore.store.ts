@@ -9,21 +9,7 @@ import {
 } from "firebase-admin/firestore";
 import { FirestoreTransaction } from "./firestore.transaction";
 import { ISerializer } from "@ddd-ts/serialization";
-
-async function* batch<T>(iterator: AsyncIterable<T>, size: number) {
-  let batch = [];
-
-  for await (const item of iterator) {
-    batch.push(item);
-    if (batch.length === size) {
-      yield batch;
-      batch = [];
-    }
-  }
-  if (batch.length > 0) {
-    yield batch;
-  }
-}
+import { batch, combine } from "./asyncTools";
 
 export class FirestoreStore<M extends Model> implements Store<M> {
   collection: CollectionReference;
@@ -162,5 +148,19 @@ export class FirestoreStore<M extends Model> implements Store<M> {
 
   streamAll(pageSize?: number): AsyncIterable<M> {
     return this.streamQuery(this.collection, pageSize);
+  }
+
+  async countAll() {
+    return (await this.collection.count().get()).data().count;
+  }
+
+  async streamAllConcurrent(concurrency: number, pageSize: number): Promise<AsyncIterable<M>> {
+    const totalCount = await this.countAll();
+    const partSize = Math.floor(totalCount / concurrency);
+    const queries: any[] = [];
+    for (let i = 0; i < concurrency; i += 1) {
+      queries.push(this.collection.offset(i * partSize).limit(partSize));
+    }
+    return combine(queries.map((query) => this.streamQuery(query, pageSize)));
   }
 }

@@ -134,6 +134,10 @@ export class InMemoryDatabase {
     }
   }
 
+  countAll(collectionName: string) {
+    return this.storage.getCollection(collectionName).countAll();
+  }
+
   loadAll(collectionName: string) {
     return this.storage.getCollection(collectionName).getAllRaw();
   }

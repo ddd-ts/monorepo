@@ -7,4 +7,5 @@ export interface Store<M extends Model> {
   loadAll(transaction?: Transaction): Promise<M[]>;
   delete(id: M["id"], transaction?: Transaction): Promise<void>;
   streamAll(pageSize?: number): AsyncIterable<M>;
+  countAll(): Promise<number>;
 }
