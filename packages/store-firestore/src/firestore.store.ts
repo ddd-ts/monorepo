@@ -160,8 +160,8 @@ export class FirestoreStore<M extends Model> implements Store<M> {
 
   async streamConcurrent(concurrency: number, pageSize: number, baseQuery?: FirebaseFirestore.Query<DocumentData>): Promise<AsyncIterable<M>> {
     const totalCount = await (baseQuery ? this.count(baseQuery) : this.countAll());
-    const partSize = Math.floor(totalCount / concurrency);
-    const queries: any[] = [];
+    const partSize = Math.ceil(totalCount / concurrency);
+    const queries: FirebaseFirestore.Query<DocumentData>[] = [];
 
     for (let i = 0; i < concurrency; i += 1) {
       const offset = i * partSize;

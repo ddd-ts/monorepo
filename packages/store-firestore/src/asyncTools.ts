@@ -1,31 +1,27 @@
 export async function* combine<T>(iterables: AsyncIterable<T>[]) {
-  const asyncIterators = iterables.map((iterable) => iterable[Symbol.asyncIterator]());
-
-  function getNext(asyncIterator: AsyncIterator<any>, index: number) {
+  function getNext(asyncIterator: AsyncIterator<T>) {
     return asyncIterator.next().then((result) => ({
-      index,
+      asyncIterator,
       result,
     }));
   }
 
-  const nextPromises = asyncIterators.map(getNext);
-  const finished = new Set<number>()
+  const asyncIterators = new Map(iterables.map((iterable) => {
+    const iterator = iterable[Symbol.asyncIterator]();
+    return [iterator, getNext(iterator)]
+  }));
 
-  try {
-    while (finished.size !== asyncIterators.length) {
-      const { index, result } = await Promise.race(nextPromises);
-      if (result.done) {
-        finished.add(index)
-      } else {
-        nextPromises[index] = getNext(asyncIterators[index]!, index);
-        yield result.value;
+  while (asyncIterators.size > 0) {
+    const { asyncIterator, result } = await Promise.race(asyncIterators.values());
+
+    if (result.done) {
+      if (asyncIterator.return) {
+        asyncIterator.return().catch(console.error);
       }
-    }
-  } finally {
-    for (const [index, iterator] of asyncIterators.entries()) {
-      if (finished.has(index) && iterator.return) {
-        iterator.return().catch(console.error);
-      }
+      asyncIterators.delete(asyncIterator)
+    } else {
+      asyncIterators.set(asyncIterator, getNext(asyncIterator));
+      yield result.value;
     }
   }
 }
