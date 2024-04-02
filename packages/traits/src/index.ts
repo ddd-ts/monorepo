@@ -125,7 +125,7 @@ export function Derive<R extends Trait[], C extends CheckTraitRequirements<R>>(
   return current as any;
 }
 export const Trait = <
-  T extends (base: AbstractConstructor<any, {}>) => AbstractConstructor<any, any>
+  T extends (base: AbstractConstructor<{}, {}>) => AbstractConstructor<any, any>
 >(
   factory: T
 ) => {

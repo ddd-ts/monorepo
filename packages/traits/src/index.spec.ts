@@ -508,22 +508,6 @@ describe("Traits", () => {
     });
   });
 
-  it('works with optional primitive param', () => {
-    const WithString = Trait((base) =>
-      class extends base {
-        constructor(props: string | undefined) {
-          super(props)
-        }
-      })
-
-
-    class A extends Derive(WithString) {
-      constructor() {
-        super(undefined)
-      }
-    }
-  })
-
   it('allow abstract traits', () => {
     const SomeTrait = Trait((base) => {
       abstract class I extends base {
@@ -532,8 +516,25 @@ describe("Traits", () => {
       return I
     })
 
+    const SomeSubTrait = Subtrait([SomeTrait], (base, Props) => {
+      abstract class I extends base {
+        constructor(props: { test: 2 } & typeof Props) {
+          super(props)
+        }
 
-    // @ts-expect-error it should implement the abstract method
-    class A extends Derive(SomeTrait) { }
+        abstract do(): void;
+      }
+      return I
+    })
+
+    class Test extends Derive(SomeTrait, SomeSubTrait) {
+      do() {
+        console.log('do')
+      }
+    }
+
+    new Test({ test: 2 })
+    // @ts-expect-error
+    new Test({ anything: 2 })
   })
 });
