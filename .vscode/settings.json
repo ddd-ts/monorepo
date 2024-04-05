@@ -1,4 +1,8 @@
 {
-  "jest.autoRun": "off",
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "jest.runMode": {
+    "runAllTestsOnStartup": false,
+    "type": "on-demand",
+  },
+  "jest.jestCommandLine": "./tools/node_modules/.bin/jest --config tools/jest.ws.config.ts",
+  "typescript.tsdk": "@ddd-ts/monorepo/node_modules/typescript/lib"
 }

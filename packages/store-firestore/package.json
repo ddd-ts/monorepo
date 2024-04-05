@@ -5,7 +5,7 @@
 	"types": "dist/index.d.ts",
 	"license": "MIT",
 	"scripts": {
-		"build": "builder"
+		"build": "tsc"
 	},
 	"dependencies": {
 		"@ddd-ts/model": "*",
@@ -13,7 +13,8 @@
 		"firebase-admin": "^11.5.0"
 	},
 	"devDependencies": {
-		"@ddd-ts/dev": "*",
-		"@ddd-ts/types": "*"
+		"@ddd-ts/tools": "*",
+		"@ddd-ts/types": "*",
+		"@types/jest": "^29.5.1"
 	}
 }

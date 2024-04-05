@@ -1,9 +1,13 @@
 {
-  "extends": "@ddd-ts/dev/tsconfig.json",
+  "extends": "@ddd-ts/tools/tsconfig.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
     "noErrorTruncation": true,
     "strictPropertyInitialization": false
-  }
+  },
+  "include": [
+    "./src/**/*",
+    "./src/**/*.json"
+  ]
 }

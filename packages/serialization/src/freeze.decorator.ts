@@ -7,12 +7,12 @@ type Freezable<T> = {
 export function Freeze<T = any>() {
 	return <C>(
 		target: C,
-	): C extends Constructor<Freezable<any>>
+	): C extends Constructor<any>
 		? InstanceType<C> extends Freezable<infer G>
-			? Equals<T, Awaited<G>> extends true
-				? C
-				: Differences<T, Awaited<G>>
-			: never
+		? Equals<T, Awaited<G>> extends true
+		? C
+		: Differences<T, Awaited<G>>
+		: never
 		: never => {
 		return target as any;
 	};

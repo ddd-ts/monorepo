@@ -6,9 +6,10 @@
   "license": "MIT",
   "scripts": {
     "test": "echo no-tests",
-    "build": "builder"
+    "build": "tsc"
   },
   "devDependencies": {
-    "@ddd-ts/dev": "*"
+    "@ddd-ts/tools": "*",
+    "@types/jest": "^29.5.1"
   }
 }

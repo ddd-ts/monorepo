@@ -2,31 +2,30 @@
   "name": "@ddd-ts/monorepo",
   "version": "0.0.1-0",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "tests",
-    "tools/*"
-  ],
   "scripts": {
     "build": "turbo run build",
-    "test": "turbo run test --parallel",
-    "clean": "yarn workspaces foreach exec rm -rf dist",
-    "clean:cache": "yarn workspaces foreach exec rm -rf .turbo",
+    "test": "turbo run test --concurrency 1",
+    "clean": "pnpm workspaces foreach exec rm -rf dist",
+    "clean:cache": "pnpm workspaces foreach exec rm -rf .turbo",
     "clean:nm": "rm -rf node_modules",
-    "clean:hard": "yarn clean:cache && yarn clean && yarn clean:nm",
+    "clean:hard": "pnpm clean:cache && pnpm clean && pnpm clean:nm",
     "release": "sh scripts/release.sh",
     "bump": "npm version -ws $(npm view @ddd-ts/model dist-tags.latest | tr -d '\"' | awk -F'[.-]' '{ print $1 \".\" $2 \".\" $3 \"-\" $4+1 }')"
   },
   "devDependencies": {
-    "prettier": "latest",
-    "turbo": "^1.7.0"
+    "turbo": "^1.13.2"
   },
   "engines": {
     "npm": ">=7.0.0",
     "node": ">=14.0.0"
   },
-  "packageManager": "yarn@3.4.1",
+  "packageManager": "pnpm@8.6.3",
   "dependencies": {
     "ts-morph": "^19.0.0"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "@jest/core@29.3.1": "patches/@jest__core@29.3.1.patch"
+    }
   }
 }

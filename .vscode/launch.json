@@ -9,6 +9,7 @@
       "name": "vscode-jest-tests.v2",
       "request": "launch",
       "args": [
+        "--config=${workspaceFolder}/tools/jest.ws.config.ts",
         "--runInBand",
         "--watchAll=false",
         "--testNamePattern",
@@ -19,8 +20,7 @@
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
-      "disableOptimisticBPs": true,
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "program": "${workspaceFolder}/tools/node_modules/jest/bin/jest",
       "windows": {
         "program": "${workspaceFolder}/node_modules/jest/bin/jest"
       }

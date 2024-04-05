@@ -1,0 +1,126 @@
+diff --git a/build/runGlobalHook.js b/build/runGlobalHook.js
+index d12fa748e60b04f570dd14ad3177ae4888e9fefc..1d6a03f6be63f3d9899b0b6c930bfb0aaf89ac48 100644
+--- a/build/runGlobalHook.js
++++ b/build/runGlobalHook.js
+@@ -6,33 +6,33 @@ Object.defineProperty(exports, '__esModule', {
+ exports.default = runGlobalHook;
+ function util() {
+   const data = _interopRequireWildcard(require('util'));
+-  util = function () {
++  util = function() {
+     return data;
+   };
+   return data;
+ }
+ function _transform() {
+   const data = require('@jest/transform');
+-  _transform = function () {
++  _transform = function() {
+     return data;
+   };
+   return data;
+ }
+ function _prettyFormat() {
+   const data = _interopRequireDefault(require('pretty-format'));
+-  _prettyFormat = function () {
++  _prettyFormat = function() {
+     return data;
+   };
+   return data;
+ }
+ function _interopRequireDefault(obj) {
+-  return obj && obj.__esModule ? obj : {default: obj};
++  return obj && obj.__esModule ? obj : { default: obj };
+ }
+ function _getRequireWildcardCache(nodeInterop) {
+   if (typeof WeakMap !== 'function') return null;
+   var cacheBabelInterop = new WeakMap();
+   var cacheNodeInterop = new WeakMap();
+-  return (_getRequireWildcardCache = function (nodeInterop) {
++  return (_getRequireWildcardCache = function(nodeInterop) {
+     return nodeInterop ? cacheNodeInterop : cacheBabelInterop;
+   })(nodeInterop);
+ }
+@@ -41,7 +41,7 @@ function _interopRequireWildcard(obj, nodeInterop) {
+     return obj;
+   }
+   if (obj === null || (typeof obj !== 'object' && typeof obj !== 'function')) {
+-    return {default: obj};
++    return { default: obj };
+   }
+   var cache = _getRequireWildcardCache(nodeInterop);
+   if (cache && cache.has(obj)) {
+@@ -75,27 +75,37 @@ function _interopRequireWildcard(obj, nodeInterop) {
+  * LICENSE file in the root directory of this source tree.
+  */
+ 
+-async function runGlobalHook({allTests, globalConfig, moduleName}) {
+-  const globalModulePaths = new Set(
+-    allTests.map(test => test.context.config[moduleName])
++async function runGlobalHook({ allTests, globalConfig, moduleName }) {
++  const { configs } = allTests.reduce(
++    (acc, test) => {
++      const hook = test.context.config[moduleName];
++      if (!hook) return acc;
++
++      const id = test.context.config.id;
++      const registered = acc.ids.includes(id);
++      if (registered) return acc;
++
++      acc.ids.push(id);
++      acc.configs.push(test.context.config);
++      return acc;
++    },
++    { ids: [], configs: [] },
+   );
++
+   if (globalConfig[moduleName]) {
+-    globalModulePaths.add(globalConfig[moduleName]);
++    configs.push({
++      ...allTests[0].context.config,
++      [moduleName]: globalConfig[moduleName],
++    });
+   }
+-  if (globalModulePaths.size > 0) {
+-    for (const modulePath of globalModulePaths) {
++  if (configs.length > 0) {
++    for (const config of configs) {
++      const modulePath = config[moduleName];
+       if (!modulePath) {
+         continue;
+       }
+-      const correctConfig = allTests.find(
+-        t => t.context.config[moduleName] === modulePath
+-      );
+-      const projectConfig = correctConfig
+-        ? correctConfig.context.config
+-        : // Fallback to first config
+-          allTests[0].context.config;
+       const transformer = await (0, _transform().createScriptTransformer)(
+-        projectConfig
++        config
+       );
+       try {
+         await transformer.requireAndTranspileModule(
+@@ -106,7 +116,7 @@ async function runGlobalHook({allTests, globalConfig, moduleName}) {
+                 `${moduleName} file must export a function at ${modulePath}`
+               );
+             }
+-            await globalModule(globalConfig, projectConfig);
++            await globalModule(globalConfig, config);
+           }
+         );
+       } catch (error) {
+@@ -116,9 +126,9 @@ async function runGlobalHook({allTests, globalConfig, moduleName}) {
+         }
+         throw new Error(
+           `Jest: Got error running ${moduleName} - ${modulePath}, reason: ${(0,
+-          _prettyFormat().default)(error, {
+-            maxDepth: 3
+-          })}`
++            _prettyFormat().default)(error, {
++              maxDepth: 3
++            })}`
+         );
+       }
+     }
