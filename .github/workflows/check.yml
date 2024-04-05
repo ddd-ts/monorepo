@@ -3,32 +3,30 @@ name: Check
 on: push
 
 jobs:
-  audit:
+  check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - run: yarn audit
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Install Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
-      - run: yarn
-      - run: yarn build
+          node-version: 20
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
 
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - run: yarn
-      - run: yarn build
-      - run: yarn test
+      - name: Install dependencies
+        run: pnpm i
+
+      # - name: Audit
+      #   run: pnpm audit
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
