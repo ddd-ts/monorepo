@@ -2,6 +2,11 @@
   "name": "@ddd-ts/monorepo",
   "version": "0.0.1-0",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "tests",
+    "tools"
+  ],
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test --concurrency 1",
