@@ -18,3 +18,5 @@ echo $next_version
 
 pnpm --filter "@ddd-ts/*" exec npm pkg set version=$next_version
 pnpm --filter "@ddd-ts/*" exec sed -i "s'workspace:\*'$next_version'g" package.json
+
+npm publish --access public --workspaces --tag $branch_slug

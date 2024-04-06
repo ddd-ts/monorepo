@@ -33,8 +33,7 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Bump
-        run: sh .github/workflows/bump-main.sh
-
       - name: Release
-        run: npm publish --access public --workspaces
+        run: sh .github/workflows/release-main.sh
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -15,6 +15,9 @@ import {
 import { Constructor } from "@ddd-ts/types";
 
 process.env.DEBUG = "esdb:*";
+
+(BigInt as any).prototype.toJSON = function () { return this.toString() }
+
 export class ESDBEventStore extends EventStore {
   client: EventStoreDBClient;
   namespace: string;
@@ -124,11 +127,14 @@ export class ESDBEventStore extends EventStore {
     do {
       status = await this.client.getProjectionStatus(stableProjectionName);
       if (status.progress < 100) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
       attempts++;
-      if (attempts > 20) {
-        throw new Error("projection not stable");
+      if (attempts > 40) {
+        if (status.status === 'Running') {
+          return stableProjectionName;
+        }
+        throw new Error("projection not stable: \n" + JSON.stringify(status, null, 2));
       }
     } while (status.progress < 100);
 
