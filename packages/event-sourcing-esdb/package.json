@@ -12,15 +12,15 @@
 		"build": "tsc"
 	},
 	"dependencies": {
-		"@ddd-ts/event-sourcing": "*",
+		"@ddd-ts/event-sourcing": "workspace:*",
 		"@eventstore/db-client": "^5.0.0"
 	},
 	"devDependencies": {
-		"@ddd-ts/tools": "*",
-		"@ddd-ts/event-sourcing-inmemory": "*",
-		"@ddd-ts/tests": "*",
+		"@ddd-ts/tools": "workspace:*",
+		"@ddd-ts/event-sourcing-inmemory": "workspace:*",
+		"@ddd-ts/tests": "workspace:*",
 		"@types/jest": "^29.5.1",
-		"@ddd-ts/types": "*",
-		"@ddd-ts/store-inmemory": "*"
+		"@ddd-ts/types": "workspace:*",
+		"@ddd-ts/store-inmemory": "workspace:*"
 	}
 }

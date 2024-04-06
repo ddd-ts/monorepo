@@ -9,13 +9,13 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@ddd-ts/model": "*",
-    "@ddd-ts/serialization": "*",
+    "@ddd-ts/model": "workspace:*",
+    "@ddd-ts/serialization": "workspace:*",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "@ddd-ts/tools": "*",
-    "@ddd-ts/types": "*",
+    "@ddd-ts/tools": "workspace:*",
+    "@ddd-ts/types": "workspace:*",
     "@types/uuid": "^8.3.4",
     "@types/jest": "^29.5.1"
   }
