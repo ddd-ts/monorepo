@@ -9,15 +9,15 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@ddd-ts/event-sourcing": "*",
-    "@ddd-ts/model": "*",
-    "@ddd-ts/serialization": "*",
-    "@ddd-ts/store-inmemory": "*"
+    "@ddd-ts/event-sourcing": "workspace:*",
+    "@ddd-ts/model": "workspace:*",
+    "@ddd-ts/serialization": "workspace:*",
+    "@ddd-ts/store-inmemory": "workspace:*"
   },
   "devDependencies": {
-    "@ddd-ts/tests": "*",
-    "@ddd-ts/tools": "*",
-    "@ddd-ts/types": "*",
+    "@ddd-ts/tests": "workspace:*",
+    "@ddd-ts/tools": "workspace:*",
+    "@ddd-ts/types": "workspace:*",
     "@types/jest": "^29.5.1",
     "@types/node": "^20.12.4"
   }

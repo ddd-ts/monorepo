@@ -12,16 +12,16 @@
 		"build": "tsc"
 	},
 	"dependencies": {
-		"@ddd-ts/event-sourcing": "*",
-		"@ddd-ts/model": "*",
-		"@ddd-ts/serialization": "*",
+		"@ddd-ts/event-sourcing": "workspace:*",
+		"@ddd-ts/model": "workspace:*",
+		"@ddd-ts/serialization": "workspace:*",
 		"firebase-admin": "^11.5.0"
 	},
 	"devDependencies": {
-		"@ddd-ts/tools": "*",
-		"@ddd-ts/store-firestore": "*",
-		"@ddd-ts/tests": "*",
-		"@ddd-ts/types": "*",
+		"@ddd-ts/tools": "workspace:*",
+		"@ddd-ts/store-firestore": "workspace:*",
+		"@ddd-ts/tests": "workspace:*",
+		"@ddd-ts/types": "workspace:*",
 		"@types/jest": "^29.5.1"
 	}
 }

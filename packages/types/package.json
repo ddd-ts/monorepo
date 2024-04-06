@@ -8,6 +8,6 @@
     "build": "tsc"
   },
   "devDependencies": {
-    "@ddd-ts/tools": "*"
+    "@ddd-ts/tools": "workspace:*"
   }
 }
