@@ -36,5 +36,5 @@ jobs:
       - name: Bump
         run: sh .github/workflows/bump-main.sh
 
-      # - name: Release
-      #   run: npm publish --access public --workspaces
+      - name: Release
+        run: npm publish --access public --workspaces
