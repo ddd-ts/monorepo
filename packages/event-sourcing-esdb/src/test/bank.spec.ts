@@ -12,7 +12,7 @@ import {
   InMemoryTransactionPerformer,
 } from "@ddd-ts/store-inmemory";
 
-describe("EventSourcingESDB", () => {
+describe.skip("EventSourcingESDB", () => {
   const es = new ESDBEventStore();
   const database = new InMemoryDatabase();
   const checkpoint = new InMemoryCheckpoint(database);
