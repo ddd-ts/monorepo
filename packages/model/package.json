@@ -9,7 +9,7 @@
     "build": "tsc"
   },
   "devDependencies": {
-    "@ddd-ts/tools": "*",
+    "@ddd-ts/tools": "workspace:*",
     "@types/jest": "^29.5.1"
   }
 }

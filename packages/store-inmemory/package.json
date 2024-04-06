@@ -8,12 +8,12 @@
 		"build": "tsc"
 	},
 	"dependencies": {
-		"@ddd-ts/model": "*",
-		"@ddd-ts/serialization": "*"
+		"@ddd-ts/model": "workspace:*",
+		"@ddd-ts/serialization": "workspace:*"
 	},
 	"devDependencies": {
-		"@ddd-ts/tools": "*",
-		"@ddd-ts/types": "*",
+		"@ddd-ts/tools": "workspace:*",
+		"@ddd-ts/types": "workspace:*",
 		"@types/jest": "^29.5.1",
 		"@types/node": "^20.12.4"
 	}

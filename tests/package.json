@@ -13,18 +13,18 @@
 		"posttest": "docker compose -f docker/docker-compose.yml down"
 	},
 	"dependencies": {
-		"@ddd-ts/event-sourcing": "*",
-		"@ddd-ts/model": "*",
-		"@ddd-ts/serialization": "*",
-		"@ddd-ts/shape": "*",
-		"@ddd-ts/store-firestore": "*",
-		"@ddd-ts/store-inmemory": "*",
+		"@ddd-ts/event-sourcing": "workspace:*",
+		"@ddd-ts/model": "workspace:*",
+		"@ddd-ts/serialization": "workspace:*",
+		"@ddd-ts/shape": "workspace:*",
+		"@ddd-ts/store-firestore": "workspace:*",
+		"@ddd-ts/store-inmemory": "workspace:*",
 		"firebase-admin": "^11.5.0",
 		"uuid": "^8.3.2"
 	},
 	"devDependencies": {
-		"@ddd-ts/tools": "*",
-		"@ddd-ts/types": "*",
+		"@ddd-ts/tools": "workspace:*",
+		"@ddd-ts/types": "workspace:*",
 		"@types/jest": "^29.5.12",
 		"@types/uuid": "^8.3.4"
 	}
