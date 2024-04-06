@@ -1,0 +1,7 @@
+.turbo
+.vscode
+docker
+src
+jest.config.js
+tsconfig.json
+yarn-error.log
