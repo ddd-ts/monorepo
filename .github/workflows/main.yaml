@@ -1,4 +1,4 @@
-name: Alpha
+name: Main
 
 on:
   push:
@@ -30,8 +30,11 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
-      - run: npm version 0.0.0-feat.${{ github.ref_name }}.${SHORT_SHA} --workspaces
-      - run: npm publish --access public --workspaces --tag feat.${{ github.ref_name }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Test
+        run: pnpm test
+
+      - name: Bump
+        run: sh .github/workflows/bump-main.sh
+
+      # - name: Release
+      #   run: npm publish --access public --workspaces
