@@ -10,11 +10,16 @@ type Path<
 type Difference = { path: string };
 type ShouldHandleUnion<L, R> = IsUnion<L> | IsUnion<R>;
 
+type Expand<T> = {
+  [K in keyof T]: T[K];
+} & {};
+
 type HandleUnion<
   L,
   R,
   Current extends string,
   Diffs extends Difference[],
+  I18n extends i18n,
 > = IsUnion<L> extends true
   ? IsUnion<R> extends true
     ? [
@@ -25,12 +30,16 @@ type HandleUnion<
                 ? Diffs
                 : [
                     ...Diffs,
-                    {
-                      path: Current;
-                      message: "element of Left union not found in Right union";
-                      left: UnionElement;
-                      right: UnionToArray<R>;
-                    },
+                    Expand<
+                      {
+                        path: Current;
+                        message: `element of ${I18n["left"]} union not found in ${I18n["right"]} union`;
+                      } & {
+                        [I in I18n["left"]]: UnionElement;
+                      } & {
+                        [I in I18n["right"]]: Expand<R>;
+                      }
+                    >,
                   ]
               : Diffs
             : Diffs;
@@ -42,12 +51,16 @@ type HandleUnion<
                 ? Diffs
                 : [
                     ...Diffs,
-                    {
-                      path: Current;
-                      message: "element of Right union not found in Left union";
-                      left: UnionToArray<L>;
-                      right: UnionElement;
-                    },
+                    Expand<
+                      {
+                        path: Current;
+                        message: `element of ${I18n["right"]} union not found in ${I18n["left"]} union`;
+                      } & {
+                        [I in I18n["left"]]: Expand<L>;
+                      } & {
+                        [I in I18n["right"]]: UnionElement;
+                      }
+                    >,
                   ]
               : Diffs
             : Diffs;
@@ -55,22 +68,30 @@ type HandleUnion<
       ]
     : [
         ...Diffs,
-        {
-          path: Current;
-          message: "Left is an union but Right isnt";
-          left: L;
-          right: R;
-        },
+        Expand<
+          {
+            path: Current;
+            message: `${I18n["left"]} is an union but ${I18n["right"]} isnt`;
+          } & {
+            [I in I18n["left"]]: L;
+          } & {
+            [I in I18n["right"]]: R;
+          }
+        >,
       ]
   : IsUnion<R> extends true
     ? [
         ...Diffs,
-        {
-          path: Current;
-          message: "Right is a union but Left isnt";
-          left: L;
-          right: R;
-        },
+        Expand<
+          {
+            path: Current;
+            message: `${I18n["right"]} is a union but ${I18n["left"]} isnt`;
+          } & {
+            [I in I18n["left"]]: L;
+          } & {
+            [I in I18n["right"]]: R;
+          }
+        >,
       ]
     : Diffs;
 
@@ -87,51 +108,68 @@ type HandleObject<
   R,
   Current extends string,
   Diffs extends Difference[],
+  I18n extends i18n,
 > = L extends object
   ? R extends object
     ? {
         [K in keyof L | keyof R]: K extends keyof L & keyof R
-          ? Diff<L[K], R[K], Path<Current, K>, Diffs>
+          ? Diff<L[K], R[K], I18n, Path<Current, K>, Diffs>
           : K extends keyof L
             ? [
                 ...Diffs,
-                {
-                  path: Path<Current, K>;
-                  message: "Right does not have this key";
-                  left: L[K];
-                  right: undefined;
-                },
+                Expand<
+                  {
+                    path: Path<Current, K>;
+                    message: `${I18n["right"]} does not have this key`;
+                  } & {
+                    [I in I18n["left"]]: L[K];
+                  } & {
+                    [I in I18n["right"]]: undefined;
+                  }
+                >,
               ]
             : K extends keyof R
               ? [
                   ...Diffs,
-                  {
-                    path: Path<Current, K>;
-                    message: "Left does not have this key";
-                    left: undefined;
-                    right: R[K];
-                  },
+                  Expand<
+                    {
+                      path: Path<Current, K>;
+                      message: `${I18n["left"]} does not have this key`;
+                    } & {
+                      [I in I18n["left"]]: undefined;
+                    } & {
+                      [I in I18n["right"]]: R[K];
+                    }
+                  >,
                 ]
               : Diffs;
       }[keyof L | keyof R]
     : [
         ...Diffs,
-        {
-          path: Current;
-          message: "Left is an object but Right isnt";
-          left: L;
-          right: R;
-        },
+        Expand<
+          {
+            path: Current;
+            message: `${I18n["left"]} is an object but ${I18n["right"]} isnt`;
+          } & {
+            [K in I18n["left"]]: L;
+          } & {
+            [K in I18n["right"]]: R;
+          }
+        >,
       ]
   : R extends object
     ? [
         ...Diffs,
-        {
-          path: Current;
-          message: "Right is an object but Left isnt";
-          left: L;
-          right: R;
-        },
+        Expand<
+          {
+            path: Current;
+            message: `${I18n["right"]} is an object but ${I18n["left"]} isnt`;
+          } & {
+            [K in I18n["left"]]: L;
+          } & {
+            [K in I18n["right"]]: R;
+          }
+        >,
       ]
     : Diffs;
 
@@ -140,42 +178,65 @@ type HandlePrimitive<
   R,
   Current extends string,
   Diffs extends Difference[],
+  I18n extends i18n,
 > = L extends R
   ? R extends L
     ? Diffs
     : [
         ...Diffs,
-        {
-          path: Current;
-          message: "Right does not extends Left";
-          left: L;
-          right: R;
-        },
+        Expand<
+          {
+            path: Current;
+            message: `${I18n["right"]} does not extends ${I18n["left"]}`;
+          } & {
+            [K in I18n["left"]]: L;
+          } & {
+            [K in I18n["right"]]: R;
+          }
+        >,
       ]
   : [
       ...Diffs,
-      {
-        path: Current;
-        message: "Left does not extends Right";
-        left: L;
-        right: R;
-      },
+      Expand<
+        {
+          path: Current;
+          message: `${I18n["left"]} does not extends ${I18n["right"]}`;
+        } & {
+          [K in I18n["left"]]: L;
+        } & {
+          [K in I18n["right"]]: R;
+        }
+      >,
     ];
 
 type Diff<
   L,
   R,
+  I18n extends i18n = default18n,
   Current extends string = "",
   Diffs extends Difference[] = [],
 > = ShouldHandleUnion<L, R> extends true
-  ? HandleUnion<L, R, Current, Diffs>
+  ? HandleUnion<L, R, Current, Diffs, I18n>
   : ShouldHandleObject<L, R> extends true
-    ? HandleObject<L, R, Current, Diffs>
-    : HandlePrimitive<L, R, Current, Diffs>;
+    ? HandleObject<L, R, Current, Diffs, I18n>
+    : HandlePrimitive<L, R, Current, Diffs, I18n>;
 
-export type Differences<L, R> = Equals<L, R> extends true
+type i18n = {
+  left: string;
+  right: string;
+};
+
+type default18n = {
+  left: "Left";
+  right: "Right";
+};
+
+export type Differences<L, R, I18n extends i18n = default18n> = Equals<
+  L,
+  R
+> extends true
   ? never
-  : Diff<L, R, "", []> extends infer U
+  : Diff<L, R, I18n, "", []> extends infer U
     ? U extends Array<any>
       ? U[number]
       : never
