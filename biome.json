@@ -10,12 +10,13 @@
       "suspicious": {
         "noExplicitAny": "off",
         "noEmptyInterface": "off",
-        "noConfusingVoidType": "off",
+        "noConfusingVoidType": "off"
       },
       "complexity": {
         "noStaticOnlyClass": "off",
         "noBannedTypes": "off",
-        "noThisInStatic": "off"
+        "noThisInStatic": "off",
+        "noUselessLoneBlockStatements": "off"
       }
     }
   }
