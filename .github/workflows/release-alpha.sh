@@ -9,10 +9,10 @@ branch=`git branch --show-current`
 branch_slug=`slugify $branch`
 
 latest_upstream=`npm view @ddd-ts/model "dist-tags.$branch_slug" | awk -F'[.]' '{ print $NF }'`
-latest_upstream="${latest_upstream:="$branch_slug-0"}"
+latest_upstream="${latest_upstream:="0"}"
 
-next_version_suffix=`echo $latest_upstream | awk -F'[.-]' '{ print $1 "." $2+1 }'`
-next_version="0.0.0-$next_version_suffix"
+next_version_suffix=`echo $latest_upstream | awk -F'[.-]' '{ print $1+1 }'`
+next_version="0.0.0-$branch_slug.$next_version_suffix"
 
 echo $next_version
 
