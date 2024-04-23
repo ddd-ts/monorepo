@@ -1,4 +1,4 @@
-import type { Differences, Equals } from "./differences";
+import type { Differences } from "./differences";
 
 type Freezable<T> = {
   serialize(...args: any[]): T;
@@ -6,15 +6,15 @@ type Freezable<T> = {
 
 type Ctor<T> = abstract new (...args: any[]) => T;
 
-export function Freeze<T = any>() {
+export function Freeze<L = any>() {
   return <
     C extends Ctor<Freezable<any>>,
     R extends Awaited<ReturnType<InstanceType<C>["serialize"]>>,
   >(
     target: C,
-  ): Equals<R, T> extends true
+  ): R extends L
     ? C
-    : Differences<T, R, { left: "Frozen"; right: "Serializer" }> => {
+    : Differences<L, R, { left: "Frozen"; right: "Serializer" }> => {
     return target as any;
   };
 }
