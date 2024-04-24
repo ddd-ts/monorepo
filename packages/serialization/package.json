@@ -20,8 +20,8 @@
 	"devDependencies": {
 		"@ddd-ts/tools": "workspace:*",
 		"@ddd-ts/types": "workspace:*",
-		"ts-morph": "^21.0.1",
 		"@types/jest": "^29.5.1",
-		"@types/node": "^17.0.13"
+		"@types/node": "^17.0.13",
+		"ts-morph": "^21.0.1"
 	}
 }
