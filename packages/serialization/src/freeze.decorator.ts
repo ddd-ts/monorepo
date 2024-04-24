@@ -1,4 +1,4 @@
-import type { Differences } from "./differences";
+import { Divergence, IsNever } from "./divergence";
 
 type Freezable<T> = {
   serialize(...args: any[]): T;
@@ -6,15 +6,17 @@ type Freezable<T> = {
 
 type Ctor<T> = abstract new (...args: any[]) => T;
 
-export function Freeze<L = any>() {
+export function Freeze<Frozen = any>() {
   return <
     C extends Ctor<Freezable<any>>,
-    R extends Awaited<ReturnType<InstanceType<C>["serialize"]>>,
+    Serialized extends Awaited<ReturnType<InstanceType<C>["serialize"]>>,
   >(
     target: C,
-  ): R extends L
-    ? C
-    : Differences<L, R, { left: "Frozen"; right: "Serializer" }> => {
+  ): Divergence<Serialized, Frozen> extends infer D
+    ? IsNever<D> extends true
+      ? C
+      : D
+    : never => {
     return target as any;
   };
 }
