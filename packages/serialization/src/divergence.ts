@@ -7,18 +7,17 @@ export type UnionToIntersection<U> = (
   : never;
 
 // OBJECT
-type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } & {} : never;
+export type Expand<T> = T extends infer O
+  ? { [K in keyof O]: O[K] } & {}
+  : never;
 type Access<T, K> = K extends keyof T ? T[K] : never;
 type OnlyFromKeys<From, To> = Exclude<Exclude<keyof From, keyof To>, symbol>;
 type OnlyToKeys<From, To> = Exclude<Exclude<keyof To, keyof From>, symbol>;
-type ChangedKeys<From, To> = {
-  [K in keyof From & keyof To]: Access<From, K> extends Access<To, K>
-    ? never
-    : K;
-}[keyof From & keyof To];
-type ObjectDivergence<From, To> = Expand<
+type OmitNever<T> = { [K in keyof T as T[K] extends never ? never : K]: T[K] };
+
+type ObjectDivergence<From, To> = OmitNever<
   {
-    [K in ChangedKeys<From, To>]: Expand<
+    [K in keyof From & keyof To]: Expand<
       Divergence<Access<From, K>, Access<To, K>>
     >;
   } & {
@@ -47,18 +46,22 @@ type IndexedTypeDiff<From, To> = IndexedTypeKey<
   : never;
 type IsIndexedType<T> = [T] extends [never]
   ? false
-  : number extends keyof T
-    ? true
-    : symbol extends keyof T
+  : T extends object
+    ? number extends keyof T
       ? true
-      : false;
+      : symbol extends keyof T
+        ? true
+        : false
+    : false;
 
 // UNION
 type CountUnion<T> = UnionToArray<T> extends infer U extends any[]
   ? U["length"]
   : never;
 
-type FindBestKeyForMatching<Union> = PopUnion<
+type UnshiftUnion<U> = UnionToArray<U> extends [infer F, ...any[]] ? F : never;
+
+type FindBestKeyForMatching<Union> = UnshiftUnion<
   keyof Union extends infer K
     ? K extends keyof Union
       ? CountUnion<Pick<Union, K>[K]> extends CountUnion<Union>
@@ -68,8 +71,8 @@ type FindBestKeyForMatching<Union> = PopUnion<
     : never
 >;
 
-type DiffBestMatchForObject<Item, Union> =
-  FindBestKeyForMatching<Union> extends infer K
+type DiffBestMatchForObject<Item, Union, TotalUnion> =
+  FindBestKeyForMatching<TotalUnion> extends infer K
     ? IsNever<K> extends false
       ? K extends keyof Union & keyof Item
         ? Extract<Union, { [P in K]: Item[P] }> extends infer BestMatch
@@ -81,27 +84,43 @@ type DiffBestMatchForObject<Item, Union> =
       : never
     : never;
 
-type DiffBestMatch<Item, Union> = PopUnion<
+type DiffBestMatch<Item, Union, TotalUnion> = PopUnion<
   Item extends object
-    ? DiffBestMatchForObject<Item, Extract<Union, object>>
+    ? DiffBestMatchForObject<
+        Item,
+        Extract<Union, object>,
+        Extract<TotalUnion, object>
+      >
     : never
 >;
 
-type GetChange<Item, Union> = Item extends Union
-  ? never
-  : DiffBestMatch<Item, Union> extends infer BestMatchDiff
-    ? IsNever<BestMatchDiff> extends true
-      ? { "+": Item }
-      : { "~": BestMatchDiff }
-    : never;
+type PerfectMatch<Item, Union, TotalUnion> = Union extends [infer F, ...infer R]
+  ? Divergence<Item, F> extends infer D
+    ? IsNever<D> extends true
+      ? F
+      : PerfectMatch<Item, R, TotalUnion>
+    : "!![PerfectMatch] Could not infer D"
+  : never; // end of recursion
 
-type check = DiffBestMatchForObject<
-  { type: "a" },
-  { type: "b" } | { type: "c" }
->;
+type GetChange<Item, Union, TotalUnion> = PerfectMatch<
+  Item,
+  UnionToArray<Union>,
+  TotalUnion
+> extends infer P
+  ? IsNever<P> extends false
+    ? never
+    : DiffBestMatch<Item, Union, TotalUnion> extends infer D
+      ? IsNever<D> extends false
+        ? { "~": D }
+        : { "+": Item }
+      : "!![GetChange] Could not infer D"
+  : "!![GetChange] Could not infer P";
 
-type ArrayUnionDivergence<From, To> = From extends [infer F, ...infer Rest]
-  ? GetChange<F, To> | ArrayUnionDivergence<Rest, To>
+type ArrayUnionDivergence<From, To, AllTo> = From extends [
+  infer F,
+  ...infer Rest,
+]
+  ? GetChange<F, To, AllTo> | ArrayUnionDivergence<Rest, To, AllTo>
   : never;
 
 type ZipUnion<Union> = {
@@ -113,7 +132,7 @@ type ZipUnion<Union> = {
 };
 
 type UnionDivergence<From, To> = ZipUnion<
-  ArrayUnionDivergence<UnionToArray<From>, To>
+  ArrayUnionDivergence<UnionToArray<From>, To, To>
 > extends infer Result
   ? {} extends Result
     ? never
@@ -153,18 +172,41 @@ export type PopUnion<U> = UnionToOvlds<U> extends (a: infer A) => void
 export type UnionToArray<T, A extends unknown[] = []> = IsUnion<T> extends true
   ? UnionToArray<Exclude<T, PopUnion<T>>, [PopUnion<T>, ...A]>
   : [T, ...A];
+
+// ARRAY
+
+type AtLeastOneArray<From, To> = From extends Array<unknown>
+  ? true
+  : To extends Array<unknown>
+    ? true
+    : false;
+
+type ArrayDivergence<From, To> = From extends Array<infer F>
+  ? To extends Array<infer T>
+    ? Expand<Divergence<F, T>> extends infer D
+      ? IsNever<D> extends true
+        ? never
+        : { [key: number]: Expand<Divergence<F, T>> }
+      : never
+    : ["[]?", Expand<Divergence<F, To>>]
+  : To extends Array<infer T>
+    ? ["[]!", Expand<Divergence<From, T>>]
+    : never;
+
 // DIVERGENCE
 export type Divergence<From, To> = [IsNever<From>, IsNever<To>] extends [
   false,
   false,
 ]
-  ? [IsIndexedType<From>, IsIndexedType<To>] extends [true, true]
-    ? IndexedTypeDiff<From, To>
-    : IsAtLeastOneUnion<From, To> extends true
-      ? UnionDivergence<From, To>
-      : AtLeastOneEmptyObject<From, To> extends true
-        ? EmptyObjectDivergence<From, To>
-        : [From, To] extends [object, object]
-          ? ObjectDivergence<From, To>
-          : SimpleDivergence<From, To>
+  ? AtLeastOneArray<From, To> extends true
+    ? ArrayDivergence<From, To>
+    : [IsIndexedType<From>, IsIndexedType<To>] extends [true, true]
+      ? IndexedTypeDiff<From, To>
+      : IsAtLeastOneUnion<From, To> extends true
+        ? UnionDivergence<From, To>
+        : AtLeastOneEmptyObject<From, To> extends true
+          ? EmptyObjectDivergence<From, To>
+          : [From, To] extends [object, object]
+            ? ObjectDivergence<From, To>
+            : SimpleDivergence<From, To>
   : {};
