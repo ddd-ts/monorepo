@@ -1,4 +1,4 @@
-import { Divergence, IsNever } from "./divergence";
+import { Divergence, Expand, IsNever } from "./divergence";
 
 type Freezable<T> = {
   serialize(...args: any[]): T;
@@ -15,7 +15,7 @@ export function Freeze<Frozen = any>() {
   ): Divergence<Serialized, Frozen> extends infer D
     ? IsNever<D> extends true
       ? C
-      : D
+      : Expand<D>
     : never => {
     return target as any;
   };

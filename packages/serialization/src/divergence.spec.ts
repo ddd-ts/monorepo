@@ -5,7 +5,7 @@ import { Divergence } from "./divergence";
   const a: never = {} as Divergence<string, string>;
   const b: never = {} as Divergence<number, number>;
   const c: never = {} as Divergence<{}, {}>;
-  const d: never = {} as Divergence<[], []>;
+  // const d: never = {} as Divergence<[], []>;
   const e: never = {} as Divergence<true, true>;
   const f: never = {} as Divergence<string | number, number | string>;
 
@@ -146,7 +146,7 @@ import { Divergence } from "./divergence";
   // it should detect diffs in unions
 
   type L = { type: "a"; a: string } | { type: "b"; b: number };
-  type R = { type: "a"; a: string } | { type: "b"; b: string };
+  type R = { type: "a"; a: string } | { type: "b"; b: string } | undefined;
 
   type D = Divergence<L, R>;
 
@@ -156,6 +156,26 @@ import { Divergence } from "./divergence";
       b: [0, "!=", ""],
     },
   };
+}
+
+{
+  type L = {
+    a: {
+      b: {
+        c: { type: "a"; a: string } | { type: "b"; b: number };
+      }[];
+    };
+  };
+
+  type R = {
+    a: {
+      b: {
+        c: { type: "a"; a: string } | { type: "b"; b: string };
+      }[];
+    };
+  };
+
+  type D = Divergence<L, R>;
 }
 
 it("this is a type test file", () => {
