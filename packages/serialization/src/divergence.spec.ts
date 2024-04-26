@@ -178,6 +178,66 @@ import { Divergence } from "./divergence";
   type D = Divergence<L, R>;
 }
 
+{
+  type Rec<T> = { next: Rec<T>; value: T };
+
+  type R = Rec<number>;
+  type L = Rec<string>;
+
+  type D = Divergence<L, R>;
+}
+
+{
+  type Option<T> = { type: T; a: T };
+  type Options =
+    | Option<string>
+    | Option<number>
+    | Option<boolean>
+    | Option<null>
+    | Option<{
+        a: string;
+        b: number;
+      }>;
+
+  type Rec<T> = { next: Rec<T>; value: T };
+
+  type L = {
+    id: string;
+    options: Rec<Options>;
+  };
+
+  type R = {
+    id: string;
+    options: Options;
+  };
+
+  type D = Divergence<L["options"], R["options"]>;
+}
+
+{
+  type Recursive = {
+    name: string;
+    children: undefined | Recursive[];
+  };
+
+  type L = {
+    a: Recursive[];
+  };
+
+  type R = {
+    a: Recursive[];
+    b: true;
+  };
+
+  // type Narrow<T extends A | B> = T;
+
+  // type L = Narrow<B>;
+  // type R = Narrow<A>;
+
+  type checkA = Divergence<L, R>;
+  const a: checkA = {} as never;
+}
+
 it("this is a type test file", () => {
   expect(true).toBe(true);
 });
