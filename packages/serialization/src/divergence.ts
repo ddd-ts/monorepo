@@ -232,8 +232,12 @@ type IfEquals<T, U, Y = unknown, N = never> = (<G>() => G extends T
   ? Y
   : N;
 
+type Equals<T, U> = [T] extends [U] ? ([U] extends [T] ? true : false) : false;
+
 type Has<Item, Array extends any[]> = Array extends [infer F, ...infer R]
-  ? IfEquals<Item, F, true, Has<Item, R>>
+  ? Equals<Item, F> extends true
+    ? true
+    : Has<Item, R>
   : false;
 
 type Primitive = string | number | boolean | null | undefined | Date;
@@ -249,26 +253,27 @@ type PrimitiveDivergence<From, To> = AtLeastOnePrimitive<From, To> extends true
   : never;
 
 // DIVERGENCE
-export type Divergence<
+export type Divergence<From, To, Acc extends any[] = []> = Equals<
   From,
-  To,
-  Acc extends any[] = [],
-> = Acc["length"] extends 20
-  ? { error: "Max depth reached" }
-  : Has<From, [To, ...Acc]> extends true
-    ? never
-    : [IsNever<From>, IsNever<To>] extends [false, false]
-      ? AtLeastOneArray<From, To> extends true
-        ? ArrayDivergence<From, To, [...Acc, From]>
-        : [IsIndexedType<From>, IsIndexedType<To>] extends [true, true]
-          ? IndexedTypeDiff<From, To, [...Acc, From]>
-          : IsAtLeastOneUnion<From, To> extends true
-            ? UnionDivergence<From, To, Acc>
-            : AtLeastOnePrimitive<From, To> extends true
-              ? PrimitiveDivergence<From, To>
-              : AtLeastOneEmptyObject<From, To> extends true
-                ? EmptyObjectDivergence<From, To>
-                : [From, To] extends [object, object]
-                  ? ObjectDivergence<From, To, [...Acc, From]>
-                  : SimpleDivergence<From, To>
-      : {};
+  To
+> extends true
+  ? never
+  : Acc["length"] extends 20
+    ? { error: "Max depth reached" }
+    : Has<From, [To, ...Acc]> extends true
+      ? never
+      : [IsNever<From>, IsNever<To>] extends [false, false]
+        ? AtLeastOneArray<From, To> extends true
+          ? ArrayDivergence<From, To, [...Acc, From]>
+          : [IsIndexedType<From>, IsIndexedType<To>] extends [true, true]
+            ? IndexedTypeDiff<From, To, [...Acc, From]>
+            : IsAtLeastOneUnion<From, To> extends true
+              ? UnionDivergence<From, To, Acc>
+              : AtLeastOnePrimitive<From, To> extends true
+                ? PrimitiveDivergence<From, To>
+                : AtLeastOneEmptyObject<From, To> extends true
+                  ? EmptyObjectDivergence<From, To>
+                  : [From, To] extends [object, object]
+                    ? ObjectDivergence<From, To, [...Acc, From]>
+                    : SimpleDivergence<From, To>
+        : {};
