@@ -5,6 +5,42 @@ export type UnionToIntersection<U> = (
 ) extends (k: infer I) => void
   ? I
   : never;
+export type PopUnion<U> = UnionToOvlds<U> extends (a: infer A) => void
+  ? A
+  : never;
+
+export type UnionToArray<T, A extends unknown[] = []> = IsUnion<T> extends true
+  ? UnionToArray<Exclude<T, PopUnion<T>>, [PopUnion<T>, ...A]>
+  : [T, ...A];
+type CountUnion<T> = UnionToArray<T> extends infer U extends any[]
+  ? U["length"]
+  : never;
+
+type UnshiftUnion<U> = UnionToArray<U> extends [infer F, ...any[]] ? F : never;
+
+type IsStringLiteral<T> = T extends string
+  ? string extends T
+    ? false
+    : true
+  : false;
+
+type FindBestKeyForMatching<FromUnion, ToUnion> = UnshiftUnion<
+  keyof FromUnion extends infer K
+    ? K extends keyof FromUnion & keyof ToUnion
+      ? CountUnion<Pick<FromUnion, K>[K]> extends CountUnion<FromUnion>
+        ? [IsStringLiteral<FromUnion[K]>, IsStringLiteral<ToUnion[K]>] extends [
+            true,
+            true,
+          ]
+          ? K
+          : never
+        : never
+      : never
+    : never
+>;
+type L = { type: string; e: boolean };
+type R = { type: "a"; e: boolean } | { type: "b"; e: boolean };
+type a = FindBestKeyForMatching<R, L>;
 
 // OBJECT
 export type Expand<T> = T extends infer O
@@ -61,21 +97,6 @@ type IsIndexedType<T> = [T] extends [never]
     : false;
 
 // UNION
-type CountUnion<T> = UnionToArray<T> extends infer U extends any[]
-  ? U["length"]
-  : never;
-
-type UnshiftUnion<U> = UnionToArray<U> extends [infer F, ...any[]] ? F : never;
-
-type FindBestKeyForMatching<Union> = UnshiftUnion<
-  keyof Union extends infer K
-    ? K extends keyof Union
-      ? CountUnion<Pick<Union, K>[K]> extends CountUnion<Union>
-        ? K
-        : never
-      : never
-    : never
->;
 
 type DiffBestMatchForObject<
   Item,
@@ -168,7 +189,7 @@ export type ArrayUnionDivergence<
 export type UnionDivergence<From, To, Acc extends any[]> = ArrayUnionDivergence<
   UnionToArray<From>,
   To,
-  FindBestKeyForMatching<Extract<To, object>>,
+  FindBestKeyForMatching<Extract<To, object>, Extract<From, object>>,
   Acc
 >;
 
@@ -197,14 +218,6 @@ type SimpleDivergence<From, To> = From extends To ? never : [From, "!=", To];
 type UnionToOvlds<U> = UnionToIntersection<
   U extends any ? (f: U) => void : never
 >;
-
-export type PopUnion<U> = UnionToOvlds<U> extends (a: infer A) => void
-  ? A
-  : never;
-
-export type UnionToArray<T, A extends unknown[] = []> = IsUnion<T> extends true
-  ? UnionToArray<Exclude<T, PopUnion<T>>, [PopUnion<T>, ...A]>
-  : [T, ...A];
 
 // ARRAY
 
