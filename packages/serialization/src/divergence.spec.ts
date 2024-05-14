@@ -238,6 +238,15 @@ import { Divergence } from "./divergence";
   const a: checkA = {} as never;
 }
 
+{
+  // should not infinite recurse when no best key on union
+
+  type L = { type: string; e: boolean };
+  type R = { type: "a"; e: boolean } | { type: "b"; e: boolean };
+
+  type D = Divergence<L, R>;
+}
+
 it("this is a type test file", () => {
   expect(true).toBe(true);
 });
