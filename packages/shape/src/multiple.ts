@@ -12,7 +12,9 @@ import {
   Constructor,
 } from "./_";
 
-export type MultipleShorthand = (Definition | Shorthand)[];
+export type MultipleShorthand =
+  | (Definition | Shorthand)[]
+  | readonly (Definition | Shorthand)[];
 
 export type MultipleConfiguration = Definition | Shorthand;
 
