@@ -1,6 +1,6 @@
 import { Class, ClassShorthand } from "./class";
 import { Dict, DictShorthand } from "./dict";
-import { Literal, LiteralShorthand } from "./literal";
+import { Primitive, PrimitiveShorthand } from "./primitive";
 import { Multiple, MultipleShorthand } from "./multiple";
 import { Nothing, NothingShorthand } from "./nothing";
 
@@ -39,7 +39,7 @@ export type Concrete<T extends AbstractConstructor<any>> =
 export type Shorthand =
   | Definition
   | DictShorthand
-  | LiteralShorthand
+  | PrimitiveShorthand
   | MultipleShorthand
   | NothingShorthand
   | ClassShorthand;
@@ -51,8 +51,8 @@ export type DefinitionOf<
   ? ReturnType<typeof Literal<T, B>>
   : T extends undefined
     ? ReturnType<typeof Nothing<B>>
-    : T extends LiteralShorthand
-      ? ReturnType<typeof Literal<T, B>>
+      : T extends PrimitiveShorthand
+        ? ReturnType<typeof Primitive<T, B>>
       : T extends MultipleShorthand
         ? ReturnType<typeof Multiple<T[0], B>>
         : T extends ClassShorthand

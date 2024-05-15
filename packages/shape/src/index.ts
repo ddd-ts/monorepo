@@ -3,7 +3,7 @@ export * from "./choice";
 export * from "./class";
 export * from "./dict";
 export * from "./either";
-export * from "./literal";
+export * from "./primitive";
 export * from "./mapping";
 export * from "./multiple";
 export * from "./nothing";

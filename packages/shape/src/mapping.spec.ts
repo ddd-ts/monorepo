@@ -1,11 +1,11 @@
 import { Dict } from "./dict";
-import { Literal } from "./literal";
+import { Primitive } from "./primitive";
 import { Mapping, MappingConfiguration } from "./mapping";
 import { ex } from "./test";
 
 describe("Mapping", () => {
   it("class definition, specified key", () => {
-    class Test extends Mapping([String, Literal(Number)]) {
+    class Test extends Mapping([String, Primitive(Number)]) {
       test = true as const;
     }
 
@@ -40,7 +40,7 @@ describe("Mapping", () => {
   });
 
   it("class definition, unspecified key", () => {
-    class Test extends Mapping([Literal(Number)]) {
+    class Test extends Mapping([Primitive(Number)]) {
       test = true as const;
     }
 
@@ -76,7 +76,7 @@ describe("Mapping", () => {
 
   it("inlined definition", () => {
     class Test extends Dict({
-      longhand: Mapping([Literal(Number)]),
+      longhand: Mapping([Primitive(Number)]),
       shorthand: Mapping([Number, { nested: String }]),
     }) {
       test = true as const;

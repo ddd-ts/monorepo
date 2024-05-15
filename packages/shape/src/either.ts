@@ -7,7 +7,7 @@ import {
   Empty,
 } from "./_";
 import { ClassShorthand } from "./class";
-import { LiteralShorthand } from "./literal";
+import { PrimitiveShorthand } from "./primitive";
 
 type Config = { [key: string]: any };
 
@@ -31,7 +31,7 @@ type Matcher<C extends Config> =
   | PartialMatcher<C>;
 
 export type EitherConfiguration = {
-  [key: string]: LiteralShorthand | ClassShorthand;
+  [key: string]: PrimitiveShorthand | ClassShorthand;
 };
 
 export const Either = <
