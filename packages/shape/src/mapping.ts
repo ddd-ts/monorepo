@@ -9,7 +9,7 @@ import {
   Empty,
   Constructor,
 } from "./_";
-import { Literal } from "./literal";
+import { Primitive } from "./primitive";
 
 type MappingLiteralKey = [
   [StringConstructor, string],
@@ -41,7 +41,7 @@ export const Mapping = <
 ) => {
   let [_key, _value] = config;
   if (config.length === 1) {
-    _key = Literal(String);
+    _key = Primitive(String);
     _value = config[0];
   }
 
