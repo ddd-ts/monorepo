@@ -12,19 +12,19 @@ import {
 export type DictShorthand = { [key: string]: Shorthand };
 
 export const Dict = <
-  S extends { [key: string]: any },
+  const S extends { [key: string]: any },
   B extends AbstractConstructor<{}> = typeof Empty,
 >(
   definition: S,
   base: B = Empty as any,
 ) => {
-  type Def = { [K in keyof S]: DefinitionOf<S[K], B> };
+  type Def = { -readonly [K in keyof S]: DefinitionOf<S[K], B> };
 
   type Serialized = {
-    [K in keyof S]: ReturnType<Def[K]["$serialize"]>;
+    -readonly [K in keyof S]: ReturnType<Def[K]["$serialize"]>;
   };
   type Inline = {
-    [K in keyof Def]: Def[K]["$inline"];
+    -readonly [K in keyof Def]: Def[K]["$inline"];
   };
 
   abstract class $Dict extends (base as any as AbstractConstructor<{}>) {

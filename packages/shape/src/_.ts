@@ -64,7 +64,7 @@ export type DefinitionOf<
               : never;
 
 export function Shape<
-  S extends Definition | Shorthand,
+  const S extends Definition | Shorthand,
   B extends AbstractConstructor<{}> = typeof Empty,
 >(shorthand: S, base: B = Empty as any): DefinitionOf<S, B> {
   if (
