@@ -17,6 +17,9 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0
     devDependencies:
+      '@ddd-ts/tools':
+        specifier: workspace:*
+        version: link:tools
       turbo:
         specifier: ^1.13.2
         version: 1.13.2

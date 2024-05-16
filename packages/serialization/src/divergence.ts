@@ -18,6 +18,11 @@ type CountUnion<T> = UnionToArray<T> extends infer U extends any[]
 
 type UnshiftUnion<U> = UnionToArray<U> extends [infer F, ...any[]] ? F : never;
 
+type UnionToOvlds<U> = UnionToIntersection<
+  U extends any ? (f: U) => void : never
+>;
+type IsUnion<T> = [T] extends [UnionToIntersection<T>] ? false : true;
+
 type IsStringLiteral<T> = T extends string
   ? string extends T
     ? false
@@ -38,9 +43,6 @@ type FindBestKeyForMatching<FromUnion, ToUnion> = UnshiftUnion<
       : never
     : never
 >;
-type L = { type: string; e: boolean };
-type R = { type: "a"; e: boolean } | { type: "b"; e: boolean };
-type a = FindBestKeyForMatching<R, L>;
 
 // OBJECT
 export type Expand<T> = T extends infer O
@@ -193,8 +195,6 @@ export type UnionDivergence<From, To, Acc extends any[]> = ArrayUnionDivergence<
   Acc
 >;
 
-type IsUnion<T> = [T] extends [UnionToIntersection<T>] ? false : true;
-
 type IsAtLeastOneUnion<L, R> = IsUnion<L> extends true
   ? true
   : IsUnion<R> extends true
@@ -215,10 +215,6 @@ type EmptyObjectDivergence<From, To> = [{}, {}] extends [From, To]
 
 type SimpleDivergence<From, To> = From extends To ? never : [From, "!=", To];
 
-type UnionToOvlds<U> = UnionToIntersection<
-  U extends any ? (f: U) => void : never
->;
-
 // ARRAY
 
 type AtLeastOneArray<From, To> = From extends Array<unknown>
@@ -238,12 +234,6 @@ type ArrayDivergence<From, To, Acc extends any[]> = From extends Array<infer F>
   : To extends Array<infer T>
     ? ["[]!", Divergence<From, T, Acc>]
     : never;
-
-type IfEquals<T, U, Y = unknown, N = never> = (<G>() => G extends T
-  ? 1
-  : 2) extends <G>() => G extends U ? 1 : 2
-  ? Y
-  : N;
 
 type Equals<T, U> = [T] extends [U] ? ([U] extends [T] ? true : false) : false;
 

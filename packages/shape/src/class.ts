@@ -19,6 +19,8 @@ export const Class = <
   abstract class $Class extends base {
     static $name = "class" as const;
 
+    static $of = of;
+
     constructor(public value: InstanceType<B>) {
       super();
     }
