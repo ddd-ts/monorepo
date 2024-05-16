@@ -1,5 +1,4 @@
 import {
-  Concrete,
   Definition,
   Expand,
   Shorthand,

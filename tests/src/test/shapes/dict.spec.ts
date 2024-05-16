@@ -1,10 +1,10 @@
-import { Dict, DictShorthand, Literal } from "@ddd-ts/shape";
+import { Dict, DictShorthand, Primitive } from "@ddd-ts/shape";
 import { ex } from "./test";
 
 describe("Dict", () => {
   it("class definition", () => {
     class Test extends Dict({
-      a: Literal(String),
+      a: Primitive(String),
       b: Number,
     }) {
       test = true as const;
@@ -86,7 +86,7 @@ describe("Dict", () => {
   });
 
   it("referenced definition", () => {
-    class A extends Dict({ a: Literal(Number) }) {}
+    class A extends Dict({ a: Primitive(Number) }) {}
 
     class Test extends Dict({ nested: A }) {
       test = true as const;
@@ -133,7 +133,7 @@ describe("Dict", () => {
       return I;
     };
 
-    class Test extends Testable({ a: Literal(Number) }) {
+    class Test extends Testable({ a: Primitive(Number) }) {
       test = true as const;
 
       // @ts-expect-error is not assignable to parameter of type 'true'
@@ -191,7 +191,7 @@ describe("Dict", () => {
       return Dict(shape, I);
     };
 
-    class Test extends Testable({ a: Literal(Number) }) {
+    class Test extends Testable({ a: Primitive(Number) }) {
       test = true as const;
 
       // @ts-expect-error is not assignable to parameter of type 'true'

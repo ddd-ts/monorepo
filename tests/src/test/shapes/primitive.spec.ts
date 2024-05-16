@@ -1,9 +1,9 @@
-import { Literal, Dict, LiteralShorthand } from "@ddd-ts/shape";
+import { Primitive, Dict, type PrimitiveShorthand } from "@ddd-ts/shape";
 import { ex } from "./test";
 
-describe("Literal", () => {
+describe("Primitive", () => {
   it("class definition", () => {
-    class Test extends Literal(String) {
+    class Test extends Primitive(String) {
       test = true as const;
     }
 
@@ -36,7 +36,7 @@ describe("Literal", () => {
   });
 
   it("inline definition", () => {
-    class Test extends Dict({ a: Literal(String) }) {
+    class Test extends Dict({ a: Primitive(String) }) {
       test = true as const;
     }
 
@@ -71,7 +71,7 @@ describe("Literal", () => {
   });
 
   it("referenced definition", () => {
-    class A extends Literal(String) {}
+    class A extends Primitive(String) {}
     class Test extends Dict({ a: A }) {
       test = true as const;
     }
@@ -103,8 +103,8 @@ describe("Literal", () => {
   });
 
   it("mixin extension", () => {
-    const Testable = <S extends LiteralShorthand>(shape: S) => {
-      abstract class I extends Literal(shape) {
+    const Testable = <S extends PrimitiveShorthand>(shape: S) => {
+      abstract class I extends Primitive(shape) {
         deep = true as const;
         static deep = true as const;
 
@@ -161,7 +161,7 @@ describe("Literal", () => {
   });
 
   it("mixin supersede", () => {
-    const Testable = <S extends LiteralShorthand>(shape: S) => {
+    const Testable = <S extends PrimitiveShorthand>(shape: S) => {
       abstract class I {
         deep = true as const;
         static deep = true as const;
@@ -169,7 +169,7 @@ describe("Literal", () => {
         abstract abstract: true;
       }
 
-      return Literal(shape, I);
+      return Primitive(shape, I);
     };
 
     class Test extends Testable(Number) {
