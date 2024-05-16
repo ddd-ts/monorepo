@@ -194,7 +194,7 @@ function prepareShapeMap(config: DiscriminatedUnionConfiguration, key: string) {
 }
 
 export const DiscriminatedUnion = <
-  const S extends DiscriminatedUnionConfiguration,
+  S extends DiscriminatedUnionConfiguration,
   K extends BestKey<S>,
   const B extends AbstractConstructor<{}> = typeof Empty,
 >(
@@ -220,7 +220,7 @@ export const DiscriminatedUnion = <
 
     static serialized: Serialized;
 
-    static of = of;
+    static $of = of;
 
     static $name = "discriminated-union" as const;
 
