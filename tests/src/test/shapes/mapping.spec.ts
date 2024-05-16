@@ -1,9 +1,9 @@
-import { Mapping, Literal, Dict, MappingConfiguration } from "@ddd-ts/shape";
+import { Mapping, Primitive, Dict, MappingConfiguration } from "@ddd-ts/shape";
 import { ex } from "./test";
 
 describe("Mapping", () => {
   it("class definition, specified key", () => {
-    class Test extends Mapping([String, Literal(Number)]) {
+    class Test extends Mapping([String, Primitive(Number)]) {
       test = true as const;
     }
 
@@ -38,7 +38,7 @@ describe("Mapping", () => {
   });
 
   it("class definition, unspecified key", () => {
-    class Test extends Mapping([Literal(Number)]) {
+    class Test extends Mapping([Primitive(Number)]) {
       test = true as const;
     }
 
@@ -74,7 +74,7 @@ describe("Mapping", () => {
 
   it("inlined definition", () => {
     class Test extends Dict({
-      longhand: Mapping([Literal(Number)]),
+      longhand: Mapping([String, Number]),
       shorthand: Mapping([Number, { nested: String }]),
     }) {
       test = true as const;
