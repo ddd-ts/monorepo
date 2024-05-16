@@ -51,18 +51,22 @@ describe("DiscriminatedUnion", () => {
     const c = new Test({ type: "B", b: 2 });
     ex(c).toBeInstanceOf(Test).ok;
     ex(c.value).toStrictEqual<Inlined>({ type: "B", b: 2 }).ok;
+    ex(c.serialize()).toStrictEqual<Serialized>({ type: "B", b: 2 }).ok;
 
     const c2 = Test.deserialize({ type: "B", b: 2 });
     ex(c2).toBeInstanceOf(Test).ok;
     ex(c2.value).toStrictEqual<Inlined>({ type: "B", b: 2 }).ok;
+    ex(c2.serialize()).toStrictEqual<Serialized>({ type: "B", b: 2 }).ok;
 
     const d = new Test({ type: "C", c: true });
     ex(d).toBeInstanceOf(Test).ok;
     ex(d.value).toStrictEqual<Inlined>({ type: "C", c: true }).ok;
+    ex(d.serialize()).toStrictEqual<Serialized>({ type: "C", c: true }).ok;
 
     const d2 = Test.deserialize({ type: "C", c: true });
     ex(d2).toBeInstanceOf(Test).ok;
     ex(d2.value).toStrictEqual<Inlined>({ type: "C", c: true }).ok;
+    ex(d2.serialize()).toStrictEqual<Serialized>({ type: "C", c: true }).ok;
   });
 
   it("class definition with constructors", () => {
