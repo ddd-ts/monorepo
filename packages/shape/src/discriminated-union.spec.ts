@@ -1,5 +1,5 @@
 import { Dict } from "./dict";
-import { ex } from "./test";
+import { ex, type Equals } from "./test";
 import {
   DiscriminatedUnion,
   DiscriminatedUnionConfiguration,
@@ -346,3 +346,15 @@ describe("DiscriminatedUnion", () => {
     ex(b.value).toStrictEqual<A | B>(new B({ type: "B" })).ok;
   });
 });
+
+// making the config `as const` breaks the freeze command
+// This enforces the use of `as const` in the discriminator
+// This is ugly
+class A extends DiscriminatedUnion([
+  { type: "A" as const },
+  { type: "B" as const },
+]) {}
+const _shouldBeFreezable: Equals<
+  (typeof A)["$of"],
+  ({ type: "A" } | { type: "B" })[]
+> = true;
