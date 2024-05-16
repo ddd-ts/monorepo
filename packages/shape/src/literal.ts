@@ -1,56 +1,43 @@
-import { AbstractConstructor, Concrete, Constructor, Empty, Expand } from "./_";
+import { AbstractConstructor, Constructor, Empty, Expand } from "./_";
 
-type LiteralMap = [
-  [StringConstructor, string],
-  [NumberConstructor, number],
-  [DateConstructor, Date],
-  [BooleanConstructor, boolean],
-];
-
-type LiteralConstructor = LiteralMap[number][0];
-export type LiteralFromConstructor<S> = Extract<
-  LiteralMap[number],
-  [S, any]
->[1];
-
-export type LiteralShorthand = LiteralConstructor;
+export type LiteralShorthand = string | number;
 
 export const Literal = <
-  S extends LiteralConstructor,
+  const S extends LiteralShorthand,
   B extends AbstractConstructor<{}> = typeof Empty,
 >(
   of: S,
   base: B = Empty as any,
 ) => {
-  type Inline = LiteralFromConstructor<S>;
+  type Inline = S;
 
   abstract class $Literal extends (base as any as Constructor<{}>) {
-    constructor(public readonly value: Expand<Inline>) {
-      super();
-    }
+    public readonly value = of;
+
+    static value = of;
 
     static $name = "literal" as const;
 
-    serialize(): Inline {
-      return this.value;
+    serialize(): S {
+      return of;
     }
 
     static deserialize<T extends typeof $Literal>(
       this: T,
       value: Inline,
     ): InstanceType<T> {
-      return new (this as any)(this.$deserialize(value)) as InstanceType<T>;
+      return new (this as any)() as InstanceType<T>;
     }
 
     static $serialize(value: Inline): Inline {
-      return value;
+      return of;
     }
 
     static $deserialize(value: Inline): Inline {
-      return value;
+      return of;
     }
 
-    static $inline: Expand<Inline>;
+    static $inline: Inline;
   }
 
   type LiteralConstructor = abstract new (

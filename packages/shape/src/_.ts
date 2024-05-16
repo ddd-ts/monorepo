@@ -3,6 +3,7 @@ import { Dict, DictShorthand } from "./dict";
 import { Primitive, PrimitiveShorthand } from "./primitive";
 import { Multiple, MultipleShorthand } from "./multiple";
 import { Nothing, NothingShorthand } from "./nothing";
+import { Literal, LiteralShorthand } from "./literal";
 
 export abstract class Empty {}
 
@@ -42,7 +43,8 @@ export type Shorthand =
   | PrimitiveShorthand
   | MultipleShorthand
   | NothingShorthand
-  | ClassShorthand;
+  | ClassShorthand
+  | LiteralShorthand;
 
 export type DefinitionOf<
   T extends Shorthand | Definition,
@@ -51,8 +53,8 @@ export type DefinitionOf<
   ? ReturnType<typeof Literal<T, B>>
   : T extends undefined
     ? ReturnType<typeof Nothing<B>>
-      : T extends PrimitiveShorthand
-        ? ReturnType<typeof Primitive<T, B>>
+    : T extends PrimitiveShorthand
+      ? ReturnType<typeof Primitive<T, B>>
       : T extends MultipleShorthand
         ? ReturnType<typeof Multiple<T[0], B>>
         : T extends ClassShorthand
@@ -67,6 +69,10 @@ export function Shape<
   const S extends Definition | Shorthand,
   B extends AbstractConstructor<{}> = typeof Empty,
 >(shorthand: S, base: B = Empty as any): DefinitionOf<S, B> {
+  if (typeof shorthand === "string" || typeof shorthand === "number") {
+    return Literal(shorthand, base) as any;
+  }
+
   if (
     shorthand &&
     "$name" in shorthand &&
@@ -82,7 +88,7 @@ export function Shape<
     return Nothing(undefined, base) as any;
   }
   if ([String, Number, Date, Boolean].includes(shorthand as any)) {
-    return Literal(shorthand as any, base) as any;
+    return Primitive(shorthand as any, base) as any;
   }
   if (shorthand && "prototype" in shorthand) {
     return Class(shorthand as any, base) as any;
