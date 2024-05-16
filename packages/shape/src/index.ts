@@ -4,6 +4,8 @@ export * from "./class";
 export * from "./dict";
 export * from "./either";
 export * from "./primitive";
+export * from "./literal";
+export * from "./discriminated-union";
 export * from "./mapping";
 export * from "./multiple";
 export * from "./nothing";

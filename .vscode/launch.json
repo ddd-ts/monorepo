@@ -24,6 +24,18 @@
       "windows": {
         "program": "${workspaceFolder}/node_modules/jest/bin/jest"
       }
+    },
+    {
+      "name": "Current File",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "pnpm",
+      "cwd": "${workspaceFolder}",
+      "runtimeArgs": ["ts-node", "--transpiler=ts-node/transpilers/swc","-T", "${file}"],
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/**/node_modules/**"
+      ]
     }
   ]
 }

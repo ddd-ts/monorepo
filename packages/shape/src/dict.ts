@@ -2,7 +2,6 @@ import {
   DefinitionOf,
   Shorthand,
   Shape,
-  Concrete,
   Expand,
   AbstractConstructor,
   Constructor,
@@ -15,7 +14,7 @@ export const Dict = <
   const S extends { [key: string]: any },
   B extends AbstractConstructor<{}> = typeof Empty,
 >(
-  definition: S,
+  of: S,
   base: B = Empty as any,
 ) => {
   type Def = { -readonly [K in keyof S]: DefinitionOf<S[K], B> };
@@ -29,6 +28,7 @@ export const Dict = <
 
   abstract class $Dict extends (base as any as AbstractConstructor<{}>) {
     static $name = "dict" as const;
+    static $of = of;
 
     constructor(...args: any[]) {
       super();
@@ -51,7 +51,7 @@ export const Dict = <
       this: T,
       value: Serialized,
     ): Inline {
-      const split = Object.entries(definition);
+      const split = Object.entries(of);
       const transform = split.map(([key, child]) => {
         const longhand = Shape(child) as any;
         const deserialized = longhand.$deserialize((value as any)[key]);
@@ -65,7 +65,7 @@ export const Dict = <
       this: T,
       value: InstanceType<T>,
     ): Serialized {
-      const split = Object.entries(definition);
+      const split = Object.entries(of);
       const transform = split.map(([key, child]) => {
         const longhand = Shape(child as any) as any;
         const serialized = longhand.$serialize((value as any)[key]);

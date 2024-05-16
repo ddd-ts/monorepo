@@ -18,7 +18,8 @@
     "bump": "npm version -ws $(npm view @ddd-ts/model dist-tags.latest | tr -d '\"' | awk -F'[.-]' '{ print $1 \".\" $2 \".\" $3 \"-\" $4+1 }')"
   },
   "devDependencies": {
-    "turbo": "^1.13.2"
+    "turbo": "^1.13.2",
+    "@ddd-ts/tools": "workspace:*"
   },
   "engines": {
     "npm": ">=7.0.0",
