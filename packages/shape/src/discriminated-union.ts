@@ -185,8 +185,12 @@ function prepareShapeMap(config: DiscriminatedUnionConfiguration, key: string) {
     //   Dict $of property references the configuration provided, which allows us to capture the discriminator
     //   Class $of property references the constructor of the class, which allows us to capture the discriminator
     //   which is mandatorily defined on the static side of the class
-    const discriminator: string =
-      "$of" in c ? (c as any).$of[key] : (shape as any).$of[key];
+    const discriminator =
+      key in c
+        ? (c as any)[key]
+        : "$of" in c
+          ? (c as any).$of[key]
+          : (shape as any).$of[key];
 
     acc[discriminator] = shape;
     return acc;
