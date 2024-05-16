@@ -1,18 +1,18 @@
-import { Literal, LiteralShorthand } from "./literal";
 import { Dict } from "./dict";
 import { ex } from "./test";
+import { Literal, type LiteralShorthand } from "./literal";
 
 describe("Literal", () => {
   it("class definition", () => {
-    class Test extends Literal(String) {
+    class Test extends Literal("a") {
       test = true as const;
     }
 
     // Constructor parameters
-    ex(Test).toHaveFirstParam<string>().ok;
+    ex(Test).toHaveFirstParam<"a">().ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<string>().ok;
+    ex(Test.deserialize).toHaveFirstParam<"a">().ok;
     const a = Test.deserialize("a");
     ex(a).toBeInstanceOf(Test).ok;
 
@@ -20,10 +20,10 @@ describe("Literal", () => {
     ex(a.test).toBe(true as const).ok;
 
     // Inherited prototype on deserialization
-    ex(a.value).toBe<string>("a").ok;
+    ex(a.value).toBe<"a">("a").ok;
 
     // Serialization
-    ex(a.serialize()).toBe<string>("a").ok;
+    ex(a.serialize()).toBe<"a">("a").ok;
 
     // Instantiation
     const b = new Test("a");
@@ -33,15 +33,15 @@ describe("Literal", () => {
     ex(b.test).toBe(true as const).ok;
 
     // Inherited prototype on instantiation
-    ex(b.value).toBe<string>("a").ok;
+    ex(b.value).toBe<"a">("a").ok;
   });
 
   it("inline definition", () => {
-    class Test extends Dict({ a: Literal(String) }) {
+    class Test extends Dict({ a: Literal("a") }) {
       test = true as const;
     }
 
-    type Serialized = { a: string };
+    type Serialized = { a: "a" };
 
     // Constructor parameters
     ex(Test).toHaveFirstParam<Serialized>().ok;
@@ -55,7 +55,7 @@ describe("Literal", () => {
     ex(a.test).toBe(true as const).ok;
 
     // Inherited prototype on deserialization
-    ex(a.a).toBe<string>("a").ok;
+    ex(a.a).toBe<"a">("a").ok;
 
     // Serialization
     ex(a.serialize()).toStrictEqual<Serialized>({ a: "a" }).ok;
@@ -68,16 +68,16 @@ describe("Literal", () => {
     ex(b.test).toBe(true as const).ok;
 
     // Inherited prototype on instantiation
-    ex(b.a).toBe<string>("a").ok;
+    ex(b.a).toBe<"a">("a").ok;
   });
 
   it("referenced definition", () => {
-    class A extends Literal(String) {}
+    class A extends Literal("a") {}
     class Test extends Dict({ a: A }) {
       test = true as const;
     }
 
-    type Serialized = { a: string };
+    type Serialized = { a: "a" };
 
     // Constructor parameters
     ex(Test).toHaveFirstParam<{ a: A }>().ok;
@@ -89,7 +89,7 @@ describe("Literal", () => {
 
     // Preserve reference
     ex(a.a).toBeInstanceOf(A);
-    ex(a.a.value).toBe<string>("a").ok;
+    ex(a.a.value).toBe<"a">("a").ok;
 
     // Serialization
     ex(a.serialize()).toStrictEqual<Serialized>({ a: "a" }).ok;
@@ -100,7 +100,7 @@ describe("Literal", () => {
 
     // Inherited prototype on instantiation
     ex(b.a).toBeInstanceOf(A);
-    ex(b.a.value).toBe<string>("a").ok;
+    ex(b.a.value).toBe<"a">("a").ok;
   });
 
   it("mixin extension", () => {
@@ -115,7 +115,7 @@ describe("Literal", () => {
       return I;
     };
 
-    class Test extends Testable(Number) {
+    class Test extends Testable(1) {
       test = true as const;
 
       // @ts-expect-error is not assignable to parameter of type 'true'
@@ -123,13 +123,13 @@ describe("Literal", () => {
     }
 
     // Constructor parameters
-    ex(Test).toHaveFirstParam<number>().ok;
+    ex(Test).toHaveFirstParam<1>().ok;
 
     // Additional static prototype
     ex(Test.deep).toBe(true as const).ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<number>().ok;
+    ex(Test.deserialize).toHaveFirstParam<1>().ok;
     const a = Test.deserialize(1);
     ex(a).toBeInstanceOf(Test).ok;
 
@@ -141,13 +141,13 @@ describe("Literal", () => {
     ex(a.deep).toBe(true as const).ok;
 
     // Inherited prototype on deserialization
-    ex(a.value).toStrictEqual(1).ok;
+    ex(a.value).toStrictEqual(1 as const).ok;
 
     // Serialization
-    ex(a.serialize()).toStrictEqual(1).ok;
+    ex(a.serialize()).toStrictEqual(1 as const).ok;
 
     // Instantiation
-    const b = new Test(2);
+    const b = new Test(1);
     ex(b).toBeInstanceOf(Test).ok;
 
     // Additional prototype on instantiation
@@ -158,7 +158,7 @@ describe("Literal", () => {
     ex(b.deep).toBe(true as const).ok;
 
     // Inherited prototype on instantiation
-    ex(b.value).toStrictEqual(2).ok;
+    ex(b.value).toStrictEqual(1 as const).ok;
   });
 
   it("mixin supersede", () => {
@@ -173,7 +173,7 @@ describe("Literal", () => {
       return Literal(shape, I);
     };
 
-    class Test extends Testable(Number) {
+    class Test extends Testable(1) {
       test = true as const;
 
       // @ts-expect-error is not assignable to parameter of type 'true'
@@ -181,13 +181,13 @@ describe("Literal", () => {
     }
 
     // Constructor parameters
-    ex(Test).toHaveFirstParam<number>().ok;
+    ex(Test).toHaveFirstParam<1>().ok;
 
     // Additional static prototype
     ex(Test.deep).toBe(true as const).ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<number>().ok;
+    ex(Test.deserialize).toHaveFirstParam<1>().ok;
     const a = Test.deserialize(1);
     ex(a).toBeInstanceOf(Test).ok;
 
@@ -199,13 +199,13 @@ describe("Literal", () => {
     ex(a.deep).toBe(true as const).ok;
 
     // Inherited prototype on deserialization
-    ex(a.value).toBe(1).ok;
+    ex(a.value).toBe(1 as const).ok;
 
     // Serialization
-    ex(a.serialize()).toStrictEqual(1).ok;
+    ex(a.serialize()).toStrictEqual(1 as const).ok;
 
     // Instantiation
-    const b = new Test(2);
+    const b = new Test(1);
     ex(b).toBeInstanceOf(Test).ok;
 
     // Additional prototype on instantiation
@@ -216,6 +216,6 @@ describe("Literal", () => {
     ex(b.deep).toBe(true as const).ok;
 
     // Inherited prototype on instantiation
-    ex(b.value).toBe(2).ok;
+    ex(b.value).toBe(1 as const).ok;
   });
 });
