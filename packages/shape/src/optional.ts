@@ -63,7 +63,9 @@ export const Optional = <
       this: T,
       value: Definition["$inline"] | undefined,
     ): ReturnType<Definition["$serialize"]> | undefined {
-      return value ? (Shape(of) as any).$serialize(value) : undefined;
+      return value === undefined
+        ? undefined
+        : (Shape(of) as any).$serialize(value);
     }
 
     static $inline: Definition["$inline"] | undefined;
