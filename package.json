@@ -9,29 +9,24 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "test": "turbo run test --concurrency 1",
-    "clean": "pnpm workspaces foreach exec rm -rf dist",
-    "clean:cache": "pnpm workspaces foreach exec rm -rf .turbo",
-    "clean:nm": "rm -rf node_modules",
-    "clean:hard": "pnpm clean:cache && pnpm clean && pnpm clean:nm",
-    "release": "sh scripts/release.sh",
-    "bump": "npm version -ws $(npm view @ddd-ts/model dist-tags.latest | tr -d '\"' | awk -F'[.-]' '{ print $1 \".\" $2 \".\" $3 \"-\" $4+1 }')"
+    "test": "turbo run test",
+    "clean": "pnpm --filter '*' exec -- rm -rf dist"
   },
   "devDependencies": {
-    "turbo": "^1.13.2",
-    "@ddd-ts/tools": "workspace:*"
+    "@ddd-ts/tools": "workspace:*",
+    "turbo": "^2.0.4"
   },
   "engines": {
     "npm": ">=7.0.0",
     "node": ">=14.0.0"
   },
-  "packageManager": "pnpm@8.6.3",
+  "packageManager": "pnpm@9.1.0",
   "dependencies": {
     "ts-morph": "^19.0.0"
   },
   "pnpm": {
     "patchedDependencies": {
-      "@jest/core@29.3.1": "patches/@jest__core@29.3.1.patch"
+      "@jest/core@29.7.0": "patches/@jest__core@29.7.0.patch"
     }
   }
 }

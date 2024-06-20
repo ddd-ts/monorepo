@@ -4,6 +4,7 @@
     "outDir": "dist",
     "rootDir": "src",
     "strictPropertyInitialization": false,
-    "noErrorTruncation": true
+    "noErrorTruncation": true,
+    "baseUrl": "."
   }
 }

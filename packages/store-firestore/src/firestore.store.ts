@@ -1,4 +1,3 @@
-import { Store, Model } from "@ddd-ts/model";
 import {
   CollectionReference,
   Firestore,
@@ -7,18 +6,20 @@ import {
   QueryDocumentSnapshot,
   DocumentSnapshot,
 } from "firebase-admin/firestore";
+
+import { Store, ISerializer, type IIdentifiable } from "@ddd-ts/core";
+
 import { FirestoreTransaction } from "./firestore.transaction";
-import { ISerializer } from "@ddd-ts/serialization";
 import { batch, combine } from "./asyncTools";
 
-export class FirestoreStore<M extends Model> implements Store<M> {
+export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
   collection: CollectionReference;
 
   constructor(
     public readonly collectionName: string,
     public readonly firestore: Firestore,
     public readonly serializer: ISerializer<M>,
-    public readonly converter?: FirestoreDataConverter<DocumentData>
+    public readonly converter?: FirestoreDataConverter<DocumentData>,
   ) {
     if (this.converter) {
       this.collection = this.firestore
@@ -29,31 +30,22 @@ export class FirestoreStore<M extends Model> implements Store<M> {
     }
   }
 
-  private getIdFromModel(m: M) {
-    if (Object.getOwnPropertyNames(m.id).includes("serialize")) {
-      if ("serialize" in m.id) {
-        return m.id.serialize();
-      }
-    }
-    return m.id.toString();
-  }
-
   protected async executeQuery(
     query: FirebaseFirestore.Query<any>,
-    trx?: FirestoreTransaction
+    trx?: FirestoreTransaction,
   ): Promise<M[]> {
     const result = trx ? await trx.transaction.get(query) : await query.get();
 
     return Promise.all(
-      result.docs.map((doc) =>
-        this.serializer.deserialize({ id: doc.id, ...doc.data() })
-      )
+      result.docs.map((doc: any) =>
+        this.serializer.deserialize({ id: doc.id, ...doc.data() }),
+      ),
     );
   }
 
   private async *streamPages(
     query: FirebaseFirestore.Query<any>,
-    pageSize: number
+    pageSize: number,
   ) {
     let last: DocumentSnapshot | undefined;
     let nextPagePromise:
@@ -81,15 +73,19 @@ export class FirestoreStore<M extends Model> implements Store<M> {
 
   protected async *streamQuery(
     query: FirebaseFirestore.Query<any>,
-    pageSize?: number
+    pageSize?: number,
   ): AsyncIterable<M> {
-    const finalPageSize = pageSize ?? 50
+    const finalPageSize = pageSize ?? 50;
     const stream =
       finalPageSize === 1
         ? (query.stream() as AsyncIterable<QueryDocumentSnapshot>)
         : this.streamPages(query, finalPageSize);
     for await (const docs of batch(stream, finalPageSize)) {
-      const deserializedDocs = await Promise.all(docs.map(doc => this.serializer.deserialize({ id: doc.id, ...(doc.data() as any) })));
+      const deserializedDocs = await Promise.all(
+        docs.map((doc) =>
+          this.serializer.deserialize({ id: doc.id, ...(doc.data() as any) }),
+        ),
+      );
       for (const deserializedDoc of deserializedDocs) {
         yield deserializedDoc;
       }
@@ -98,7 +94,7 @@ export class FirestoreStore<M extends Model> implements Store<M> {
 
   async save(model: M, trx?: FirestoreTransaction): Promise<void> {
     const serialized = await this.serializer.serialize(model);
-    const ref = this.collection.doc(this.getIdFromModel(model));
+    const ref = this.collection.doc(model.id.toString());
 
     trx ? trx.transaction.set(ref, serialized) : await ref.set(serialized);
   }
@@ -128,8 +124,8 @@ export class FirestoreStore<M extends Model> implements Store<M> {
     }
     return Promise.all(
       docs.map((doc) =>
-        this.serializer.deserialize({ id: doc.id, ...(doc.data() as any) })
-      )
+        this.serializer.deserialize({ id: doc.id, ...(doc.data() as any) }),
+      ),
     );
   }
 
@@ -158,8 +154,14 @@ export class FirestoreStore<M extends Model> implements Store<M> {
     return (await query.count().get()).data().count;
   }
 
-  async streamConcurrent(concurrency: number, pageSize: number, baseQuery?: FirebaseFirestore.Query<DocumentData>): Promise<AsyncIterable<M>> {
-    const totalCount = await (baseQuery ? this.count(baseQuery) : this.countAll());
+  async streamConcurrent(
+    concurrency: number,
+    pageSize: number,
+    baseQuery?: FirebaseFirestore.Query<DocumentData>,
+  ): Promise<AsyncIterable<M>> {
+    const totalCount = await (baseQuery
+      ? this.count(baseQuery)
+      : this.countAll());
     const partSize = Math.ceil(totalCount / concurrency);
     const queries: FirebaseFirestore.Query<DocumentData>[] = [];
 

@@ -1,33 +1,28 @@
-import { EsAggregatePersistorWithSnapshots } from "@ddd-ts/event-sourcing";
-import {
-  InMemoryDatabase,
-  InMemoryTransactionPerformer,
-  InMemoryStore,
-} from "@ddd-ts/store-inmemory";
+import { DetachedEventBus } from "@ddd-ts/core";
+import { InMemoryDatabase, InMemoryStore } from "@ddd-ts/store-inmemory";
 import { BankSuite } from "@ddd-ts/tests";
-import { InMemoryCheckpoint, InMemoryEventStore } from "..";
+import { InMemoryEventStore } from "..";
 import { InMemorySnapshotter } from "../in-memory.snapshotter";
+import { MakeInMemoryEsAggregateStore } from "../in-memory.es-aggregate-store";
 
 describe("EventSourcingInMemory", () => {
   const es = new InMemoryEventStore();
   const database = new InMemoryDatabase();
-  const checkpoint = new InMemoryCheckpoint(database);
-  const transaction = new InMemoryTransactionPerformer(database);
+  const eventBus = new DetachedEventBus();
 
   BankSuite(
-    es,
-    checkpoint,
-    transaction,
+    eventBus,
     (serializer, name) => {
       const store = new InMemoryStore(name, database, serializer) as any;
       return store;
     },
-    (AGGREGATE, serializer, eventSerializers) => {
-      const persistor = class extends EsAggregatePersistorWithSnapshots(
-        AGGREGATE
-      ) {};
+    (AGGREGATE, serializer, eventSerializer) => {
       const snapshotter = new InMemorySnapshotter(database, serializer);
-      return new persistor(es, eventSerializers, snapshotter);
-    }
+      const Store = MakeInMemoryEsAggregateStore(AGGREGATE);
+
+      const store = new Store(es, eventSerializer, snapshotter);
+      store.publishEventsTo(eventBus);
+      return store;
+    },
   );
 });

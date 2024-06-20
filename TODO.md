@@ -25,6 +25,6 @@ reminder:
 
 
 # Release
-npm dist-tags @ddd-ts/model | grep latest | awk '{ print $2 }'
+npm dist-tags @ddd-ts/core | grep latest | awk '{ print $2 }'
 npm version -ws 0.0.3-x 
 npm publish --access public --workspaces

@@ -1,57 +1,47 @@
-import { Event } from "@ddd-ts/event-sourcing";
+import { EventId, type IEsEvent } from "@ddd-ts/core";
 import { Constructor } from "@ddd-ts/types";
-import { Account } from "./account";
+import { Account, AccountOpened } from "./account";
 import { Deposited } from "./deposited.event";
-function expectedFact(
-  event: Constructor<Event>,
-  revision: bigint,
-  payload: any
-) {
-  return expect.objectContaining({
-    type: event.name,
-    id: expect.any(String),
-    payload: expect.objectContaining({ ...payload }) ?? expect.anything(),
-    revision,
-  });
-}
 
-function expectedChange(event: Constructor<Event>, payload: any) {
+function expectedChange(event: Constructor<IEsEvent>, payload: any) {
   return expect.objectContaining({
-    type: event.name,
-    id: expect.any(String),
+    name: event.name,
+    id: expect.any(EventId),
     payload: expect.objectContaining({ ...payload }) ?? expect.anything(),
-    revision: undefined,
   });
 }
 
 describe("EsAggregate", () => {
   describe("when creating an aggregate", () => {
-    it("should instanciate an aggregate with no changes", () => {
-      const account = Account.new();
+    it("should instanciate an aggregate", () => {
+      const account = Account.open();
 
-      expect(account.changes).toEqual([]);
+      expect(account.changes).toEqual([
+        expectedChange(AccountOpened, { accountId: account.id }),
+      ]);
     });
 
     it("acknowledged revision should initialize at -1, representing non existance", () => {
-      const account = Account.new();
+      const account = Account.open();
 
-      expect(account.acknowledgedRevision).toEqual(-1n);
+      expect(account.acknowledgedRevision).toEqual(-1);
     });
   });
 
   describe("when applying changes", () => {
     it("should store the changes", () => {
-      const account = Account.new();
+      const account = Account.open();
 
       account.deposit(100);
 
       expect(account.changes).toEqual([
-        expectedChange(Deposited, { amount: 100 }),
+        expectedChange(AccountOpened, { accountId: account.id }),
+        expectedChange(Deposited, { accountId: account.id, amount: 100 }),
       ]);
     });
 
     it("should update the internal projection accordingly to the aggregate interactibility", () => {
-      const account = Account.new();
+      const account = Account.open();
 
       account.deposit(10);
 
@@ -59,131 +49,163 @@ describe("EsAggregate", () => {
     });
 
     it("should not update the acknowledged revision", () => {
-      const account = Account.new();
+      const account = Account.open();
 
       account.deposit(10);
 
-      expect(account.acknowledgedRevision).toEqual(-1n);
+      expect(account.acknowledgedRevision).toEqual(-1);
     });
   });
 
-  describe("when loading changes", () => {
+  describe("when loading facts", () => {
     it("should load facts without adding them to changes", () => {
-      const account = Account.new();
+      const account = Account.open();
+      account.acknowledgeChanges();
+
+      expect(account.changes).toEqual([]);
 
       account.load(
-        Deposited.asFact(
-          {
+        new Deposited({
+          id: EventId.generate(),
+          revision: 1,
+          name: "Deposited",
+          occurredAt: new Date(),
+          payload: {
             accountId: account.id,
             amount: 10,
           },
-          0n
-        )
+        }),
       );
 
       expect(account.changes).toEqual([]);
     });
 
     it("should not load changes", () => {
-      const account = Account.new();
+      const account = Account.open();
+      account.acknowledgeChanges();
 
-      // @ts-ignore
-      expect(() => account.load(Deposited.newChange(10))).toThrow();
+      expect(() =>
+        account.load(Deposited.new({ accountId: account.id, amount: 10 })),
+      ).toThrow("not a fact");
     });
 
     it("should update the internal projection accordingly to the loaded facts", () => {
-      const account = Account.new();
+      const account = Account.open();
+      account.acknowledgeChanges();
 
       account.load(
-        Deposited.asFact(
-          {
+        new Deposited({
+          id: EventId.generate(),
+          name: "Deposited",
+          occurredAt: new Date(),
+          revision: 1,
+          payload: {
             accountId: account.id,
             amount: 10,
           },
-          0n
-        )
+        }),
       );
 
       expect(account.balance).toEqual(10);
     });
 
     it("should update the acknowledged revision accordingly to the loaded facts", () => {
-      const account = Account.new();
+      const account = Account.open();
+      account.acknowledgeChanges();
+
+      expect(account.acknowledgedRevision).toEqual(0);
 
       account.load(
-        Deposited.asFact(
-          {
+        new Deposited({
+          id: EventId.generate(),
+          name: "Deposited",
+          occurredAt: new Date(),
+          revision: 1,
+          payload: {
             accountId: account.id,
             amount: 10,
           },
-          0n
-        )
+        }),
       );
 
-      expect(account.acknowledgedRevision).toEqual(0n);
+      expect(account.acknowledgedRevision).toEqual(1);
     });
 
     it("should not load a fact that happened later in the aggregate lifetime", () => {
-      const account = Account.new();
+      const account = Account.open();
+      account.acknowledgeChanges();
 
-      // expected the 0n
+      // expected revision 1
       expect(() =>
         account.load(
-          Deposited.asFact(
-            {
+          new Deposited({
+            id: EventId.generate(),
+            name: "Deposited",
+            occurredAt: new Date(),
+            revision: 2,
+            payload: {
               accountId: account.id,
               amount: 10,
             },
-            10n
-          )
-        )
-      ).toThrow();
+          }),
+        ),
+      ).toThrow("not in sequence");
     });
 
     it("should not load a fact supposed to have happened earlier in the aggregate lifetime", () => {
-      const account = Account.new();
+      const account = Account.open();
+      account.acknowledgeChanges();
 
       account.load(
-        Deposited.asFact(
-          {
+        new Deposited({
+          id: EventId.generate(),
+          name: "Deposited",
+          occurredAt: new Date(),
+          revision: 1,
+          payload: {
             accountId: account.id,
             amount: 10,
           },
-          0n
-        )
+        }),
       );
 
-      // expected the 1n
+      // expected revision 1
       expect(() =>
         account.load(
-          Deposited.asFact(
-            {
+          new Deposited({
+            id: EventId.generate(),
+            name: "Deposited",
+            occurredAt: new Date(),
+            revision: 1,
+            payload: {
               accountId: account.id,
               amount: 10,
             },
-            0n
-          )
-        )
-      ).toThrow();
+          }),
+        ),
+      ).toThrow("already acknowledged");
     });
 
     it("should not load a fact after applying changes", () => {
-      const account = Account.new();
+      const account = Account.open();
+      account.acknowledgeChanges();
 
       account.deposit(10);
 
-      // expected the 1n
       expect(() =>
         account.load(
-          Deposited.asFact(
-            {
+          new Deposited({
+            id: EventId.generate(),
+            name: "Deposited",
+            occurredAt: new Date(),
+            revision: 2,
+            payload: {
               accountId: account.id,
               amount: 10,
             },
-            0n
-          )
-        )
-      ).toThrow();
+          }),
+        ),
+      ).toThrow("");
     });
   });
 });

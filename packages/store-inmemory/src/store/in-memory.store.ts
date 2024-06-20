@@ -1,30 +1,20 @@
-import { Store, Model } from "@ddd-ts/model";
+import { ISerializer, Store, type IIdentifiable } from "@ddd-ts/core";
 import { InMemoryDatabase } from "./in-memory.database";
 import { InMemoryTransaction } from "../in-memory.transaction";
-import { ISerializer, PromiseOr } from "@ddd-ts/serialization";
 /**
  * This in memory store is a copy store. It stores a copy of the actual model.
  * It is the recommended inmemory store to use, as it reflects more closely the behaviour of a real store.
  */
-export class InMemoryStore<M extends Model> implements Store<M> {
+export class InMemoryStore<M extends IIdentifiable> implements Store<M> {
   constructor(
     public readonly collection: string,
     public readonly database: InMemoryDatabase,
-    public readonly serializer: ISerializer<M>
+    public readonly serializer: ISerializer<M>,
   ) {}
-
-  private serializeId(id: M["id"]) {
-    if (Object.getOwnPropertyNames(id).includes("serialize")) {
-      if ("serialize" in id) {
-        return id.serialize();
-      }
-    }
-    return id.toString();
-  }
 
   protected async filter(
     predicate: (model: M) => boolean,
-    trx?: InMemoryTransaction
+    trx?: InMemoryTransaction,
   ): Promise<M[]> {
     const filtered = await Promise.all(
       this.database.loadAll(this.collection).map(async (e) => {
@@ -34,7 +24,7 @@ export class InMemoryStore<M extends Model> implements Store<M> {
         }
         trx?.transaction.markRead(this.collection, e.id, e.data.savedAt);
         return deserialized;
-      })
+      }),
     );
     return filtered.filter((e): e is NonNullable<typeof e> => Boolean(e));
   }
@@ -46,9 +36,9 @@ export class InMemoryStore<M extends Model> implements Store<M> {
   async save(model: M, trx?: InMemoryTransaction): Promise<void> {
     await this.database.save(
       this.collection,
-      this.serializeId(model.id),
+      model.id.toString(),
       await this.serializer.serialize(model),
-      trx?.transaction
+      trx?.transaction,
     );
   }
 
@@ -56,7 +46,7 @@ export class InMemoryStore<M extends Model> implements Store<M> {
     const serialized = await this.database.load(
       this.collection,
       id.toString(),
-      trx?.transaction
+      trx?.transaction,
     );
 
     if (!serialized) {
@@ -73,7 +63,7 @@ export class InMemoryStore<M extends Model> implements Store<M> {
       serialized.map(async (s) => {
         trx?.transaction.markRead(this.collection, s.id, s.data.savedAt);
         return this.serializer.deserialize(s.data.data);
-      })
+      }),
     );
   }
 

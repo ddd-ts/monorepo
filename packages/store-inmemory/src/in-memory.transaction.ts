@@ -1,4 +1,4 @@
-import { TransactionPerformer } from "@ddd-ts/model";
+import { TransactionPerformer } from "@ddd-ts/core";
 import {
   InMemoryDatabase,
   InMemoryUnderlyingTransaction,

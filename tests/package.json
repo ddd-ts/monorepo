@@ -13,12 +13,11 @@
 		"posttest": "docker compose -f docker/docker-compose.yml down"
 	},
 	"dependencies": {
-		"@ddd-ts/event-sourcing": "workspace:*",
-		"@ddd-ts/model": "workspace:*",
-		"@ddd-ts/serialization": "workspace:*",
+		"@ddd-ts/core": "workspace:*",
 		"@ddd-ts/shape": "workspace:*",
 		"@ddd-ts/store-firestore": "workspace:*",
 		"@ddd-ts/store-inmemory": "workspace:*",
+		"@ddd-ts/traits": "workspace:*",
 		"firebase-admin": "^11.5.0",
 		"uuid": "^8.3.2"
 	},

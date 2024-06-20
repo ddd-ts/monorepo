@@ -1,1 +1,1 @@
-export { ESDBEventStore } from "./esdb.event-store";
+// export { ESDBEventStore } from "./esdb.event-store";

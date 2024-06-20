@@ -1,6 +1,4 @@
-import { PromiseOr } from "@ddd-ts/serialization";
 import { InMemoryTransaction } from "..";
-import { Collection } from "./in-memory.collection";
 import { Storage } from "./in-memory.storage";
 
 export class CannotReadAfterWrites extends Error {
@@ -52,7 +50,8 @@ export class InMemoryUnderlyingTransaction {
   private ensureNoWrites() {
     if (
       this.operations.some(
-        (operation) => operation.type === "write" || operation.type === "delete"
+        (operation) =>
+          operation.type === "write" || operation.type === "delete",
       )
     ) {
       throw new CannotReadAfterWrites();
@@ -62,7 +61,7 @@ export class InMemoryUnderlyingTransaction {
   public markRead(
     collectionName: string,
     id: string,
-    savedAt: number | undefined
+    savedAt: number | undefined,
   ) {
     this.ensureNoWrites();
     this.operations.push({ type: "read", collectionName, id, savedAt });
@@ -75,7 +74,7 @@ export class InMemoryUnderlyingTransaction {
   public markDeleted(
     collectionName: string,
     id: any,
-    savedAt: number | undefined
+    savedAt: number | undefined,
   ) {
     this.operations.push({ type: "delete", collectionName, id, savedAt });
   }
@@ -110,7 +109,7 @@ export class InMemoryDatabase {
   load(
     collectionName: string,
     id: string,
-    trx?: InMemoryUnderlyingTransaction
+    trx?: InMemoryUnderlyingTransaction,
   ): any {
     const collection = this.storage.getCollection(collectionName);
     const data = collection.get(id);
@@ -124,7 +123,7 @@ export class InMemoryDatabase {
   delete(
     collectionName: string,
     id: string,
-    trx?: InMemoryUnderlyingTransaction
+    trx?: InMemoryUnderlyingTransaction,
   ): void {
     if (trx) {
       const doc = this.storage.getCollection(collectionName).getRaw(id);
@@ -150,7 +149,7 @@ export class InMemoryDatabase {
     collectionName: string,
     id: string,
     data: any,
-    trx?: InMemoryUnderlyingTransaction
+    trx?: InMemoryUnderlyingTransaction,
   ): void {
     if (trx) {
       trx.markWritten(collectionName, id, data);
@@ -168,7 +167,7 @@ export class InMemoryDatabase {
     while (retry--) {
       try {
         latestReturnValue = await fn(trx);
-        this.commit(trx);
+        this.streamId(trx);
         break;
       } catch (error) {
         if (error instanceof TransactionCollision) {
@@ -181,14 +180,14 @@ export class InMemoryDatabase {
 
     if (retry === -1) {
       throw new TransactionCollidedTooManyTimes(
-        InMemoryDatabase.transactionTries
+        InMemoryDatabase.transactionTries,
       );
     }
 
     return latestReturnValue;
   }
 
-  private commit(trx: InMemoryTransaction): void {
+  private streamId(trx: InMemoryTransaction): void {
     if (!trx.transaction.checkConsistency(this.storage)) {
       throw new TransactionCollision();
     }

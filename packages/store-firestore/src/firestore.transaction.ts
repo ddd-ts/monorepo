@@ -1,11 +1,16 @@
-import { Firestore } from "firebase-admin/firestore";
-import { TransactionPerformer } from "@ddd-ts/model";
-import { CommitListener } from "@ddd-ts/model/dist/model/transaction";
+import type {
+  Firestore,
+  Transaction as FirebaseTransaction,
+} from "firebase-admin/firestore";
+import {
+  TransactionPerformer,
+  type Transaction,
+  type CommitListener,
+} from "@ddd-ts/core";
 
-
-export class FirestoreTransaction {
+export class FirestoreTransaction implements Transaction {
   commitListeners: CommitListener[] = [];
-  constructor(public readonly transaction: FirebaseFirestore.Transaction) {}
+  constructor(public readonly transaction: FirebaseTransaction) {}
 
   onCommit(callback: CommitListener) {
     this.commitListeners.push(callback);
@@ -18,6 +23,8 @@ export class FirestoreTransaction {
 
 export class FirestoreTransactionPerformer extends TransactionPerformer<FirestoreTransaction> {
   constructor(db: Firestore) {
-    super((effect) => db.runTransaction((trx) => effect(new FirestoreTransaction(trx))));
+    super((effect) =>
+      db.runTransaction((trx) => effect(new FirestoreTransaction(trx))),
+    );
   }
 }
