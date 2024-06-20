@@ -1,37 +1,34 @@
-import { EsFact, EsEvent } from "@ddd-ts/event-sourcing";
-
-type DatedFact = EsFact & { occuredAt: Date };
+import { type IFact, type IEsEvent } from "@ddd-ts/core";
 
 export class Stream {
-  facts: DatedFact[] = [];
+  facts: IFact[] = [];
 
-  subscribers = new Set<(fact: DatedFact) => void>();
+  subscribers = new Set<(fact: IFact) => void>();
 
-  append(change: EsEvent) {
-    const revision = BigInt(this.facts.length);
-    const occuredAt = new Date();
-    const datedFact = {
+  append(change: IEsEvent) {
+    const revision = this.facts.length;
+    const occurredAt = new Date();
+    const fact = {
       ...change,
       revision,
-      occuredAt,
+      occurredAt,
     };
 
-    this.facts.push(datedFact);
+    this.facts.push(fact);
     for (const subscriber of this.subscribers) {
-      subscriber(datedFact);
+      subscriber(fact);
     }
   }
 
-  subscribe(subscriber: (fact: DatedFact) => void) {
+  subscribe(subscriber: (fact: IFact) => void) {
     this.subscribers.add(subscriber);
     return () => {
       this.subscribers.delete(subscriber);
     };
   }
 
-  *readRaw(from = 0n) {
-    const revision = Number(from);
-    for (let i = revision; i < this.facts.length; i++) {
+  *read(from = 0) {
+    for (let i = from; i < this.facts.length; i++) {
       yield this.facts[i];
     }
   }

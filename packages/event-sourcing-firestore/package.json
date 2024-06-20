@@ -12,9 +12,9 @@
 		"build": "tsc"
 	},
 	"dependencies": {
-		"@ddd-ts/event-sourcing": "workspace:*",
-		"@ddd-ts/model": "workspace:*",
-		"@ddd-ts/serialization": "workspace:*",
+		"@ddd-ts/core": "workspace:*",
+		"@ddd-ts/traits": "workspace:*",
+		"@ddd-ts/types": "workspace:*",
 		"firebase-admin": "^11.5.0"
 	},
 	"devDependencies": {

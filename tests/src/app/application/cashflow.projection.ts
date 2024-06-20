@@ -1,19 +1,16 @@
-import { Fact, Projection } from "@ddd-ts/event-sourcing";
-import { Account } from "../domain/write/account/account";
+import { On, Projection, Transaction } from "@ddd-ts/core";
+
 import { Deposited } from "../domain/write/account/deposited.event";
 import { Cashflow } from "../domain/read/cashflow/cashflow";
 import { CashflowStore } from "./cashflow.store";
-import { Transaction } from "@ddd-ts/model";
 
-export class CashFlowProjection extends Projection {
+export class CashFlowProjection extends Projection("CashFlow", [Deposited]) {
   constructor(private readonly store: CashflowStore) {
-    super();
+    super({});
   }
 
-  on = [Account];
-
-  @Projection.on(Deposited)
-  async onDeposited(fact: Fact<Deposited>, trx?: Transaction) {
+  @On(Deposited)
+  async onDeposited(fact: Deposited, trx?: Transaction) {
     const cashflow =
       (await this.store.load("global")) || new Cashflow("global", 0);
 

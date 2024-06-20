@@ -1,20 +1,17 @@
-import { Fact, Projection } from "@ddd-ts/event-sourcing";
-import { Transaction } from "@ddd-ts/model";
-import { Account } from "../domain/write/account/account";
-import { Transfer, TransferInitiated } from "../domain/write/transfer/transfer";
+import { On, Projection, Transaction } from "@ddd-ts/core";
+import { TransferInitiated } from "../domain/write/transfer/transfer";
 import { AccountTransfersStore } from "./accountTransfers.store";
 
-export class InitiatedTransfersProjection extends Projection<
-  Account | Transfer
-> {
+export class InitiatedTransfersProjection extends Projection(
+  "InitiatedTransfers",
+  [TransferInitiated],
+) {
   constructor(private readonly store: AccountTransfersStore) {
-    super();
+    super({});
   }
 
-  on = [Account, Transfer];
-
-  @Projection.on(TransferInitiated)
-  async onTransferInitiated(fact: Fact<TransferInitiated>, trx?: Transaction) {
+  @On(TransferInitiated)
+  async onTransferInitiated(fact: TransferInitiated) {
     const accountTransfers = await this.store.load(fact.payload.from);
     if (!accountTransfers) {
       throw new Error("Account does not exist");
@@ -22,6 +19,6 @@ export class InitiatedTransfersProjection extends Projection<
 
     accountTransfers.registerInitiatedTransfer();
 
-    await this.store.save(accountTransfers, trx);
+    await this.store.save(accountTransfers);
   }
 }

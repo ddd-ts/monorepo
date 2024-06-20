@@ -1,5 +1,4 @@
-import { MakeEventSerializer } from "@ddd-ts/event-sourcing/dist/event/event-serializer";
-import { Serializer, Serialized } from "@ddd-ts/serialization";
+import { Serialized, type ISerializer, AutoSerializer } from "@ddd-ts/core";
 import { AccountId } from "../domain/write/account/account-id";
 import {
   Transfer,
@@ -7,20 +6,20 @@ import {
   TransferInitiated,
 } from "../domain/write/transfer/transfer";
 
-export class TransferSerializer extends Serializer(Transfer)(1n) {
-  async serialize(model: Transfer) {
+export class TransferSerializer implements ISerializer<Transfer> {
+  serialize(model: Transfer) {
     return {
-      id: model.id.toString(),
+      id: model.transferId.toString(),
       from: model.from.toString(),
       to: model.to.toString(),
       amount: model.amount,
       amountClaimed: model.amountClaimed,
-      version: this.version,
+      version: 1,
     };
   }
 
   async deserialize(serialized: Serialized<this>) {
-    return Transfer.deserialize(
+    return new Transfer(
       serialized.id,
       AccountId.deserialize(serialized.from),
       AccountId.deserialize(serialized.to),
@@ -30,40 +29,12 @@ export class TransferSerializer extends Serializer(Transfer)(1n) {
   }
 }
 
-export class TransferInitiatedSerializer extends MakeEventSerializer(
-  TransferInitiated
-) {
-  async serializePayload(payload: TransferInitiated["payload"]) {
-    return {
-      transferId: payload.transferId,
-      from: payload.from.toString(),
-      to: payload.to.toString(),
-      amount: payload.amount,
-    };
-  }
+export class TransferInitiatedSerializer extends AutoSerializer(
+  TransferInitiated,
+  1,
+) {}
 
-  async deserializePayload(serialized: any) {
-    return {
-      transferId: serialized.transferId,
-      from: AccountId.deserialize(serialized.from),
-      to: AccountId.deserialize(serialized.to),
-      amount: serialized.amount,
-    };
-  }
-}
-
-export class TransferAmountClaimedSerializer extends MakeEventSerializer(
-  TransferAmountClaimed
-) {
-  async serializePayload(payload: TransferAmountClaimed["payload"]) {
-    return {
-      transferId: payload.transferId,
-    };
-  }
-
-  async deserializePayload(serialized: any) {
-    return {
-      transferId: serialized.transferId,
-    };
-  }
-}
+export class TransferAmountClaimedSerializer extends AutoSerializer(
+  TransferAmountClaimed,
+  1,
+) {}

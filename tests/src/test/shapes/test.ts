@@ -125,7 +125,9 @@ type tests = {
   ];
   "Equals<{ (): string } & { (x: string): number },{ (x: string): number } & { (): string }>": [
     Equals<
+      // biome-ignore lint/style/useShorthandFunctionType: <explanation>
       { (): string } & { (x: string): number },
+      // biome-ignore lint/style/useShorthandFunctionType: <explanation>
       { (x: string): number } & { (): string }
     >,
     false,

@@ -1,54 +1,46 @@
-import { EsAggregate } from "@ddd-ts/event-sourcing";
-import { v4 } from "uuid";
+import { EsAggregate, EsEvent, On } from "@ddd-ts/core";
 import { AccountId } from "./account-id";
-import { Deposited } from "./deposited.event";
+import { Deposited, Withdrawn } from "./deposited.event";
 
-export class Account extends EsAggregate<
-  AccountId,
-  [
-    Deposited,
-    {
-      type: "Withdrawn";
-      id: string;
-      payload: { amount: number };
-      revision?: bigint;
-    }
-  ]
-> {
-  balance = 0;
+export class AccountOpened extends EsEvent("AccountOpened", {
+  accountId: AccountId,
+}) {}
 
-  constructor(public id: AccountId) {
-    super(id);
-  }
-
+export class Account extends EsAggregate("Account", {
+  events: [AccountOpened, Deposited, Withdrawn],
+  state: {
+    id: AccountId,
+    balance: Number,
+  },
+}) {
   deposit(amount: number) {
     this.apply(Deposited.new({ accountId: this.id, amount }));
   }
 
-  @EsAggregate.on(Deposited)
+  @On(Deposited)
   onDeposited(deposited: Deposited) {
     this.balance += deposited.payload.amount;
   }
 
   withdraw(amount: number) {
-    this.apply({
-      type: "Withdrawn",
-      id: v4(),
-      payload: { amount },
-      revision: undefined,
-    });
+    this.apply(Withdrawn.new({ accountId: this.id, amount }));
   }
 
-  static new() {
+  @On(Withdrawn)
+  onWithdrawn(withdrawn: Withdrawn) {
+    this.balance -= withdrawn.payload.amount;
+  }
+
+  static open() {
     const accountId = AccountId.generate();
-    const account = this.instanciate(accountId);
-    return account;
+    return this.new(AccountOpened.new({ accountId }));
   }
 
-  static deserialize(id: AccountId, balance: number, revision: bigint) {
-    const account = new Account(id);
-    account.balance = balance;
-    account.acknowledgedRevision = revision;
-    return account;
+  @On(AccountOpened)
+  static onOpened(opened: AccountOpened) {
+    return new Account({
+      id: opened.payload.accountId,
+      balance: 0,
+    });
   }
 }

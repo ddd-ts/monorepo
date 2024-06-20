@@ -1,4 +1,5 @@
-import { Transaction } from "@ddd-ts/model";
+import { Transaction } from "@ddd-ts/core";
+
 import { Cashflow } from "../domain/read/cashflow/cashflow";
 
 export abstract class CashflowStore {

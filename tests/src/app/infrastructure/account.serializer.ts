@@ -1,85 +1,26 @@
 import { Account } from "../domain/write/account/account";
 import { AccountId } from "../domain/write/account/account-id";
-import {
-  EventSerializer,
-  MakeEventSerializer,
-} from "@ddd-ts/event-sourcing/dist/event/event-serializer";
-import { Deposited } from "../domain/write/account/deposited.event";
-import { Serialized, Serializer } from "@ddd-ts/serialization";
 
-type A = Serialized<AccountSerializer>;
+import { Deposited, Withdrawn } from "../domain/write/account/deposited.event";
+import { Serialized, ISerializer, AutoSerializer } from "@ddd-ts/core";
 
-export class AccountSerializer extends Serializer<Account>()(1n) {
-  async serialize(model: Account) {
+export class AccountSerializer implements ISerializer<Account> {
+  serialize(value: Account) {
     return {
-      id: model.id.toString(),
-      balance: model.balance,
-      revision: Number(model.acknowledgedRevision),
-      version: this.version
+      version: 1,
+      id: value.id.serialize(),
+      balance: value.balance,
     };
   }
 
-  async deserialize(serialized: Serialized<this>) {
-    const account = Account.deserialize(
-      AccountId.deserialize(serialized.id),
-      serialized.balance,
-      BigInt(serialized.revision)
-    );
-
-    return account;
+  deserialize(value: Serialized<this>) {
+    return new Account({
+      id: AccountId.deserialize(value.id),
+      balance: value.balance,
+    });
   }
 }
 
-export class DepositedSerializer extends MakeEventSerializer(Deposited) {
-  async serializePayload(payload: Deposited["payload"]) {
-    return {
-      accountId: payload.accountId.toString(),
-      amount: payload.amount,
-    };
-  }
+export class DepositedSerializer extends AutoSerializer(Deposited, 1) {}
 
-  async deserializePayload(serialized: any) {
-    return {
-      accountId: AccountId.deserialize(serialized.accountId),
-      amount: serialized.amount,
-    };
-  }
-}
-
-export class WithdrawnSerializer
-  implements
-  EventSerializer<{
-    type: "Withdrawn";
-    id: string;
-    payload: { amount: number };
-    revision?: bigint;
-  }>
-{
-  type = "Withdrawn" as const;
-  async serialize(event: {
-    type: "Withdrawn";
-    id: string;
-    payload: { amount: number };
-    revision?: bigint;
-  }) {
-    return {
-      id: event.id,
-      type: event.type,
-      payload: {
-        amount: event.payload.amount,
-      },
-      revision: Number(event.revision),
-    };
-  }
-
-  async deserialize(serialized: Serialized<this>) {
-    return {
-      type: "Withdrawn" as const,
-      id: serialized.id,
-      payload: {
-        amount: serialized.payload.amount,
-      },
-      revision: BigInt(serialized.revision),
-    };
-  }
-}
+export class WithdrawnSerializer extends AutoSerializer(Withdrawn, 1) {}

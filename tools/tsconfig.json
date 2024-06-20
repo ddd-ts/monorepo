@@ -2,7 +2,6 @@
   "compilerOptions": {
     "module": "NodeNext",
     "target": "ES2022",
-    "experimentalDecorators": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -11,5 +10,6 @@
     "strict": true,
     "skipLibCheck": true,
     "noErrorTruncation": true,
+    "experimentalDecorators": true
   }
 }

@@ -1,11 +1,16 @@
-import { Store, TransactionPerformer } from "@ddd-ts/model";
-import { Serialized, Serializer } from "@ddd-ts/serialization";
+import {
+  ISerializer,
+  Serialized,
+  Store,
+  TransactionPerformer,
+} from "@ddd-ts/core";
 
+// biome-ignore lint/suspicious/noExportsInTest: <explanation>
 export class MyElement {
   constructor(
     public readonly id: string,
     public name: string,
-    public readonly even: boolean
+    public readonly even: boolean,
   ) {}
 
   public setName(name: string) {
@@ -13,10 +18,11 @@ export class MyElement {
   }
 }
 
-export class MyElementSerializer extends Serializer(MyElement)(1n) {
+// biome-ignore lint/suspicious/noExportsInTest: <explanation>
+export class MyElementSerializer implements ISerializer<MyElement> {
   serialize(value: MyElement) {
     return {
-      version: this.version,
+      version: 1,
       id: value.id,
       name: value.name,
       even: value.even,
@@ -32,11 +38,12 @@ interface LoadEvenStore extends Store<MyElement> {
   loadEven: () => Promise<MyElement[]>;
 }
 
+// biome-ignore lint/suspicious/noExportsInTest: <explanation>
 export function StoreSuite(
   getStore: () => {
     store: LoadEvenStore;
     transactionPerformer: TransactionPerformer;
-  }
+  },
 ) {
   it("saves", async () => {
     const { store } = getStore();
@@ -62,8 +69,8 @@ export function StoreSuite(
         new MyElement(
           index.toString(),
           `name-${index.toString()}`,
-          index % 2 === 0
-        )
+          index % 2 === 0,
+        ),
     );
     await Promise.all(elements.map((e) => store.save(e)));
     const onlyEven = await store.loadEven();
@@ -71,7 +78,7 @@ export function StoreSuite(
     expect(onlyEven.map((e) => e.name).sort()).toEqual(
       [...Array.from({ length: 50 }).keys()]
         .map((_, index) => `name-${(index * 2).toString()}`)
-        .sort()
+        .sort(),
     );
   });
 
@@ -120,8 +127,8 @@ export function StoreSuite(
         new MyElement(
           index.toString(),
           `name-${index.toString()}`,
-          index % 2 === 0
-        )
+          index % 2 === 0,
+        ),
     );
     await Promise.all(elements.map((e) => store.save(e)));
     const streamed: string[] = [];
@@ -132,7 +139,7 @@ export function StoreSuite(
     expect(streamed.sort()).toEqual(
       [...Array.from({ length: 100 }).keys()]
         .map((_, index) => `name-${index.toString()}`)
-        .sort()
+        .sort(),
     );
   });
 }

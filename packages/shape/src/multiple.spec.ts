@@ -45,7 +45,7 @@ describe("Multiple", () => {
     ex(b.reduce((a, b) => a + b)).toStrictEqual<string>("b").ok;
     ex(b.some((x) => x === "b")).toBe(true).ok;
     ex(b.every((x) => x === "b")).toBe(true).ok;
-    ex(b.find((x) => x === "b")).toStrictEqual<string | undefined>("b").ok;
+    ex(b.find((x) => x === "b")).toStrictEqual<"b" | undefined>("b").ok;
     ex(b.findIndex((x) => x === "b")).toStrictEqual<number>(0).ok;
     ex(b.includes("b")).toBe(true).ok;
     ex(b.indexOf("b")).toStrictEqual<number>(0).ok;
@@ -150,8 +150,7 @@ describe("Multiple", () => {
     ex(b.reference.reduce((a, b) => a + b)).toStrictEqual(0).ok;
     ex(b.reference.some((x) => x === 0)).toBe(true).ok;
     ex(b.reference.every((x) => x === 0)).toBe(true).ok;
-    ex(b.reference.find((x) => x === 0)).toStrictEqual<number | undefined>(0)
-      .ok;
+    ex(b.reference.find((x) => x === 0)).toStrictEqual<0 | undefined>(0).ok;
     ex(b.reference.findIndex((x) => x === 0)).toStrictEqual(0).ok;
     ex(b.reference.includes(0)).toBe(true).ok;
     ex(b.reference.indexOf(0)).toStrictEqual(0).ok;

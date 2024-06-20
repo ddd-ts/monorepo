@@ -8,8 +8,7 @@
 		"build": "tsc"
 	},
 	"dependencies": {
-		"@ddd-ts/model": "workspace:*",
-		"@ddd-ts/serialization": "workspace:*"
+		"@ddd-ts/core": "workspace:*"
 	},
 	"devDependencies": {
 		"@ddd-ts/tools": "workspace:*",

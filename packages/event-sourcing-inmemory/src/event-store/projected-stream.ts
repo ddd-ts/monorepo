@@ -1,33 +1,25 @@
-import { closeable, EsFact, map, Queue } from "@ddd-ts/event-sourcing";
+import { closeable, type IFact, map, Queue } from "@ddd-ts/core";
 import { Stream } from "./stream";
 
 export class ProjectedStream extends Stream {
-  followers = new Set<Queue<EsFact>>();
-  competitions = new Map<string, Queue<EsFact>>();
+  followers = new Set<Queue<IFact>>();
+  competitions = new Map<string, Queue<IFact>>();
 
   onCloseCallbacks: any[] = [];
-
-  async *read(from = 0n) {
-    for await (const datedFact of super.readRaw(from)) {
-      const { occuredAt, ...fact } = datedFact;
-      yield fact;
-    }
-  }
 
   onClose(callback: any) {
     this.onCloseCallbacks.push(callback);
   }
 
-  async follow(from = 0n) {
-    const follower = new Queue<EsFact>();
+  async follow(from = 0) {
+    const follower = new Queue<IFact>();
     this.followers.add(follower);
 
     for await (const fact of this.read(from)) {
       follower.push(fact);
     }
 
-    const unsubscribe = this.subscribe((datedFact) => {
-      const { occuredAt, ...fact } = datedFact;
+    const unsubscribe = this.subscribe((fact) => {
       if (fact.revision >= from) {
         follower.push(fact);
       }
@@ -39,9 +31,8 @@ export class ProjectedStream extends Stream {
 
   private getCompetition(competitionName: string) {
     if (!this.competitions.has(competitionName)) {
-      const competition = new Queue<EsFact>();
-      const unsubscribe = this.subscribe((datedFact) => {
-        const { occuredAt, ...fact } = datedFact;
+      const competition = new Queue<IFact>();
+      const unsubscribe = this.subscribe((fact) => {
         competition.push(fact);
       });
       competition.onClose(unsubscribe);
@@ -64,7 +55,7 @@ export class ProjectedStream extends Stream {
         // competition.close();
         // this.competitions.delete(competitionName);
         // console.log("closing competitor");
-      }
+      },
     );
   }
 }

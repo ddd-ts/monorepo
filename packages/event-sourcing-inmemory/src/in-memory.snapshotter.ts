@@ -1,43 +1,35 @@
-import { Snapshotter, EsAggregate } from "@ddd-ts/event-sourcing";
-import { Model } from "@ddd-ts/model";
-import { ISerializer } from "@ddd-ts/serialization";
+import {
+  type IEsAggregateStore,
+  type IEventSourced,
+  type IIdentifiable,
+  type ISerializer,
+} from "@ddd-ts/core";
+
 import { InMemoryDatabase } from "@ddd-ts/store-inmemory";
 
-export class InMemorySnapshotter<
-  S extends ISerializer<EsAggregate<any, any>>
-> extends Snapshotter<S extends ISerializer<infer A> ? A : never> {
+export class InMemorySnapshotter<A extends IEventSourced & IIdentifiable>
+  implements IEsAggregateStore<A>
+{
   constructor(
     private readonly db: InMemoryDatabase,
-    public readonly serializer: S
-  ) {
-    super();
-  }
+    public readonly serializer: ISerializer<A>,
+  ) {}
 
-  private getIdFromModel(model: S extends ISerializer<infer A extends Model> ? A : never) {
-    if (Object.getOwnPropertyNames(model.id).includes('serialize')) {
-      if ('serialize' in model.id) {
-        return model.id.serialize()
-      }
-    }
-    return model.id.toString()
-  }
-
-  async load(id: S extends ISerializer<infer T extends Model> ? T['id'] : never): Promise<any> {
+  async load(id: A["id"]): Promise<any> {
     const snapshot = await this.db.loadLatestSnapshot(id.toString());
 
     if (!snapshot) {
       return undefined;
     }
 
-    return this.serializer.deserialize(snapshot.serialized);
+    const aggregate = await this.serializer.deserialize(snapshot.serialized);
+    aggregate.acknowledgedRevision = snapshot.revision;
+    return aggregate;
   }
 
-  async save(
-    aggregate: S extends ISerializer<infer A extends Model> ? A : never
-  ): Promise<void> {
-    const id = this.getIdFromModel(aggregate);
-    this.db.save("snapshots", id.toString(), {
-      id: id.toString(),
+  async save(aggregate: A): Promise<void> {
+    this.db.save("snapshots", aggregate.id.toString(), {
+      id: aggregate.id.toString(),
       revision: Number(aggregate.acknowledgedRevision),
       serialized: await this.serializer.serialize(aggregate),
     });
