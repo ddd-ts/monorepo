@@ -4,6 +4,7 @@ import { Deposited, Withdrawn } from "./deposited.event";
 
 export class AccountOpened extends EsEvent("AccountOpened", {
   accountId: AccountId,
+  at: Date,
 }) {}
 
 export class Account extends EsAggregate("Account", {
@@ -11,6 +12,7 @@ export class Account extends EsAggregate("Account", {
   state: {
     id: AccountId,
     balance: Number,
+    createdAt: Date,
   },
 }) {
   deposit(amount: number) {
@@ -33,7 +35,7 @@ export class Account extends EsAggregate("Account", {
 
   static open() {
     const accountId = AccountId.generate();
-    return this.new(AccountOpened.new({ accountId }));
+    return this.new(AccountOpened.new({ accountId, at: new Date() }));
   }
 
   @On(AccountOpened)
@@ -41,6 +43,7 @@ export class Account extends EsAggregate("Account", {
     return new Account({
       id: opened.payload.accountId,
       balance: 0,
+      createdAt: opened.payload.at,
     });
   }
 }

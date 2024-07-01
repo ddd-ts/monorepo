@@ -4,6 +4,7 @@ import {
   type IChange,
 } from "@ddd-ts/core";
 import { Stream } from "./stream";
+import type { InMemoryTransaction } from "@ddd-ts/store-inmemory";
 
 export class InMemoryEventStore {
   private streams = new Map<string, Stream>();
@@ -16,10 +17,24 @@ export class InMemoryEventStore {
     this.streams.clear();
   }
 
+  async bulkAppend(
+    toAppend: {
+      streamId: AggregateStreamId;
+      changes: IChange[];
+      expectedRevision: number;
+    }[],
+    trx?: InMemoryTransaction,
+  ) {
+    for (const { streamId, changes, expectedRevision } of toAppend) {
+      await this.append(streamId, changes, expectedRevision);
+    }
+  }
+
   async append(
     streamId: AggregateStreamId,
     changes: IChange[],
     expectedRevision: number,
+    trx?: InMemoryTransaction,
   ) {
     const streamName = `${streamId.aggregate}-${streamId.id}`;
 

@@ -120,9 +120,11 @@ type DiffBestMatchForObject<
   : never;
 
 type DiffBestMatch<Item, Union, BestKey, Acc extends any[]> = PopUnion<
-  Item extends object
-    ? DiffBestMatchForObject<Item, Extract<Union, object>, BestKey, Acc>
-    : never
+  Item extends any[]
+    ? ArrayDivergence<Item, Extract<Union, any[]>, Acc>
+    : Item extends object
+      ? DiffBestMatchForObject<Item, Extract<Union, object>, BestKey, Acc>
+      : never
 >;
 
 type PerfectMatch<Item, Union, TotalUnion, Acc extends any[]> = Union extends [
@@ -203,9 +205,9 @@ type IsAtLeastOneUnion<L, R> = IsUnion<L> extends true
 
 export type IsNever<T> = [T] extends [never] ? true : false;
 
-type AtLeastOneEmptyObject<L, R> = {} extends L
+type AtLeastOneEmptyObject<L, R> = {} extends Required<L>
   ? true
-  : {} extends R
+  : {} extends Required<R>
     ? true
     : false;
 

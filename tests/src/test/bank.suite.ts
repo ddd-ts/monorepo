@@ -85,7 +85,6 @@ import {
 //   });
 // }
 
-// biome-ignore lint/suspicious/noExportsInTest: <explanation>
 export function BankSuite(
   // es: IEventStore,
   eventBus: IEventBus,

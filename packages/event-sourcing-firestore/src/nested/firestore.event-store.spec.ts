@@ -2,14 +2,29 @@ process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
 
 import * as fb from "firebase-admin";
 
-import type { EventSourced, Identifiable, ISerializer } from "@ddd-ts/core";
+import {
+  AutoSerializer,
+  EsAggregate,
+  EsEvent,
+  On,
+  SerializerRegistry,
+  type EventSourced,
+  type Identifiable,
+  type IEvent,
+  type IEventBus,
+  type ISerializer,
+} from "@ddd-ts/core";
 import type { HasTrait } from "@ddd-ts/traits";
-import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
+import {
+  FirestoreStore,
+  FirestoreTransactionPerformer,
+} from "@ddd-ts/store-firestore";
 import { EsAggregateStoreSuite } from "@ddd-ts/tests";
 
 import { NestedFirestoreEventStore } from "./firestore.event-store";
 import { MakeNestedFirestoreEsAggregateStore } from "./firestore.es-aggregate-store";
 import { NestedFirestoreSnapshotter } from "./firestore.snapshotter";
+import { Shape } from "../../../shape/dist";
 
 jest.setTimeout(10000);
 
@@ -29,10 +44,291 @@ describe("NestedFirestoreEventStore", () => {
     eventSerializer: ISerializer<InstanceType<T>["changes"][number]>,
     serializer: ISerializer<InstanceType<T>>,
   ) {
-    const snapshotter = new NestedFirestoreSnapshotter(firestore, serializer);
+    const snapshotter = new NestedFirestoreSnapshotter(
+      AGGREGATE.name,
+      firestore,
+      serializer,
+    );
     const Store = MakeNestedFirestoreEsAggregateStore(AGGREGATE);
     return new Store(eventStore, transaction, eventSerializer, snapshotter);
   }
 
   EsAggregateStoreSuite(makeAggregateStore);
+
+  it("should support saveAll with transactions", async () => {
+    class MockEventBus implements IEventBus {
+      off(): void {
+        throw new Error("Method not implemented.");
+      }
+      on() {
+        throw new Error("Method not implemented.");
+      }
+
+      events: IEvent[] = [];
+
+      publish(event: IEvent) {
+        this.events.push(event);
+        return Promise.resolve();
+      }
+    }
+
+    class AccountOpened extends EsEvent("AccountOpened", {
+      id: String,
+      index: Number,
+      registryId: String,
+    }) {}
+
+    class Account extends EsAggregate("Account", {
+      events: [AccountOpened],
+      state: {
+        id: String,
+        index: Number,
+        balance: Number,
+        registryId: String,
+      },
+    }) {
+      @On(AccountOpened)
+      static onAccountOpened(event: AccountOpened) {
+        return new Account({
+          id: event.payload.id,
+          index: event.payload.index,
+          balance: 0,
+          registryId: event.payload.registryId,
+        });
+      }
+
+      static open(registryId: string, index: number) {
+        return this.new(
+          AccountOpened.new({
+            id: Math.random().toString(36).slice(2),
+            index,
+            registryId,
+          }),
+        );
+      }
+    }
+
+    class AccountRegistry extends Shape({
+      id: String,
+      index: Number,
+    }) {
+      increment(shouldFailInMiddle = false) {
+        this.index++;
+        if (this.index > 10 && shouldFailInMiddle) {
+          throw new Error("Too many accounts");
+        }
+        return this.index;
+      }
+
+      static new() {
+        return new AccountRegistry({
+          id: Math.random().toString().slice(2),
+          index: 0,
+        });
+      }
+    }
+
+    const registryStore = new FirestoreStore(
+      "account-registry",
+      firestore,
+      new (AutoSerializer(AccountRegistry, 1))(),
+    );
+
+    const accountStore = new (MakeNestedFirestoreEsAggregateStore(Account))(
+      eventStore,
+      transaction,
+      new SerializerRegistry().add(
+        AccountOpened,
+        new (AutoSerializer(AccountOpened, 1))(),
+      ),
+      new NestedFirestoreSnapshotter(
+        Account.name,
+        firestore,
+        new (AutoSerializer(Account, 1))(),
+      ),
+    );
+
+    const eventBus = new MockEventBus();
+    accountStore.publishEventsTo(eventBus);
+
+    const registry = AccountRegistry.new();
+    await registryStore.save(registry);
+
+    let willFailForAttempt = 3;
+    await transaction.perform(async (trx) => {
+      willFailForAttempt--;
+      const reg = await registryStore.load(registry.id, trx);
+
+      const accounts = [...Array(30).keys()].map((i) =>
+        Account.open(registry.id, reg!.increment(willFailForAttempt === 0)),
+      );
+
+      await accountStore.saveAll(accounts, trx);
+      await registryStore.save(reg!, trx);
+    });
+
+    const freshRegistry = await registryStore.load(registry.id);
+
+    expect(freshRegistry!.index).toBe(30);
+
+    const result = await accountStore.snapshotter?.collection
+      .where("registryId", "==", registry.id)
+      .get();
+    const documents = result?.docs.map((doc) => doc.data());
+
+    expect(documents?.length).toBe(30);
+
+    const indices = documents
+      ?.map((doc: any) => Number(doc.index))
+      .sort((a, b) => a - b);
+
+    expect(indices).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+      22, 23, 24, 25, 26, 27, 28, 29, 30,
+    ]);
+
+    expect(eventBus.events.length).toBe(30);
+  });
+
+  it("should support saveAll with transactions", async () => {
+    class MockEventBus implements IEventBus {
+      off(): void {
+        throw new Error("Method not implemented.");
+      }
+      on() {
+        throw new Error("Method not implemented.");
+      }
+
+      events: IEvent[] = [];
+
+      publish(event: IEvent) {
+        this.events.push(event);
+        return Promise.resolve();
+      }
+    }
+
+    class AccountOpened extends EsEvent("AccountOpened", {
+      id: String,
+      index: Number,
+      registryId: String,
+    }) {}
+
+    class Account extends EsAggregate("Account", {
+      events: [AccountOpened],
+      state: {
+        id: String,
+        index: Number,
+        balance: Number,
+        registryId: String,
+      },
+    }) {
+      @On(AccountOpened)
+      static onAccountOpened(event: AccountOpened) {
+        return new Account({
+          id: event.payload.id,
+          index: event.payload.index,
+          balance: 0,
+          registryId: event.payload.registryId,
+        });
+      }
+
+      static open(registryId: string, index: number) {
+        return this.new(
+          AccountOpened.new({
+            id: Math.random().toString(36).slice(2),
+            index,
+            registryId,
+          }),
+        );
+      }
+    }
+
+    class AccountRegistry extends Shape({
+      id: String,
+      index: Number,
+    }) {
+      increment(shouldFailInMiddle = false) {
+        this.index++;
+        if (this.index > 10 && shouldFailInMiddle) {
+          throw new Error("Too many accounts");
+        }
+        return this.index;
+      }
+
+      static new() {
+        return new AccountRegistry({
+          id: Math.random().toString().slice(2),
+          index: 0,
+        });
+      }
+    }
+
+    const registryStore = new FirestoreStore(
+      "account-registry",
+      firestore,
+      new (AutoSerializer(AccountRegistry, 1))(),
+    );
+
+    const accountStore = new (MakeNestedFirestoreEsAggregateStore(Account))(
+      eventStore,
+      transaction,
+      new SerializerRegistry().add(
+        AccountOpened,
+        new (AutoSerializer(AccountOpened, 1))(),
+      ),
+      new NestedFirestoreSnapshotter(
+        Account.name,
+        firestore,
+        new (AutoSerializer(Account, 1))(),
+      ),
+    );
+
+    const eventBus = new MockEventBus();
+    accountStore.publishEventsTo(eventBus);
+
+    const registry = AccountRegistry.new();
+    await registryStore.save(registry);
+
+    await Promise.all([
+      transaction.perform(async (trx) => {
+        const reg = await registryStore.load(registry.id, trx);
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        const account = Account.open(registry.id, reg!.increment());
+
+        await accountStore.save(account, trx);
+        await registryStore.save(reg!, trx);
+      }),
+      transaction.perform(async (trx) => {
+        await new Promise((resolve) => setTimeout(resolve, 40));
+
+        const reg = await registryStore.load(registry.id, trx);
+
+        const account = Account.open(registry.id, reg!.increment());
+
+        await accountStore.save(account, trx);
+        await registryStore.save(reg!, trx);
+      }),
+    ]);
+
+    const freshRegistry = await registryStore.load(registry.id);
+
+    expect(freshRegistry!.index).toBe(2);
+
+    const result = await accountStore.snapshotter?.collection
+      .where("registryId", "==", registry.id)
+      .get();
+    const documents = result?.docs.map((doc) => doc.data());
+
+    expect(documents?.length).toBe(2);
+
+    const indices = documents
+      ?.map((doc: any) => Number(doc.index))
+      .sort((a, b) => a - b);
+
+    expect(indices).toEqual([1, 2]);
+
+    expect(eventBus.events.length).toBe(2);
+  });
 });

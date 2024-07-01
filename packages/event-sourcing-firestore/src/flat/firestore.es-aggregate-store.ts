@@ -1,14 +1,18 @@
 import { HasTrait } from "@ddd-ts/traits";
 import {
+  AggregateStreamId,
   ConcurrencyError,
   EventSourced,
-  type AggregateStreamId,
   type Identifiable,
   type IEsAggregateStore,
   type IEventBus,
   type ISerializer,
+  type Transaction,
 } from "@ddd-ts/core";
-import { type FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
+import {
+  type FirestoreTransaction,
+  type FirestoreTransactionPerformer,
+} from "@ddd-ts/store-firestore";
 
 import type { FlatFirestoreSnapshotter } from "./firestore.snapshotter";
 import type { FlatFirestoreEventStore } from "./firestore.event-store";
@@ -24,7 +28,10 @@ export const MakeFlatFirestoreEsAggregateStore = <
     }
 
     getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId {
-      return AGGREGATE.getAggregateStreamId(id);
+      return new AggregateStreamId({
+        aggregate: AGGREGATE.name,
+        id: id.toString(),
+      });
     }
   };
 };
@@ -80,7 +87,25 @@ export abstract class FlatFirestoreEsAggregateStore<
     return instance;
   }
 
-  async save(aggregate: InstanceType<A>, attempts = 5): Promise<void> {
+  /**
+   * @deprecated
+   */
+  async saveAll(
+    aggregates: InstanceType<A>[],
+    trx?: Transaction | undefined,
+  ): Promise<void> {
+    throw new Error("SaveAll not supported");
+  }
+
+  async save(
+    aggregate: InstanceType<A>,
+    trx?: FirestoreTransaction,
+    attempts = 5,
+  ): Promise<void> {
+    if (trx) {
+      throw new Error("Transactions are not supported in FlatFirestore");
+    }
+
     const streamId = this.getAggregateStreamId(aggregate.id);
     const changes = [...aggregate.changes];
 
@@ -120,7 +145,7 @@ export abstract class FlatFirestoreEsAggregateStore<
           pristine.apply(change);
         }
 
-        return await this.save(pristine, attempts - 1);
+        return await this.save(pristine, trx, attempts - 1);
       }
 
       throw error;

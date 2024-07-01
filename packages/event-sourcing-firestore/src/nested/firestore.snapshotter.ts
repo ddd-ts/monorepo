@@ -1,55 +1,42 @@
 import {
-  type AggregateStreamId,
   type IEventSourced,
   type IIdentifiable,
   type ISerializer,
 } from "@ddd-ts/core";
-import type { FirestoreTransaction } from "@ddd-ts/store-firestore";
+import { FirestoreStore } from "@ddd-ts/store-firestore";
 
 export class NestedFirestoreSnapshotter<
   A extends IEventSourced & IIdentifiable,
-> {
+> extends FirestoreStore<A> {
   constructor(
-    private readonly db: FirebaseFirestore.Firestore,
-    public readonly serializer: ISerializer<A>,
-  ) {}
-
-  async load(streamId: AggregateStreamId): Promise<A | undefined> {
-    const document = await this.db
-      .collection("event-store")
-      .doc(streamId.aggregate)
-      .collection("streams")
-      .doc(streamId.id)
-      .get();
-
-    if (!document || !document.exists) {
-      return undefined;
-    }
-
-    const snapshot = document.data();
-
-    if (!snapshot) {
-      return undefined;
-    }
-
-    const instance = await this.serializer.deserialize(snapshot.content as any);
-    instance.acknowledgedRevision = Number(snapshot.revision);
-    return instance;
-  }
-
-  async save(aggregate: A, trx: FirestoreTransaction): Promise<void> {
-    const streamId = aggregate.getAggregateStreamId();
-
-    trx.transaction.set(
-      this.db
-        .collection("event-store")
-        .doc(streamId.aggregate)
-        .collection("streams")
-        .doc(streamId.id),
+    private readonly aggregate: string,
+    db: FirebaseFirestore.Firestore,
+    serializer: ISerializer<A>,
+    converter?: FirebaseFirestore.FirestoreDataConverter<FirebaseFirestore.DocumentData>,
+  ) {
+    super(
+      "irrelevant",
+      db,
       {
-        revision: aggregate.acknowledgedRevision,
-        content: await this.serializer.serialize(aggregate),
+        deserialize: async (serialized: any) => {
+          const { revision, ...content } = serialized;
+          const instance = await serializer.deserialize(content);
+          instance.acknowledgedRevision = Number(revision);
+          return instance;
+        },
+        serialize: async (instance: A) => {
+          return {
+            revision: instance.acknowledgedRevision,
+            ...(await serializer.serialize(instance)),
+          };
+        },
       },
+      converter,
     );
+    this.collection = db
+      .collection("event-store")
+      .doc(this.aggregate)
+      .collection("streams")
+      .withConverter(this.converter);
   }
 }

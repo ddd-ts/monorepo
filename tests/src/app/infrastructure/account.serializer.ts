@@ -10,6 +10,7 @@ export class AccountSerializer implements ISerializer<Account> {
       version: 1,
       id: value.id.serialize(),
       balance: value.balance,
+      createdAt: value.createdAt,
     };
   }
 
@@ -17,6 +18,7 @@ export class AccountSerializer implements ISerializer<Account> {
     return new Account({
       id: AccountId.deserialize(value.id),
       balance: value.balance,
+      createdAt: value.createdAt,
     });
   }
 }

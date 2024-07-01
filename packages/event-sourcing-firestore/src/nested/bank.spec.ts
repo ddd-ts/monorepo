@@ -30,7 +30,12 @@ describe("NestedFirestore Bank Test", () => {
       return store;
     },
     (AGGREGATE, serializer, eventsSerializers) => {
-      const snapshotter = new NestedFirestoreSnapshotter(firestore, serializer);
+      const snapshotter = new NestedFirestoreSnapshotter(
+        AGGREGATE.name,
+        firestore,
+        serializer,
+      );
+
       const Store = MakeNestedFirestoreEsAggregateStore(AGGREGATE);
       const store = new Store(es, transaction, eventsSerializers, snapshotter);
       store.publishEventsTo(eventBus);

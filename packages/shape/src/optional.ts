@@ -13,28 +13,32 @@ export type OptionalConfiguration = Definition | Shorthand;
 
 type Matcher<V> = { some: (value: V) => any; none: () => any };
 
+type Internal<S extends Definition | Shorthand> = {
+  Serialized: ReturnType<DefinitionOf<S>["$serialize"]> | undefined;
+  Inline: Expand<DefinitionOf<S>["$inline"]> | undefined;
+  Required: Expand<DefinitionOf<S>["$inline"]>;
+};
+
 export const Optional = <
   S extends Definition | Shorthand,
   B extends AbstractConstructor<{}> = typeof Empty,
+  Cache extends Internal<S> = Internal<S>,
 >(
   of: S,
   base: B = Empty as any,
 ) => {
-  type Definition = DefinitionOf<S, B>;
-  type Serialized = ReturnType<Definition["$serialize"]> | undefined;
-
   abstract class $Optional extends (base as any as Constructor<{}>) {
-    constructor(public value: Expand<Definition["$inline"]> | undefined) {
+    constructor(public value: Cache["Inline"]) {
       super();
     }
 
     static $name = "optional" as const;
 
-    serialize(): Expand<Serialized> {
+    serialize(): Expand<Cache["Serialized"]> {
       return $Optional.$serialize((this as any).value) as any;
     }
 
-    match<M extends Matcher<Expand<Definition["$inline"]>>>(
+    match<M extends Matcher<Expand<Cache["Required"]>>>(
       config: M,
     ): ReturnType<M["some"]> | ReturnType<M["none"]> {
       if ((this as any).value === undefined) {
@@ -45,14 +49,12 @@ export const Optional = <
 
     static deserialize<T extends Constructor>(
       this: T,
-      value: Definition["$inline"] | undefined,
+      value: Cache["Inline"],
     ): InstanceType<T> {
       return new (this as any)((this as any).$deserialize(value)) as any;
     }
 
-    static $deserialize(
-      value: ReturnType<Definition["$serialize"]> | undefined,
-    ): Definition["$inline"] | undefined {
+    static $deserialize(value: Cache["Serialized"]): Definition["$inline"] {
       if (value === undefined) {
         return undefined;
       }
@@ -61,18 +63,18 @@ export const Optional = <
 
     static $serialize<T extends typeof $Optional>(
       this: T,
-      value: Definition["$inline"] | undefined,
-    ): ReturnType<Definition["$serialize"]> | undefined {
+      value: Cache["Inline"],
+    ): Cache["Serialized"] {
       return value === undefined
         ? undefined
         : (Shape(of) as any).$serialize(value);
     }
 
-    static $inline: Definition["$inline"] | undefined;
+    static $inline: Cache["Inline"];
   }
 
   type OptionalConstructor = abstract new (
-    value: Expand<Definition["$inline"]> | undefined,
+    value: Expand<Cache["Inline"]>,
   ) => InstanceType<B> & $Optional;
 
   type Optional = Omit<B, "prototype"> &

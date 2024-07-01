@@ -4,7 +4,7 @@ export function freeze(
   file: string,
   getNode: (file: ts.SourceFile, checker: ts.TypeChecker) => ts.Node,
 ) {
-  const program = ts.createProgram([file], {});
+  const program = ts.createProgram([file], { strictNullChecks: true });
   const checker = program.getTypeChecker();
   // biome-ignore lint/style/noNonNullAssertion: <explanation>
   const sourceFile = program

@@ -12,7 +12,7 @@ export class InMemoryStore<M extends IIdentifiable> implements Store<M> {
     public readonly serializer: ISerializer<M>,
   ) {}
 
-  protected async filter(
+  async filter(
     predicate: (model: M) => boolean,
     trx?: InMemoryTransaction,
   ): Promise<M[]> {
@@ -40,6 +40,10 @@ export class InMemoryStore<M extends IIdentifiable> implements Store<M> {
       await this.serializer.serialize(model),
       trx?.transaction,
     );
+  }
+
+  async saveAll(models: M[], trx?: InMemoryTransaction): Promise<void> {
+    await Promise.all(models.map((m) => this.save(m, trx)));
   }
 
   async load(id: M["id"], trx?: InMemoryTransaction): Promise<M | undefined> {

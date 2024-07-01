@@ -9,7 +9,7 @@
     "build": "tsc"
   },
   "dependencies": {
-    "uuid": "^8.3.2",
+    "nanoid": "^3.3.2",
     "@ddd-ts/traits": "workspace:*",
     "@ddd-ts/shape": "workspace:*",
     "@ddd-ts/types": "workspace:*"
