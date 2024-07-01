@@ -1,5 +1,10 @@
 import { Primitive } from "@ddd-ts/shape";
-import { v4 } from "uuid";
+import { customAlphabet } from "nanoid";
+
+const alphabet =
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+const generate = customAlphabet(alphabet, 24);
 
 export class EventId extends Primitive(String) {
   toString() {
@@ -7,6 +12,6 @@ export class EventId extends Primitive(String) {
   }
 
   static generate() {
-    return new EventId(v4());
+    return new EventId(generate());
   }
 }

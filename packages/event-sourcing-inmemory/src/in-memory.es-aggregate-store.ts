@@ -1,8 +1,8 @@
 import { HasTrait } from "@ddd-ts/traits";
 import {
+  AggregateStreamId,
   ConcurrencyError,
   EventSourced,
-  type AggregateStreamId,
   type IEsAggregateStore,
   type IEventBus,
   type Identifiable,
@@ -23,7 +23,10 @@ export const MakeInMemoryEsAggregateStore = <
     }
 
     getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId {
-      return AGGREGATE.getAggregateStreamId(id);
+      return new AggregateStreamId({
+        aggregate: AGGREGATE.name,
+        id: id.toString(),
+      });
     }
   };
 };

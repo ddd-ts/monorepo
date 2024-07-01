@@ -10,7 +10,7 @@ import {
 import { Store, ISerializer, type IIdentifiable } from "@ddd-ts/core";
 
 import { FirestoreTransaction } from "./firestore.transaction";
-import { batch, combine } from "./asyncTools";
+import { batch } from "./asyncTools";
 
 export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
   collection: CollectionReference;
@@ -30,7 +30,7 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
     }
   }
 
-  protected async executeQuery(
+  async executeQuery(
     query: FirebaseFirestore.Query<any>,
     trx?: FirestoreTransaction,
   ): Promise<M[]> {
@@ -43,10 +43,7 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
     );
   }
 
-  private async *streamPages(
-    query: FirebaseFirestore.Query<any>,
-    pageSize: number,
-  ) {
+  async *streamPages(query: FirebaseFirestore.Query<any>, pageSize: number) {
     let last: DocumentSnapshot | undefined;
     let nextPagePromise:
       | Promise<FirebaseFirestore.QuerySnapshot<any>>
@@ -71,7 +68,7 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
     } while (last);
   }
 
-  protected async *streamQuery(
+  async *streamQuery(
     query: FirebaseFirestore.Query<any>,
     pageSize?: number,
   ): AsyncIterable<M> {
@@ -152,27 +149,5 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
 
   async count(query: FirebaseFirestore.Query<DocumentData>) {
     return (await query.count().get()).data().count;
-  }
-
-  async streamConcurrent(
-    concurrency: number,
-    pageSize: number,
-    baseQuery?: FirebaseFirestore.Query<DocumentData>,
-  ): Promise<AsyncIterable<M>> {
-    const totalCount = await (baseQuery
-      ? this.count(baseQuery)
-      : this.countAll());
-    const partSize = Math.ceil(totalCount / concurrency);
-    const queries: FirebaseFirestore.Query<DocumentData>[] = [];
-
-    for (let i = 0; i < concurrency; i += 1) {
-      const offset = i * partSize;
-      if (baseQuery) {
-        queries.push(baseQuery.offset(offset).limit(partSize));
-      } else {
-        queries.push(this.collection.offset(i * partSize).limit(partSize));
-      }
-    }
-    return combine(queries.map((query) => this.streamQuery(query, pageSize)));
   }
 }

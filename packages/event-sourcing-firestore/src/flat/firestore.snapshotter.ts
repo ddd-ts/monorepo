@@ -1,5 +1,4 @@
 import {
-  type AggregateStreamId,
   type IEventSourced,
   type ISerializer,
   type IIdentifiable,
@@ -12,10 +11,10 @@ export class FlatFirestoreSnapshotter<A extends IEventSourced & IIdentifiable> {
     public readonly serializer: ISerializer<A>,
   ) {}
 
-  async load(streamId: AggregateStreamId): Promise<A | undefined> {
+  async load(id: A["id"]): Promise<A | undefined> {
     const query = await this.db
       .collection("snapshots")
-      .where("id", "==", streamId.id.toString())
+      .where("id", "==", id.toString())
       .orderBy("revision", "desc")
       .limit(1)
       .get();

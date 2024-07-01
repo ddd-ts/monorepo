@@ -1,8 +1,8 @@
 import { HasTrait } from "@ddd-ts/traits";
 import {
+  AggregateStreamId,
   ConcurrencyError,
   EventSourced,
-  type AggregateStreamId,
   type Identifiable,
   type IEsAggregateStore,
   type IEventBus,
@@ -24,7 +24,10 @@ export const MakeNestedFirestoreEsAggregateStore = <
     }
 
     getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId {
-      return AGGREGATE.getAggregateStreamId(id);
+      return new AggregateStreamId({
+        aggregate: AGGREGATE.name,
+        id: id.toString(),
+      });
     }
   };
 };
@@ -53,7 +56,7 @@ export abstract class NestedFirestoreEsAggregateStore<
   async load(id: InstanceType<A>["id"]) {
     const streamId = this.getAggregateStreamId(id);
 
-    const snapshot = await this.snapshotter?.load(streamId);
+    const snapshot = await this.snapshotter?.load(id);
 
     if (snapshot) {
       const stream = this.eventStore.read(

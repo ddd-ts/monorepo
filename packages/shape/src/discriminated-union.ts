@@ -86,39 +86,16 @@ type Matcher<C> = C extends MatcherConfig
 type Config = DictShorthandInput | ClassInput | ClassDictInput | DictInput;
 
 type ClassInput = ClassShorthand;
-type ClassInputCheck<
-  I extends ClassInput,
-  Discriminator extends string,
-> = I extends {
-  prototype: { [key in Discriminator]: string } & {
-    serialize: () => { [key in Discriminator]: string };
-  };
-  deserialize: (value: { [key in Discriminator]: string }) => any;
-}
-  ? never
-  : "⚠️ Make sure to add a discriminator to every element of the union";
 
 type ClassDictInput = ClassShorthand & { $of: {} };
 
 type DictInput = { $of: {} };
-type DictInputCheck<
-  I extends DictInput,
-  Discriminator extends string,
-> = I extends { $of: { [key in Discriminator]: string } }
-  ? never
-  : "⚠️ Make sure to add a discriminator to every element of the union";
 
 type DictShorthandInput = DictShorthand;
-type DictShorthandInputCheck<
-  I extends DictShorthandInput,
-  Discriminator extends string,
-> = I extends { [key in Discriminator]: string }
-  ? never
-  : "⚠️ Make sure to add a discriminator to every element of the union";
 
 type Access<T, K> = K extends keyof T ? T[K] : never;
 
-type Entries<T extends any[], K> = UnionToIntersection<
+type Entries<T extends readonly any[], K> = UnionToIntersection<
   {
     [i in keyof T]: Access<GetShape<T[i]>, K> extends infer U extends string
       ? IsStringLiteral<U> extends true
@@ -138,15 +115,15 @@ type GetShape<S extends Config> = S extends DictInput
     ? Access<S, "prototype">
     : S;
 
-type BestKey<S extends Config[]> = {
+export type BestKey<S extends readonly Config[]> = {
   [key in keyof S]: GetShape<S[key]>;
 }[number] extends infer U
   ? FindBestKeyForMatching<U>
   : never;
 
-export type DiscriminatedUnionConfiguration = Config[];
+export type DiscriminatedUnionConfiguration = readonly Config[];
 
-function findBestKey(config: DiscriminatedUnionConfiguration) {
+export function findBestKey(config: DiscriminatedUnionConfiguration) {
   const hash: Record<string, Set<string>> = {};
 
   for (const c of config) {
@@ -173,7 +150,10 @@ function findBestKey(config: DiscriminatedUnionConfiguration) {
   return key;
 }
 
-function prepareShapeMap(config: DiscriminatedUnionConfiguration, key: string) {
+export function prepareShapeMap(
+  config: DiscriminatedUnionConfiguration,
+  key: string,
+) {
   return config.reduce<{ [key: string]: Definition }>((acc, c) => {
     const shape = Shape(c);
 
@@ -197,52 +177,55 @@ function prepareShapeMap(config: DiscriminatedUnionConfiguration, key: string) {
   }, {});
 }
 
+type Internal<
+  S extends DiscriminatedUnionConfiguration,
+  K extends BestKey<S>,
+> = {
+  Map: Entries<S, K>;
+  Serialized: ReturnType<DefinitionOf<S[number]>["$serialize"]>;
+  Inline: DefinitionOf<S[number]>["$inline"];
+};
+
 export const DiscriminatedUnion = <
   S extends DiscriminatedUnionConfiguration,
   K extends BestKey<S>,
   const B extends AbstractConstructor<{}> = typeof Empty,
+  IInternal extends Internal<S, K> = Internal<S, K>,
 >(
   of: S,
   ...args: [base?: B]
-  // ...args: [K] extends [never]
-  //   ? ["⚠️ Make sure to add a discriminator to every element of the union"]
-  //   : [base?: B]
 ) => {
   const base = args[0] || (Empty as any);
-  type Map = Entries<S, K>;
-
-  type Serialized = ReturnType<DefinitionOf<S[number]>["$serialize"]>;
-  type Inline = DefinitionOf<S[number]>["$inline"];
 
   const key = findBestKey(of);
   const map = prepareShapeMap(of, key);
 
   abstract class $DiscriminatedUnion extends (base as any as Constructor<{}>) {
-    constructor(public value: Inline) {
+    constructor(public value: IInternal["Inline"]) {
       super();
     }
 
-    static serialized: Serialized;
+    static serialized: IInternal["Serialized"];
 
     static $of = of;
 
     static $name = "discriminated-union" as const;
 
-    serialize(): Expand<Serialized> {
+    serialize(): Expand<IInternal["Serialized"]> {
       return ($DiscriminatedUnion as any).$serialize(this.value) as any;
     }
 
     match<
-      M extends Matcher<Map>,
-      F extends M extends ExhaustiveMatcher<Map>
+      M extends Matcher<IInternal["Map"]>,
+      F extends M extends ExhaustiveMatcher<IInternal["Map"]>
         ? []
-        : M extends UnsafeFallthroughMatcher<Map>
+        : M extends UnsafeFallthroughMatcher<IInternal["Map"]>
           ? []
-          : M extends PartialMatcher<Map>
+          : M extends PartialMatcher<IInternal["Map"]>
             ? [
                 fallback: (
-                  value: Omit<Map, keyof M>[keyof Omit<
-                    Map,
+                  value: Omit<IInternal["Map"], keyof M>[keyof Omit<
+                    IInternal["Map"],
                     keyof M
                   >] extends infer U extends Shorthand
                     ? Expand<DefinitionOf<U>["$inline"]>
@@ -258,32 +241,32 @@ export const DiscriminatedUnion = <
           : never)
       | (F[0] extends (...args: any[]) => any ? ReturnType<F[0]> : never) {
       const element: any = this.value;
-      const value = element[key];
+      const discriminant = element[key];
 
-      const handler = matcher[value];
+      const handler = matcher[discriminant];
       if (handler) {
-        return handler(value);
+        return handler(element);
       }
       if (fallback) {
-        return fallback(value);
+        return fallback(element);
       }
       if (matcher._) {
-        return matcher._(value);
+        return matcher._(element);
       }
       throw new Error("Non-exhaustive match");
     }
 
     static deserialize<T extends typeof $DiscriminatedUnion>(
       this: T,
-      value: Expand<Serialized>,
+      value: Expand<IInternal["Serialized"]>,
     ): InstanceType<T> {
       return new (this as any)(this.$deserialize(value as any)) as any;
     }
 
     static $deserialize<T extends typeof $DiscriminatedUnion>(
       this: T,
-      value: Serialized,
-    ): Inline {
+      value: IInternal["Serialized"],
+    ): IInternal["Inline"] {
       const definition = map[value[key]];
       if (!definition) {
         throw new Error("Cannot deserialize DiscriminatedUnion");
@@ -293,16 +276,16 @@ export const DiscriminatedUnion = <
 
     static $serialize<T extends typeof $DiscriminatedUnion>(
       this: T,
-      value: Inline,
-    ): Serialized {
+      value: IInternal["Inline"],
+    ): IInternal["Serialized"] {
       return map[(value as any)[key]].$serialize(value);
     }
 
-    static $inline: Inline;
+    static $inline: IInternal["Inline"];
   }
 
   type DiscriminatedUnionConstructor = abstract new (
-    value: Expand<Inline>,
+    value: Expand<IInternal["Inline"]>,
   ) => InstanceType<B> & $DiscriminatedUnion;
   type DiscriminatedUnion = Omit<B, "prototype"> &
     Omit<typeof $DiscriminatedUnion, "prototype"> &
