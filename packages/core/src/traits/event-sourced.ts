@@ -18,17 +18,6 @@ export const EventSourced = <C extends Config>(config: C) =>
 
       static events = config;
 
-      getAggregateStreamId(this: any) {
-        return this.constructor.getAggregateStreamId(this.id);
-      }
-
-      static getAggregateStreamId(id: Identifier) {
-        return new AggregateStreamId({
-          aggregate: this.name,
-          id: id.toString(),
-        });
-      }
-
       load(fact: Event) {
         if (typeof fact.revision !== "number") {
           throw new Error("not a fact");

@@ -4,11 +4,17 @@ import {
   type IChange,
   type IFact,
 } from "@ddd-ts/core";
-import type { FirestoreTransaction } from "@ddd-ts/store-firestore";
+import {
+  DefaultConverter,
+  type FirestoreTransaction,
+} from "@ddd-ts/store-firestore";
 import * as fb from "firebase-admin";
 
 export class FlatFirestoreEventStore {
-  constructor(public readonly firestore: fb.firestore.Firestore) {}
+  constructor(
+    public readonly firestore: fb.firestore.Firestore,
+    public readonly converter: fb.firestore.FirestoreDataConverter<fb.firestore.DocumentData> = new DefaultConverter(),
+  ) {}
 
   get aggregateCollection() {
     return this.firestore.collection("events");
@@ -41,7 +47,7 @@ export class FlatFirestoreEventStore {
     for (const change of changes) {
       trx.transaction.create(
         this.aggregateCollection.doc(change.id.toString()),
-        {
+        this.converter.toFirestore({
           aggregateType: streamId.aggregate,
           id: change.id.toString(),
           aggregateId: streamId.id.toString(),
@@ -49,7 +55,7 @@ export class FlatFirestoreEventStore {
           type: change.name,
           payload: change.payload,
           occurredAt: fb.firestore.FieldValue.serverTimestamp(),
-        },
+        }),
       );
       await new Promise((r) => setTimeout(r, 1)); // ensure occurredAt is unique
       revision++;
@@ -71,13 +77,13 @@ export class FlatFirestoreEventStore {
 
     for await (const event of query.stream()) {
       const e = event as any as fb.firestore.QueryDocumentSnapshot<any>;
-      const data = e.data();
+      const data = this.converter.fromFirestore(e);
       yield {
         id: e.id,
         revision: data.revision,
         name: data.type,
         payload: data.payload,
-        occurredAt: data.occurredAt.toDate(),
+        occurredAt: data.occurredAt,
       };
     }
   }

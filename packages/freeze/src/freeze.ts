@@ -65,14 +65,6 @@ for (const ref of references) {
     );
     if (!classDeclaration) continue;
 
-    const versionProperty = classDeclaration.getType().getProperty("version");
-    if (!versionProperty) {
-      console.log(
-        `${rpath}: No version property found on ${classDeclaration.getName()}`,
-      );
-      continue;
-    }
-
     const typeParameter = decorator.getTypeArguments()[0];
     if (typeParameter) {
       console.log(
@@ -80,15 +72,6 @@ for (const ref of references) {
       );
       continue;
     }
-
-    const version = project
-      .getTypeChecker()
-      .getTypeOfSymbolAtLocation(versionProperty, classDeclaration)
-      .getText();
-
-    console.log(
-      `${rpath} - ${classDeclaration.getName()}: Freezing with version ${version}`,
-    );
 
     const serializeProperty = classDeclaration
       .getType()
@@ -110,6 +93,21 @@ for (const ref of references) {
       serialized = serialized.getTypeArguments()[0];
     }
 
+    const version = serialized
+      .getProperty("version")
+      ?.getTypeAtLocation(classDeclaration)
+      .getText();
+
+    if (!version || Number.isNaN(Number(version))) {
+      console.log(
+        `${rpath} - ${classDeclaration.getName()}: No version property (or not a number) : ${version}`,
+      );
+      continue;
+    }
+
+    console.log(
+      `${rpath} - ${classDeclaration.getName()}: Freezing with version ${version}`,
+    );
     const other = new Map();
     const result = exploreType(
       serialized.compilerType as any,

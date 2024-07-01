@@ -8,5 +8,4 @@ export interface IEventSourced<E extends IEsEvent = IEsEvent> {
   apply(change: E): void;
   clearChanges(): void;
   acknowledgeChanges(): void;
-  getAggregateStreamId(): AggregateStreamId;
 }

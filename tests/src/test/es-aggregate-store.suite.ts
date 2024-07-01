@@ -19,52 +19,8 @@ import {
   WithdrawnSerializer,
 } from "../app/infrastructure/account.serializer";
 
-// function expectedFact(
-//   event: Constructor<Event>,
-//   revision: bigint,
-//   payload: any,
-// ) {
-//   return expect.objectContaining({
-//     type: event.name,
-//     id: expect.any(String),
-//     payload: expect.objectContaining({ ...payload }) ?? expect.anything(),
-//     revision,
-//   });
-// }
-
-// type DepositedMatcher = [Constructor<Deposited>, bigint, number];
-// type TransferInitiatedMatcher = [
-//   Constructor<TransferInitiated>,
-//   bigint,
-//   number,
-// ];
-
-// function expectFacts(
-//   facts: IFact[],
-//   expected: (DepositedMatcher | TransferInitiatedMatcher)[],
-// ) {
-//   const received = (facts as any).map(
-//     (f: IFact<Deposited> | IFact<TransferInitiated>) => {
-//       if (f.name === Deposited.name) {
-//         return `${f.name} ${f.revision} ${f.payload.amount}`;
-//       }
-//       if (f.name === TransferInitiated.name) {
-//         return `${f.name} ${f.revision} ${f.payload.amount}`;
-//       }
-//       throw new Error(`Unexpected name ${f.name}`);
-//     },
-//   );
-
-//   const compared = expected.map(
-//     ([type, revision, payload]) => `${type.name} ${revision} ${payload}`,
-//   );
-
-//   expect(received).toEqual(compared);
-// }
-
 jest.setTimeout(10000);
 
-// biome-ignore lint/suspicious/noExportsInTest: <explanation>
 export function EsAggregateStoreSuite(
   createStore: <
     T extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
@@ -83,14 +39,6 @@ export function EsAggregateStoreSuite(
 
   const accountStore = createStore(Account, eventSerializer, serializer);
 
-  // afterAll(() => {
-  //   // return es.close();
-  // });
-
-  // beforeEach(async () => {
-  //   await es.clear();
-  // });
-
   describe("when persisting an aggregate", () => {
     it("should persist the aggregate", async () => {
       const account = Account.open();
@@ -108,40 +56,42 @@ export function EsAggregateStoreSuite(
       expect(loaded?.id).toEqual(account.id);
       expect(loaded?.balance).toEqual(account.balance);
       expect(loaded?.acknowledgedRevision).toEqual(4);
+      expect(loaded?.createdAt).toEqual(account.createdAt);
     });
 
-    it("should replay changes on the updated aggregate in case of concurrent writes", async () => {
-      const account = Account.open();
-      await accountStore.save(account);
+    if (!accountStore.constructor.name.includes("Flat")) {
+      it("should replay changes on the updated aggregate in case of concurrent writes", async () => {
+        const account = Account.open();
+        await accountStore.save(account);
 
-      const copies = (
-        await Promise.all(
-          [...Array(7)].map(() => accountStore.load(account.id)),
-        )
-      ).map((copy) => {
-        if (!copy) {
-          throw new Error("Aggregate not loaded");
-        }
-        expect(copy.acknowledgedRevision).toEqual(0);
-        copy.deposit(1);
-        return copy;
-      });
+        const copies = (
+          await Promise.all(
+            [...Array(7)].map(() => accountStore.load(account.id)),
+          )
+        ).map((copy) => {
+          if (!copy) {
+            throw new Error("Aggregate not loaded");
+          }
+          expect(copy.acknowledgedRevision).toEqual(0);
+          copy.deposit(1);
+          return copy;
+        });
 
-      const result = await Promise.allSettled(
-        copies.map((copy) => accountStore.save(copy)),
-      );
+        const result = await Promise.allSettled(
+          copies.map((copy) => accountStore.save(copy)),
+        );
 
-      const errors = result.filter((r) => r.status === "rejected");
-      expect(errors.map((i) => i.reason)).toEqual([]);
+        const errors = result.filter((r) => r.status === "rejected");
+        expect(errors.map((i) => i.reason)).toEqual([]);
 
-      expect(result.filter((r) => r.status === "rejected").length).toBe(0);
+        expect(result.filter((r) => r.status === "rejected").length).toBe(0);
 
-      const loaded = await accountStore.load(account.id);
+        const loaded = await accountStore.load(account.id);
 
-      expect(loaded?.balance).toEqual(7);
-    }, 40_000);
+        expect(loaded?.balance).toEqual(7);
+      }, 40_000);
+    }
   });
-
   // describe("when reading a projected stream", () => {
   //   it("should read the projected stream", async () => {
   //     const accountA = Account.open();

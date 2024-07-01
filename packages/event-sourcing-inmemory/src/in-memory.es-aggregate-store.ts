@@ -1,8 +1,8 @@
 import { HasTrait } from "@ddd-ts/traits";
 import {
+  AggregateStreamId,
   ConcurrencyError,
   EventSourced,
-  type AggregateStreamId,
   type IEsAggregateStore,
   type IEventBus,
   type Identifiable,
@@ -11,6 +11,10 @@ import {
 
 import type { InMemoryEventStore } from "./event-store/in-memory.event-store";
 import type { InMemorySnapshotter } from "./in-memory.snapshotter";
+import type {
+  InMemoryTransaction,
+  InMemoryTransactionPerformer,
+} from "@ddd-ts/store-inmemory";
 
 export const MakeInMemoryEsAggregateStore = <
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
@@ -23,7 +27,10 @@ export const MakeInMemoryEsAggregateStore = <
     }
 
     getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId {
-      return AGGREGATE.getAggregateStreamId(id);
+      return new AggregateStreamId({
+        aggregate: AGGREGATE.name,
+        id: id.toString(),
+      });
     }
   };
 };
@@ -34,6 +41,7 @@ export abstract class InMemoryEsAggregateStore<
 {
   constructor(
     public readonly eventStore: InMemoryEventStore,
+    public readonly transaction: InMemoryTransactionPerformer,
     public readonly serializer: ISerializer<InstanceType<A>["changes"][number]>,
     public readonly snapshotter?: InMemorySnapshotter<InstanceType<A>>,
   ) {}
@@ -80,7 +88,21 @@ export abstract class InMemoryEsAggregateStore<
     return instance;
   }
 
-  async save(aggregate: InstanceType<A>, attempts = 10): Promise<void> {
+  async saveAll(
+    aggregates: InstanceType<A>[],
+    trx?: InMemoryTransaction,
+    attempts = 10,
+  ): Promise<void> {
+    for (const aggregate of aggregates) {
+      await this.save(aggregate, trx, attempts);
+    }
+  }
+
+  async save(
+    aggregate: InstanceType<A>,
+    trx?: InMemoryTransaction,
+    attempts = 10,
+  ): Promise<void> {
     const streamId = this.getAggregateStreamId(aggregate.id);
     const changes = [...aggregate.changes];
 
@@ -93,13 +115,11 @@ export abstract class InMemoryEsAggregateStore<
         streamId,
         serialized as any,
         aggregate.acknowledgedRevision,
+        trx,
       );
 
       aggregate.acknowledgeChanges();
       await this.snapshotter?.save(aggregate);
-      for (const event of changes) {
-        await this._publishEventsTo?.publish(event);
-      }
     } catch (error) {
       if (error instanceof ConcurrencyError && attempts > 0) {
         const pristine = await this.load(aggregate.id);
@@ -112,10 +132,13 @@ export abstract class InMemoryEsAggregateStore<
           pristine.apply(change);
         }
 
-        return await this.save(pristine, attempts - 1);
+        return await this.save(pristine, trx, attempts - 1);
       }
 
       throw error;
+    }
+    for (const event of changes) {
+      await this._publishEventsTo?.publish(event);
     }
   }
 }

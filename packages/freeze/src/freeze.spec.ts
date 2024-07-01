@@ -213,10 +213,15 @@ describe("freeze", () => {
   // 	);
   // });
 
+  it("should freeze string literal types", () => {
+    const result = testFreeze("15", {} as "a" | undefined);
+    expect(result).toEqual(["", 'type Output = undefined | "a";'].join("\n"));
+  });
+
   it.skip("should freeze a generic", () => {
     type Thing<T> = { a: T };
 
-    const result = testFreeze("15", {} as Thing<number>);
+    const result = testFreeze("16", {} as Thing<number>);
 
     expect(result).toEqual(
       ["type Thing<T> = { a: T; }", "type Output = Thing<number>;"].join("\n"),

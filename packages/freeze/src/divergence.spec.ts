@@ -1,4 +1,6 @@
-import { Divergence } from "./divergence";
+import { Divergence, type UnionDivergence } from "./divergence";
+
+type Equals<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
 
 {
   // it should return never when left and right are the same
@@ -150,12 +152,14 @@ import { Divergence } from "./divergence";
 
   type D = Divergence<L, R>;
 
-  const error: D = {
+  type expected = {
     "~": {
-      type: "b",
-      b: [0, "!=", ""],
-    },
+      type: "b";
+      b: [number, "!=", string];
+    };
   };
+
+  const check: Equals<D, expected> = true;
 }
 
 {
@@ -176,6 +180,20 @@ import { Divergence } from "./divergence";
   };
 
   type D = Divergence<L, R>;
+
+  type check = D;
+
+  const error: D = {
+    a: {
+      b: [
+        {
+          c: {
+            "~": { b: [0, "!=", ""], type: "b" },
+          },
+        },
+      ],
+    },
+  };
 }
 
 {
@@ -185,6 +203,10 @@ import { Divergence } from "./divergence";
   type L = Rec<string>;
 
   type D = Divergence<L, R>;
+
+  type expected = { value: [string, "!=", number] };
+
+  const check: Equals<D, expected> = true;
 }
 
 {
@@ -212,6 +234,12 @@ import { Divergence } from "./divergence";
   };
 
   type D = Divergence<L["options"], R["options"]>;
+
+  type expected = {
+    "+": Rec<Options>;
+  };
+
+  const check: Equals<D, expected> = true;
 }
 
 {
@@ -234,8 +262,11 @@ import { Divergence } from "./divergence";
   // type L = Narrow<B>;
   // type R = Narrow<A>;
 
-  type checkA = Divergence<L, R>;
-  const a: checkA = {} as never;
+  type D = Divergence<L, R>;
+
+  type expected = never;
+
+  const check: Equals<D, expected> = {} as never;
 }
 
 {
@@ -245,6 +276,65 @@ import { Divergence } from "./divergence";
   type R = { type: "a"; e: boolean } | { type: "b"; e: boolean };
 
   type D = Divergence<L, R>;
+
+  type expected = { "+": L };
+  const check: Equals<D, expected> = true;
+}
+
+{
+  // should work with optional properties
+
+  type L = { a?: { value: 1 } | { value: 2 } };
+  type R = { a: { value: 1 } | { value: 3 } };
+
+  type D = Divergence<L, R>;
+
+  type expected = {
+    a: {
+      "+":
+        | {
+            value: 2;
+          }
+        | undefined;
+    };
+  };
+  const check: Equals<D, expected> = true;
+}
+
+{
+  type L =
+    | undefined
+    | ({ type: "a"; value: 1 } | { type: "b"; value: 2 } | { type: "c" })[]
+    | ({ type: "d" } | { type: "e"; value: 4 })[];
+
+  type R =
+    | undefined
+    | ({ type: "a"; value: 1 } | { type: "b"; value: 3 } | { type: "c" })[]
+    | ({ type: "d" } | { type: "e" })[];
+
+  type D = UnionDivergence<L, R, []>;
+
+  type expected = {
+    "~":
+      | {
+          [key: number]: {
+            "~": {
+              type: "b";
+              value: [2, "!=", 3];
+            };
+          };
+        }
+      | {
+          [key: number]: {
+            "~": {
+              type: "e";
+              "+value": 4;
+            };
+          };
+        };
+  };
+
+  const check: Equals<D, expected> = true;
 }
 
 it("this is a type test file", () => {
