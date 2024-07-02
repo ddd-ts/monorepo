@@ -1,4 +1,4 @@
-import { Divergence } from "./divergence";
+import { Divergence, type UnionDivergence } from "./divergence";
 
 {
   // it should return never when left and right are the same
@@ -245,6 +245,29 @@ import { Divergence } from "./divergence";
   type R = { type: "a"; e: boolean } | { type: "b"; e: boolean };
 
   type D = Divergence<L, R>;
+}
+
+{
+  // should work with optional properties
+
+  type L = { a?: { value: 1 } | { value: 2 } };
+  type R = { a: { value: 1 } | { value: 3 } };
+
+  type D = Divergence<L, R>;
+}
+
+{
+  type L =
+    | undefined
+    | ({ type: "a"; value: 1 } | { type: "b"; value: 2 } | { type: "c" })[]
+    | ({ type: "d" } | { type: "e"; value: 4 })[];
+
+  type R =
+    | undefined
+    | ({ type: "a"; value: 1 } | { type: "b"; value: 3 } | { type: "c" })[]
+    | ({ type: "d" } | { type: "e" })[];
+
+  type D = UnionDivergence<L, R, []>;
 }
 
 it("this is a type test file", () => {
