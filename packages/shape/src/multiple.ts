@@ -1,49 +1,45 @@
 import {
-  Concrete,
   Definition,
   Expand,
-  MakeAbstract,
   Shorthand,
   DefinitionOf,
-  forward,
   Shape,
   AbstractConstructor,
   Empty,
   Constructor,
 } from "./_";
 
-export type MultipleShorthand =
-  | (Definition | Shorthand)[]
-  | readonly (Definition | Shorthand)[];
-
 export type MultipleConfiguration = Definition | Shorthand;
+export type MultipleShorthand = [any] | readonly [any];
+
+type Internal<S extends MultipleConfiguration> = {
+  Serialized: ReturnType<DefinitionOf<S>["$serialize"]>[];
+  Inline: DefinitionOf<S>["$inline"][];
+};
 
 export const Multiple = <
   const S extends MultipleConfiguration,
   B extends AbstractConstructor<{}> = typeof Empty,
+  Cache extends Internal<S> = Internal<S>,
 >(
   of: S,
   base: B = Empty as any,
 ) => {
-  type Def = DefinitionOf<S, B>;
-  type Serialized = ReturnType<Def["$serialize"]>[];
-  type Inline = Def["$inline"][];
-
   const longhand = Shape(of);
 
   abstract class $Multiple extends (base as any as Constructor<{}>) {
-    constructor(public value: Inline) {
+    constructor(public value: Cache["Inline"]) {
       super();
     }
     static $name = "multiple" as const;
 
-    serialize(): Expand<Serialized> {
+    serialize(): Expand<Cache["Serialized"]> {
       return $Multiple.$serialize(this.value) as any;
     }
 
     static deserialize<T extends Constructor>(
       this: T,
-      value: Expand<Serialized>,
+      value: Expand<Cache["Serialized"]>,
     ): InstanceType<T> {
       return new (this as any)(
         ($Multiple as any).$deserialize(value),
@@ -52,12 +48,12 @@ export const Multiple = <
 
     static $deserialize<T extends Constructor>(
       this: T,
-      value: Serialized,
+      value: Cache["Serialized"],
     ): InstanceType<T> {
       return (value as any).map(longhand.$deserialize);
     }
 
-    static $serialize(value: Inline): Serialized {
+    static $serialize(value: Cache["Inline"]): Cache["Serialized"] {
       return (value as any).map(longhand.$serialize as any);
     }
 
@@ -65,7 +61,7 @@ export const Multiple = <
       return this.value[Symbol.iterator]();
     }
 
-    static $inline: Inline;
+    static $inline: Cache["Inline"];
 
     get map() {
       return this.value.map.bind(this.value);
@@ -165,7 +161,7 @@ export const Multiple = <
   }
 
   type MultipleConstructor = abstract new (
-    value: Expand<Inline>,
+    value: Expand<Cache["Inline"]>,
   ) => InstanceType<B> & $Multiple;
 
   type Multiple = Omit<B, "prototype"> &

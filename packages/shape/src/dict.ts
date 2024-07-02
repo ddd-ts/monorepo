@@ -10,22 +10,24 @@ import {
 
 export type DictShorthand = { [key: string]: Shorthand };
 
+type Internal<S extends DictShorthand> = {
+  Definition: { -readonly [K in keyof S]: DefinitionOf<S[K]> };
+  Serialized: {
+    -readonly [K in keyof S]: ReturnType<DefinitionOf<S[K]>["$serialize"]>;
+  };
+  Inline: {
+    -readonly [K in keyof S]: DefinitionOf<S[K]>["$inline"];
+  };
+};
+
 export const Dict = <
   const S extends { [key: string]: any },
   B extends AbstractConstructor<{}> = typeof Empty,
+  Cache extends Internal<S> = Internal<S>,
 >(
   of: S,
   base: B = Empty as any,
 ) => {
-  type Def = { -readonly [K in keyof S]: DefinitionOf<S[K], B> };
-
-  type Serialized = {
-    -readonly [K in keyof S]: ReturnType<Def[K]["$serialize"]>;
-  };
-  type Inline = {
-    -readonly [K in keyof Def]: Def[K]["$inline"];
-  };
-
   abstract class $Dict extends (base as any as AbstractConstructor<{}>) {
     static $name = "dict" as const;
     static $of = of;
@@ -35,13 +37,13 @@ export const Dict = <
       Object.assign(this, args[0]);
     }
 
-    serialize(): Expand<Serialized> {
+    serialize(): Expand<Cache["Serialized"]> {
       return $Dict.$serialize(this as any) as any;
     }
 
     static deserialize<T extends Constructor>(
       this: T,
-      value: Expand<Serialized>,
+      value: Expand<Cache["Serialized"]>,
     ): InstanceType<T> {
       const runtime = (this as any).$deserialize(value as any);
       return new this(runtime as any) as any;
@@ -49,8 +51,8 @@ export const Dict = <
 
     static $deserialize<T extends typeof $Dict>(
       this: T,
-      value: Serialized,
-    ): Inline {
+      value: Cache["Serialized"],
+    ): Cache["Inline"] {
       const split = Object.entries(of);
       const transform = split.map(([key, child]) => {
         const longhand = Shape(child) as any;
@@ -64,7 +66,7 @@ export const Dict = <
     static $serialize<T extends typeof $Dict>(
       this: T,
       value: InstanceType<T>,
-    ): Serialized {
+    ): Cache["Serialized"] {
       const split = Object.entries(of);
       const transform = split.map(([key, child]) => {
         const longhand = Shape(child as any) as any;
@@ -75,12 +77,12 @@ export const Dict = <
       return merge as any;
     }
 
-    static $inline: Inline;
+    static $inline: Cache["Inline"];
   }
 
   type DictConstructor = abstract new (
-    value: Expand<Inline>,
-  ) => InstanceType<B> & $Dict & Inline;
+    value: Expand<Cache["Inline"]>,
+  ) => InstanceType<B> & $Dict & Cache["Inline"];
   type WithConstructor = Omit<B, ""> & Omit<typeof $Dict, ""> & DictConstructor;
   return $Dict as any as WithConstructor;
 };

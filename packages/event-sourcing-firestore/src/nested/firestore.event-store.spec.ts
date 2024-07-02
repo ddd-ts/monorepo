@@ -29,7 +29,11 @@ describe("NestedFirestoreEventStore", () => {
     eventSerializer: ISerializer<InstanceType<T>["changes"][number]>,
     serializer: ISerializer<InstanceType<T>>,
   ) {
-    const snapshotter = new NestedFirestoreSnapshotter(firestore, serializer);
+    const snapshotter = new NestedFirestoreSnapshotter(
+      AGGREGATE.name,
+      firestore,
+      serializer,
+    );
     const Store = MakeNestedFirestoreEsAggregateStore(AGGREGATE);
     return new Store(eventStore, transaction, eventSerializer, snapshotter);
   }

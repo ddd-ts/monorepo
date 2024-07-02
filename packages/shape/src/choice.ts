@@ -7,7 +7,7 @@ import {
   MergeClasses,
 } from "./_";
 
-type Matcher<S extends string[]> =
+export type ChoiceMatcher<S extends string[]> =
   | {
       [key in S[number]]: () => any;
     }
@@ -17,9 +17,8 @@ type Matcher<S extends string[]> =
       [key in S[number]]?: () => any;
     });
 
-type MatcherResult<M extends Matcher<any>> = M[keyof M] extends () => infer R
-  ? R
-  : never;
+export type ChoiceMatcherResult<M extends ChoiceMatcher<any>> =
+  M[keyof M] extends () => infer R ? R : never;
 
 export const Choice = <
   const S extends string[],
@@ -39,17 +38,16 @@ export const Choice = <
       super();
     }
 
-    is<T extends Inline>(value: T): this is Omit<
-      this,
-      "value" | "serialize"
-    > & {
+    is<T extends Inline>(
+      value: T,
+    ): this is Omit<this, "value" | "serialize"> & {
       value: T;
       serialize(): T;
     } {
       return this.value === value;
     }
 
-    match<M extends Matcher<S>>(matcher: M): MatcherResult<M> {
+    match<M extends ChoiceMatcher<S>>(matcher: M): ChoiceMatcherResult<M> {
       const handler = matcher[this.value];
       if (handler) return handler();
       return (matcher as { _: () => any })._();
