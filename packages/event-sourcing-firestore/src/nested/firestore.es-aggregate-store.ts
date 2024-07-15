@@ -75,10 +75,27 @@ export abstract class NestedFirestoreEsAggregateStore<
   async load(id: InstanceType<A>["id"]) {
     const streamId = this.getAggregateStreamId(id);
 
-    const snapshot = await this.snapshotter?.load(id);
 
+    const snapshot = await this.snapshotter?.load(id);
+    // const lastEvent = await this.eventStore.getLastEvent(streamId);
+
+    // if(snapshot && lastEvent && snapshot.acknowledgedRevision < lastEvent.revision) {
+    //   return this.loadFromSnapshot(snapshot)
+    // }
+
+    /**
+     * For now, we can just return the snapshot if it exists
+     * because the the snapshot is kept up to date with the event store transactionally.
+     * 
+     * Performing the revision check is very expensive when using a query to get the missing events (10x slower)
+     * 
+     * In the future, when snapshot will be lagging behind the stream we could:
+     * - Keep a transactionnal revision mutex for each stream, to know if the snapshot is up to date without having to snapshot the whole model
+     * - Use a stale snapshot and let the model catch up with the stream on the next save ?
+     * - Use a snapshot that is always up to date with the stream, but that is not transactionnal, and catch up with the stream on the next save ?
+     */
     if (snapshot) {
-      return this.loadFromSnapshot(snapshot);
+      return snapshot
     }
 
     let instance: InstanceType<A> | undefined = undefined;
@@ -149,8 +166,10 @@ export abstract class NestedFirestoreEsAggregateStore<
           toSave.map((save) => this.snapshotter?.save(save.aggregate, trx)),
         );
       });
-    } catch (error) {
-      if (error instanceof ConcurrencyError && attempts > 0) {
+    } catch (error: any) {
+      const shouldRetry = (error instanceof ConcurrencyError || ('code' in error && error.code === 6)) && attempts > 0
+
+      if (shouldRetry) {
         const pristines = await Promise.all(
           toSave.map(async ({ aggregate, changes }) => {
             const pristine = await this.load(aggregate.id);
@@ -188,7 +207,7 @@ export abstract class NestedFirestoreEsAggregateStore<
   async save(
     aggregate: InstanceType<A>,
     trx?: FirestoreTransaction,
-    attempts = 10,
+    attempts = 30,
   ): Promise<void> {
     return this.saveAll([aggregate], trx, attempts);
   }

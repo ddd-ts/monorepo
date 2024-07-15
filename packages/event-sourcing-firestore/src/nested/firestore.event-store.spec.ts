@@ -55,6 +55,105 @@ describe("NestedFirestoreEventStore", () => {
 
   EsAggregateStoreSuite(makeAggregateStore);
 
+  describe('Account alone', () => {
+
+    class AccountOpened extends EsEvent("AccountOpened", {
+      id: String,
+    }) {}
+
+    class Deposited extends EsEvent("Deposited", {
+      id: String,
+      amount: Number,
+    }) {}
+
+    class Account extends EsAggregate("Account", {
+      events: [AccountOpened, Deposited],
+      state: {
+        id: String,
+        balance: Number,
+      },
+    }) {
+      @On(AccountOpened)
+      static onAccountOpened(event: AccountOpened) {
+        return new Account({
+          id: event.payload.id,
+          balance: 0,
+        });
+      }
+
+      @On(Deposited)
+      onDeposited(event: Deposited) {
+        this.balance += event.payload.amount;
+      }
+
+      deposit(amount: number) {
+        this.apply(Deposited.new({ id: this.id, amount }));
+      }
+
+      static open() {
+        return this.new(
+          AccountOpened.new({
+            id: Math.random().toString(36).slice(2),
+          }),
+        );
+      }
+    }
+
+    const accountStore = new (MakeNestedFirestoreEsAggregateStore(Account))(
+      eventStore,
+      transaction,
+      new SerializerRegistry().add(
+        AccountOpened,
+        new (AutoSerializer(AccountOpened, 1))(),
+      ).add(Deposited, new (AutoSerializer(Deposited, 1))()),
+      new NestedFirestoreSnapshotter(
+        Account.name,
+        firestore,
+        new (AutoSerializer(Account, 1))(),
+      ),
+    );
+
+    it("should be fast", async () => {
+      const accounts = [...Array(200).keys()].map(() => Account.open());
+      
+      const expectMS = async (ms: number, fn: () => Promise<any>) => {
+        const before = process.hrtime.bigint();
+        await fn();
+        const after = process.hrtime.bigint();
+        expect(Number(after - before) / 1_000_000).toBeLessThan(ms);
+      }
+  
+      await expectMS(5000, async () => {
+        for(const account of accounts) {
+          await accountStore.save(account);
+        }
+      });
+  
+      await expectMS(5000, async () => {
+        for(const account of accounts) {
+          await accountStore.load(account.id);
+        }
+      });
+    });
+
+    it('should allow heavily concurrent writes', async () => {
+      const account = Account.open();
+
+      await accountStore.save(account);
+
+      await Promise.all([...Array(20).keys()].map(async (i) => {
+        const fresh = await accountStore.load(account.id);
+        fresh!.deposit(1);
+        await accountStore.save(fresh!);
+      }))
+
+      const fresh = await accountStore.load(account.id);
+      expect(fresh!.balance).toBe(20);
+    });
+
+  })
+
+
   it("should support saveAll with transactions", async () => {
     class MockEventBus implements IEventBus {
       off(): void {
