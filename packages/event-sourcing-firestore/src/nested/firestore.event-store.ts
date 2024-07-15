@@ -57,26 +57,28 @@ export class NestedFirestoreEventStore {
     expectedRevision: number,
     trx: FirestoreTransaction,
   ) {
-    const collection = this.getStream(streamId);
+    // const collection = this.getStream(streamId);
 
-    const prevDocument = collection.doc(`${expectedRevision}`);
-    const targetDocument = collection.doc(`${expectedRevision + 1}`);
+    // const [targetOp, prevOp] = [
+    //   trx.transaction.get(collection.doc(`${expectedRevision + 1}`)),
+    //   trx.transaction.get(collection.doc(`${expectedRevision}`)),
+    // ]
 
-    const target = await trx.transaction.get(targetDocument);
-    if (target.exists) {
-      throw new ConcurrencyError(
-        `Concurrency error on ${streamId.aggregate} ${streamId.id}`,
-      );
-    }
+    // const target = await targetOp;
+    // if (target.exists) {
+    //   throw new ConcurrencyError(
+    //     `Concurrency error on ${streamId.aggregate} ${streamId.id}`,
+    //   );
+    // }
 
-    if (expectedRevision > -1) {
-      const previous = await trx.transaction.get(prevDocument);
-      if (!previous.exists) {
-        throw new Error(
-          `Expected revision ${expectedRevision} not found for ${streamId.aggregate} ${streamId.id}`,
-        );
-      }
-    }
+    // if (expectedRevision > -1) {
+    //   const previous = await prevOp;
+    //   if (!previous.exists) {
+    //     throw new Error(
+    //       `Expected revision ${expectedRevision} not found for ${streamId.aggregate} ${streamId.id}`,
+    //     );
+    //   }
+    // }
   }
 
   private async commitChanges(
@@ -114,6 +116,7 @@ export class NestedFirestoreEventStore {
     await this.lockDocument(streamId, expectedRevision, trx);
     await this.commitChanges(streamId, changes, expectedRevision, trx);
   }
+  
 
   async *read(
     streamId: AggregateStreamId,

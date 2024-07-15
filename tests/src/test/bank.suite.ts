@@ -102,19 +102,19 @@ export function BankSuite(
     eventSerializers: ISerializer<InstanceType<A>["changes"][number]>,
   ) => IEsAggregateStore<InstanceType<A>>,
 ) {
-  const cashflowStore = createStore(new CashflowSerializer(), "cashflow");
-  const cashflowProjection = new CashFlowProjection(cashflowStore);
-  // const projectedStreamReader = new EsProjectedStreamReader<
-  //   CashFlowProjection["on"]
-  // >(es, [[new DepositedSerializer(), new WithdrawnSerializer()]]);
+  // const cashflowStore = createStore(new CashflowSerializer(), "cashflow");
+  // const cashflowProjection = new CashFlowProjection(cashflowStore);
+  // // const projectedStreamReader = new EsProjectedStreamReader<
+  // //   CashFlowProjection["on"]
+  // // >(es, [[new DepositedSerializer(), new WithdrawnSerializer()]]);
 
-  const cashflowProjector = new EventBusProjectionProcessor(
-    cashflowProjection,
-    eventBus,
-    // projectedStreamReader,
-    // checkpoint,
-    // transaction,
-  );
+  // const cashflowProjector = new EventBusProjectionProcessor(
+  //   cashflowProjection,
+  //   eventBus,
+  //   // projectedStreamReader,
+  //   // checkpoint,
+  //   // transaction,
+  // );
 
   /**
    * boot <- return { registry: registry ( merge de tous les autres regitry ) }
@@ -145,18 +145,18 @@ export function BankSuite(
       .add(AccountOpened, new (AutoSerializer(AccountOpened, 1))()),
   );
 
-  beforeEach(async () => {
-    await cashflowProjector.stop();
-    // await checkpoint.clear();
-    await cashflowStore.delete("global");
-    // await es.clear();
-    await cashflowProjector.start();
-  });
+  // beforeEach(async () => {
+  //   await cashflowProjector.stop();
+  //   // await checkpoint.clear();
+  //   await cashflowStore.delete("global");
+  //   // await es.clear();
+  //   await cashflowProjector.start();
+  // });
 
-  afterAll(async () => {
-    await cashflowProjector.stop();
-    // await es.close();
-  });
+  // afterAll(async () => {
+  //   await cashflowProjector.stop();
+  //   // await es.close();
+  // });
 
   it("should deposit money", async () => {
     const accountA = Account.open();
@@ -174,21 +174,21 @@ export function BankSuite(
     expect(reloaded?.balance).toBe(350);
   });
 
-  it.skip("should maintain a cashflow", async () => {
-    const accountA = Account.open();
-    accountA.deposit(100);
-    await store.save(accountA);
+  // it.skip("should maintain a cashflow", async () => {
+  //   const accountA = Account.open();
+  //   accountA.deposit(100);
+  //   await store.save(accountA);
 
-    const accountB = Account.open();
-    accountB.deposit(100);
-    await store.save(accountB);
+  //   const accountB = Account.open();
+  //   accountB.deposit(100);
+  //   await store.save(accountB);
 
-    await new Promise((r) => setTimeout(r, 100));
+  //   await new Promise((r) => setTimeout(r, 100));
 
-    const flow = await cashflowStore.load("global");
+  //   const flow = await cashflowStore.load("global");
 
-    expect(flow?.flow).toBe(200);
-  });
+  //   expect(flow?.flow).toBe(200);
+  // });
 
   it("should load a big account", async () => {
     const account = Account.open();
