@@ -43,7 +43,7 @@ export abstract class NestedFirestoreEsAggregateStore<
     public readonly eventStore: NestedFirestoreEventStore,
     public readonly transaction: FirestoreTransactionPerformer,
     public readonly serializer: ISerializer<InstanceType<A>["changes"][number]>,
-    public readonly snapshotter?: NestedFirestoreSnapshotter<InstanceType<A>>,
+    public readonly snapshotter: NestedFirestoreSnapshotter<InstanceType<A>>,
   ) {}
 
   abstract getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId;
@@ -72,31 +72,8 @@ export abstract class NestedFirestoreEsAggregateStore<
     return snapshot;
   }
 
-  async load(id: InstanceType<A>["id"]) {
+  async loadFromScratch(id: InstanceType<A>["id"]) {
     const streamId = this.getAggregateStreamId(id);
-
-
-    const snapshot = await this.snapshotter?.load(id);
-    // const lastEvent = await this.eventStore.getLastEvent(streamId);
-
-    // if(snapshot && lastEvent && snapshot.acknowledgedRevision < lastEvent.revision) {
-    //   return this.loadFromSnapshot(snapshot)
-    // }
-
-    /**
-     * For now, we can just return the snapshot if it exists
-     * because the the snapshot is kept up to date with the event store transactionally.
-     * 
-     * Performing the revision check is very expensive when using a query to get the missing events (10x slower)
-     * 
-     * In the future, when snapshot will be lagging behind the stream we could:
-     * - Keep a transactionnal revision mutex for each stream, to know if the snapshot is up to date without having to snapshot the whole model
-     * - Use a stale snapshot and let the model catch up with the stream on the next save ?
-     * - Use a snapshot that is always up to date with the stream, but that is not transactionnal, and catch up with the stream on the next save ?
-     */
-    if (snapshot) {
-      return snapshot
-    }
 
     let instance: InstanceType<A> | undefined = undefined;
     for await (const serialized of this.eventStore.read(streamId)) {
@@ -109,6 +86,43 @@ export abstract class NestedFirestoreEsAggregateStore<
     }
 
     return instance;
+  }
+
+  async loadForce(id: InstanceType<A>["id"]) {
+    const snapshot = await this.snapshotter?.load(id);
+
+    if (snapshot) {
+      return this.loadFromSnapshot(snapshot);
+    }
+
+    return this.loadFromScratch(id);
+  }
+
+  async load(id: InstanceType<A>["id"]) {
+    // const lastEvent = await this.eventStore.getLastEvent(streamId);
+
+    // if(snapshot && lastEvent && snapshot.acknowledgedRevision < lastEvent.revision) {
+    //   return this.loadFromSnapshot(snapshot)
+    // }
+
+    /**
+     * For now, we can just return the snapshot if it exists
+     * because the the snapshot is kept up to date with the event store transactionally.
+     *
+     * Performing the revision check is very expensive when using a query to get the missing events (10x slower)
+     *
+     * In the future, when snapshot will be lagging behind the stream we could:
+     * - Keep a transactionnal revision mutex for each stream, to know if the snapshot is up to date without having to snapshot the whole model
+     * - Use a stale snapshot and let the model catch up with the stream on the next save ?
+     * - Use a snapshot that is always up to date with the stream, but that is not transactionnal, and catch up with the stream on the next save ?
+     */
+    const snapshot = await this.snapshotter?.load(id);
+
+    if (snapshot) {
+      return snapshot;
+    }
+
+    return this.loadFromScratch(id);
   }
 
   performTransaction(
@@ -162,17 +176,23 @@ export abstract class NestedFirestoreEsAggregateStore<
           });
         }
 
-        await Promise.all(
-          toSave.map((save) => this.snapshotter?.save(save.aggregate, trx)),
+        await this.snapshotter.saveAll(
+          toSave.map((save) => save.aggregate),
+          trx,
         );
       });
     } catch (error: any) {
-      const shouldRetry = (error instanceof ConcurrencyError || ('code' in error && error.code === 6)) && attempts > 0
+      const isDDDTSConcurrencyError = error instanceof ConcurrencyError;
+      const isFirestoreConcurrencyError = "code" in error && error.code === 6;
+      const hasAttempts = attempts > 0;
+
+      const shouldRetry =
+        (isFirestoreConcurrencyError || isDDDTSConcurrencyError) && hasAttempts;
 
       if (shouldRetry) {
         const pristines = await Promise.all(
           toSave.map(async ({ aggregate, changes }) => {
-            const pristine = await this.load(aggregate.id);
+            const pristine = await this.loadForce(aggregate.id);
             if (!pristine) {
               throw new Error("Invalid concurrency error, aggregate not found");
             }
@@ -187,6 +207,17 @@ export abstract class NestedFirestoreEsAggregateStore<
 
         return await this.saveAll(pristines, parentTrx, attempts - 1);
       }
+
+      console.error(
+        JSON.stringify({
+          message: error.message,
+          stack: error.stack,
+          isDDDTSConcurrencyError,
+          isFirestoreConcurrencyError,
+          hasAttempts,
+          events: toSave.map(({ serialized }) => serialized),
+        }),
+      );
 
       throw error;
     }

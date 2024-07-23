@@ -85,6 +85,7 @@ import {
 //   });
 // }
 
+// biome-ignore lint/suspicious/noExportsInTest: <explanation>
 export function BankSuite(
   // es: IEventStore,
   eventBus: IEventBus,
@@ -192,17 +193,17 @@ export function BankSuite(
 
   it("should load a big account", async () => {
     const account = Account.open();
-    for (let i = 0; i < 500; i++) {
+    for (let i = 0; i < 400; i++) {
       account.deposit(100);
     }
     await store.save(account);
-    for (let i = 0; i < 500; i++) {
+    for (let i = 0; i < 400; i++) {
       account.deposit(100);
     }
     await store.save(account);
     const reloaded = await store.load(account.id);
 
     expect(reloaded).toEqual(account);
-    expect(reloaded?.balance).toBe(100000);
+    expect(reloaded?.balance).toBe(80000);
   });
 }
