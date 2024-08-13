@@ -11,17 +11,19 @@
 		"build": "tsc",
 		"test": "jest --config node_modules/@ddd-ts/tools/jest.config.ts"
 	},
+	"peerDependencies": {
+		"typescript": "^5.5.4",
+		"ts-morph": "^23.0.0"
+	},
 	"dependencies": {
 		"@ddd-ts/core": "workspace:*",
 		"@ddd-ts/shape": "workspace:*",
-		"@ddd-ts/traits": "workspace:*",
-		"typescript": "^5.5.3"
+		"@ddd-ts/traits": "workspace:*"
 	},
 	"devDependencies": {
 		"@ddd-ts/tools": "workspace:*",
 		"@ddd-ts/types": "workspace:*",
 		"@types/jest": "^29.5.1",
-		"@types/node": "^17.0.13",
-		"ts-morph": "^23.0.0"
+		"@types/node": "^17.0.13"
 	}
 }

@@ -8,10 +8,10 @@ export class SerializerRegistry<
 {
   store = new Map<string, any>();
 
-  add<Item extends Constructor, S extends ISerializer<InstanceType<Item>>>(
-    item: Item,
-    serializer: S,
-  ) {
+  add<
+    Item extends Constructor & INamed,
+    S extends ISerializer<InstanceType<Item>>,
+  >(item: Item, serializer: S) {
     this.store.set(item.name, serializer);
     return this as unknown as SerializerRegistry<
       [...Registered, [InstanceType<Item>, S]]
@@ -19,7 +19,10 @@ export class SerializerRegistry<
   }
 
   get<Item extends INamed>(item: Item) {
-    return this.store.get(item.name) as Extract<Registered, [Item, any]>[1];
+    return this.store.get(item.name) as Extract<
+      Registered[number],
+      [Item, any]
+    >[1];
   }
 
   serialize<Item extends Registered[number][0]>(item: Item) {
@@ -30,9 +33,10 @@ export class SerializerRegistry<
   }
 
   deserialize<
-    Serialized extends Parameters<Registered[number][1]["deserialize"]>[0],
+    Serialized extends Parameters<Registered[number][1]["deserialize"]>[0] &
+      INamed,
   >(serialized: Serialized): ReturnType<Registered[number][1]["deserialize"]> {
-    const serializer = this.get(serialized as any);
+    const serializer = this.get(serialized);
     return serializer.deserialize(serialized);
   }
 }
