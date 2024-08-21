@@ -1,4 +1,4 @@
-import { Divergence, type UnionDivergence } from "./divergence";
+import {Divergence, type UnionDivergence} from "./divergence";
 
 type Equals<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
 
@@ -67,7 +67,7 @@ type Equals<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
   type D = Divergence<L, R>;
 
   const error: D = {
-    a: ["", "!=", { a: true }],
+    a: ["", "!=", {a: true}],
   };
 }
 
@@ -119,7 +119,7 @@ type Equals<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
     a: {
       b: {
         c: {
-          "+": { e: "" },
+          "+": {e: ""},
         },
       },
     },
@@ -188,7 +188,7 @@ type Equals<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
       b: [
         {
           c: {
-            "~": { b: [0, "!=", ""], type: "b" },
+            "~": {b: [0, "!=", ""], type: "b"},
           },
         },
       ],
@@ -217,9 +217,9 @@ type Equals<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
     | Option<boolean>
     | Option<null>
     | Option<{
-        a: string;
-        b: number;
-      }>;
+    a: string;
+    b: number;
+  }>;
 
   type Rec<T> = { next: Rec<T>; value: T };
 
@@ -293,8 +293,8 @@ type Equals<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
     a: {
       "+":
         | {
-            value: 2;
-          }
+        value: 2;
+      }
         | undefined;
     };
   };
@@ -317,24 +317,33 @@ type Equals<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
   type expected = {
     "~":
       | {
-          [key: number]: {
-            "~": {
-              type: "b";
-              value: [2, "!=", 3];
-            };
-          };
-        }
-      | {
-          [key: number]: {
-            "~": {
-              type: "e";
-              "+value": 4;
-            };
-          };
+      [key: number]: {
+        "~": {
+          type: "b";
+          value: [2, "!=", 3];
         };
+      };
+    }
+      | {
+      [key: number]: {
+        "~": {
+          type: "e";
+          "+value": 4;
+        };
+      };
+    };
   };
 
   const check: Equals<D, expected> = true;
+}
+
+{
+  type L = string[];
+  type R = string[] | undefined;
+  type expected = never;
+  type D = Divergence<L, R>;
+
+  const check: Equals<D, expected> = true
 }
 
 it("this is a type test file", () => {
