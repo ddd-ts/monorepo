@@ -147,9 +147,12 @@ importers:
       '@ddd-ts/traits':
         specifier: workspace:*
         version: link:../traits
+      ts-morph:
+        specifier: ^23.0.0
+        version: 23.0.0
       typescript:
-        specifier: ^5.5.3
-        version: 5.5.3
+        specifier: ^5.5.4
+        version: 5.5.4
     devDependencies:
       '@ddd-ts/tools':
         specifier: workspace:*
@@ -163,9 +166,6 @@ importers:
       '@types/node':
         specifier: ^17.0.13
         version: 17.0.45
-      ts-morph:
-        specifier: ^23.0.0
-        version: 23.0.0
 
   packages/shape:
     dependencies:
@@ -2382,8 +2382,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  typescript@5.5.3:
-    resolution: {integrity: sha512-/hreyEujaB0w76zKo6717l3L0o/qEUtRgdvUBvlkhoWeOVMjMuHNHk0BRBzikzuGDqNmPQbg5ifMEqsHLiIUcQ==}
+  typescript@5.5.4:
+    resolution: {integrity: sha512-Mtq29sKDAEYP7aljRgtPOpTvOfbwRWlS6dPRzwjdE+C0R4brX/GUyhHSecbHMFLNBLcJIPt9nl9yG5TZ1weH+Q==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -5033,7 +5033,7 @@ snapshots:
 
   typescript@5.5.0-beta: {}
 
-  typescript@5.5.3: {}
+  typescript@5.5.4: {}
 
   uc.micro@2.1.0:
     optional: true

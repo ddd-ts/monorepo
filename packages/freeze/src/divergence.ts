@@ -226,7 +226,7 @@ type AtLeastOneArray<From, To> = From extends Array<unknown>
     : false;
 
 type ArrayDivergence<From, To, Acc extends any[]> = From extends Array<infer F>
-  ? To extends Array<infer T>
+  ? To extends Array<infer T> | undefined
     ? Divergence<F, T, Acc> extends infer D
       ? IsNever<D> extends true
         ? never
