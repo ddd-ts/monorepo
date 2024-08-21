@@ -15,17 +15,17 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20          
+          node-version: 20
           registry-url: https://registry.npmjs.org/
           scope: "@ddd-ts"
-      
+
       - name: Install pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 8
 
       - name: Install dependencies
-        run: pnpm i
+        run: pnpm i --frozen-lockfile
 
       - name: Build
         run: pnpm build
