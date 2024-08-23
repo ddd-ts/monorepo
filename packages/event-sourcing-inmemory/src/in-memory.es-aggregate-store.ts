@@ -7,6 +7,7 @@ import {
   type IEventBus,
   type Identifiable,
   type ISerializer,
+  type SerializerRegistry,
 } from "@ddd-ts/core";
 
 import type { InMemoryEventStore } from "./event-store/in-memory.event-store";
@@ -42,7 +43,9 @@ export abstract class InMemoryEsAggregateStore<
   constructor(
     public readonly eventStore: InMemoryEventStore,
     public readonly transaction: InMemoryTransactionPerformer,
-    public readonly serializer: ISerializer<InstanceType<A>["changes"][number]>,
+    public readonly eventSerializer: SerializerRegistry.For<
+      InstanceType<A>["changes"][number]
+    >,
     public readonly snapshotter?: InMemorySnapshotter<InstanceType<A>>,
   ) {}
 
@@ -68,8 +71,9 @@ export abstract class InMemoryEsAggregateStore<
       );
 
       for await (const serialized of stream) {
-        const event = await this.serializer.deserialize(serialized as any);
-        snapshot.load(event as any);
+        const event =
+          await this.eventSerializer.deserializeUnsafeOrThrow(serialized);
+        snapshot.load(event);
       }
 
       return snapshot;
@@ -77,11 +81,12 @@ export abstract class InMemoryEsAggregateStore<
 
     let instance: InstanceType<A> | undefined = undefined;
     for await (const serialized of this.eventStore.read(streamId)) {
-      const event = await this.serializer.deserialize(serialized as any);
+      const event =
+        await this.eventSerializer.deserializeUnsafeOrThrow(serialized);
       if (!instance) {
-        instance = this.loadFirst(event as any);
+        instance = this.loadFirst(event);
       } else {
-        instance.load(event as any);
+        instance.load(event);
       }
     }
 
@@ -107,7 +112,9 @@ export abstract class InMemoryEsAggregateStore<
     const changes = [...aggregate.changes];
 
     const serialized = await Promise.all(
-      changes.map((event) => this.serializer.serialize(event)),
+      changes.map((event) =>
+        this.eventSerializer.serializeUnsafeOrThrow(event),
+      ),
     );
 
     try {

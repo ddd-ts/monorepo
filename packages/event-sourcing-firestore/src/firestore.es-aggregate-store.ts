@@ -6,22 +6,22 @@ import {
   type Identifiable,
   type IEsAggregateStore,
   type IEventBus,
-  type ISerializer,
+  type SerializerRegistry,
 } from "@ddd-ts/core";
 import type {
   FirestoreTransaction,
   FirestoreTransactionPerformer,
 } from "@ddd-ts/store-firestore";
 
-import type { NestedFirestoreSnapshotter } from "./firestore.snapshotter";
-import type { NestedFirestoreEventStore } from "./firestore.event-store";
+import type { FirestoreSnapshotter } from "./firestore.snapshotter";
+import type { FirestoreEventStore } from "./firestore.event-store";
 
-export const MakeNestedFirestoreEsAggregateStore = <
+export const MakeFirestoreEsAggregateStore = <
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
 >(
   AGGREGATE: A,
 ) => {
-  return class $NestedFirestoreEsAggregateStore extends NestedFirestoreEsAggregateStore<A> {
+  return class $FirestoreEsAggregateStore extends FirestoreEsAggregateStore<A> {
     loadFirst(event: InstanceType<A>["changes"][number]): InstanceType<A> {
       return AGGREGATE.loadFirst(event);
     }
@@ -35,15 +35,17 @@ export const MakeNestedFirestoreEsAggregateStore = <
   };
 };
 
-export abstract class NestedFirestoreEsAggregateStore<
+export abstract class FirestoreEsAggregateStore<
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
 > implements IEsAggregateStore<InstanceType<A>>
 {
   constructor(
-    public readonly eventStore: NestedFirestoreEventStore,
+    public readonly eventStore: FirestoreEventStore,
     public readonly transaction: FirestoreTransactionPerformer,
-    public readonly serializer: ISerializer<InstanceType<A>["changes"][number]>,
-    public readonly snapshotter: NestedFirestoreSnapshotter<InstanceType<A>>,
+    public readonly eventsSerializer: SerializerRegistry.For<
+      InstanceType<A>["changes"][number]
+    >,
+    public readonly snapshotter: FirestoreSnapshotter<InstanceType<A>>,
   ) {}
 
   abstract getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId;
@@ -65,8 +67,9 @@ export abstract class NestedFirestoreEsAggregateStore<
     );
 
     for await (const serialized of stream) {
-      const event = await this.serializer.deserialize(serialized as any);
-      snapshot.load(event as any);
+      const event =
+        await this.eventsSerializer.deserializeUnsafeOrThrow(serialized);
+      snapshot.load(event);
     }
 
     return snapshot;
@@ -77,11 +80,13 @@ export abstract class NestedFirestoreEsAggregateStore<
 
     let instance: InstanceType<A> | undefined = undefined;
     for await (const serialized of this.eventStore.read(streamId)) {
-      const event = await this.serializer.deserialize(serialized as any);
+      const event =
+        await this.eventsSerializer.deserializeUnsafeOrThrow(serialized);
+
       if (!instance) {
-        instance = this.loadFirst(event as any);
+        instance = this.loadFirst(event);
       } else {
-        instance.load(event as any);
+        instance.load(event);
       }
     }
 
@@ -143,7 +148,9 @@ export abstract class NestedFirestoreEsAggregateStore<
         streamId: this.getAggregateStreamId(aggregate.id),
         changes: [...aggregate.changes],
         serialized: await Promise.all(
-          aggregate.changes.map((event) => this.serializer.serialize(event)),
+          aggregate.changes.map((event) =>
+            this.eventsSerializer.serializeUnsafeOrThrow(event),
+          ),
         ),
         acknowledgedRevision: aggregate.acknowledgedRevision,
       })),
