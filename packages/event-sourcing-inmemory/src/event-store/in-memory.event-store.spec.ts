@@ -28,7 +28,7 @@ describe("InMemoryEventStore", () => {
     T extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
   >(
     AGGREGATE: T,
-    eventSerializer: ISerializer<InstanceType<T>["changes"][number]>,
+    eventSerializer: SerializerRegistry.For<InstanceType<T>["changes"][number]>,
     serializer: ISerializer<InstanceType<T>>,
   ) {
     const snapshotter = new InMemorySnapshotter(

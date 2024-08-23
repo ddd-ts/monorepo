@@ -1,3 +1,3 @@
-export interface INamed {
-  name: string;
+export interface INamed<Name extends string = string> {
+  name: Name;
 }

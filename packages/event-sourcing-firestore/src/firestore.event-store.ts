@@ -10,7 +10,7 @@ import {
 } from "@ddd-ts/store-firestore";
 import * as fb from "firebase-admin";
 
-export class NestedFirestoreEventStore {
+export class FirestoreEventStore {
   constructor(
     public readonly firestore: fb.firestore.Firestore,
     public readonly converter: fb.firestore.FirestoreDataConverter<fb.firestore.DocumentData> = new DefaultConverter(),
@@ -58,19 +58,16 @@ export class NestedFirestoreEventStore {
     trx: FirestoreTransaction,
   ) {
     // const collection = this.getStream(streamId);
-
     // const [targetOp, prevOp] = [
     //   trx.transaction.get(collection.doc(`${expectedRevision + 1}`)),
     //   trx.transaction.get(collection.doc(`${expectedRevision}`)),
     // ]
-
     // const target = await targetOp;
     // if (target.exists) {
     //   throw new ConcurrencyError(
     //     `Concurrency error on ${streamId.aggregate} ${streamId.id}`,
     //   );
     // }
-
     // if (expectedRevision > -1) {
     //   const previous = await prevOp;
     //   if (!previous.exists) {
@@ -116,7 +113,6 @@ export class NestedFirestoreEventStore {
     await this.lockDocument(streamId, expectedRevision, trx);
     await this.commitChanges(streamId, changes, expectedRevision, trx);
   }
-  
 
   async *read(
     streamId: AggregateStreamId,

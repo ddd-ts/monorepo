@@ -5,7 +5,7 @@ import {
 } from "@ddd-ts/core";
 import { FirestoreStore } from "@ddd-ts/store-firestore";
 
-export class NestedFirestoreSnapshotter<
+export class FirestoreSnapshotter<
   A extends IEventSourced & IIdentifiable,
 > extends FirestoreStore<A> {
   constructor(

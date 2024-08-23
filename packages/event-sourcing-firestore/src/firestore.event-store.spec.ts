@@ -21,42 +21,41 @@ import {
 } from "@ddd-ts/store-firestore";
 import { EsAggregateStoreSuite } from "@ddd-ts/tests";
 
-import { NestedFirestoreEventStore } from "./firestore.event-store";
-import { MakeNestedFirestoreEsAggregateStore } from "./firestore.es-aggregate-store";
-import { NestedFirestoreSnapshotter } from "./firestore.snapshotter";
-import { Shape } from "../../../shape/dist";
+import { FirestoreEventStore } from "./firestore.event-store";
+import { MakeFirestoreEsAggregateStore } from "./firestore.es-aggregate-store";
+import { FirestoreSnapshotter } from "./firestore.snapshotter";
+import { Shape } from "../../shape/dist";
 
 jest.setTimeout(10000);
 
-describe("NestedFirestoreEventStore", () => {
+describe("FirestoreEventStore", () => {
   const app = fb.initializeApp({
     projectId: "demo-es",
   });
   const firestore = app.firestore();
 
   const transaction = new FirestoreTransactionPerformer(firestore);
-  const eventStore = new NestedFirestoreEventStore(firestore);
+  const eventStore = new FirestoreEventStore(firestore);
 
   function makeAggregateStore<
     T extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
   >(
     AGGREGATE: T,
-    eventSerializer: ISerializer<InstanceType<T>["changes"][number]>,
+    eventSerializer: SerializerRegistry.For<InstanceType<T>["changes"][number]>,
     serializer: ISerializer<InstanceType<T>>,
   ) {
-    const snapshotter = new NestedFirestoreSnapshotter(
+    const snapshotter = new FirestoreSnapshotter(
       AGGREGATE.name,
       firestore,
       serializer,
     );
-    const Store = MakeNestedFirestoreEsAggregateStore(AGGREGATE);
+    const Store = MakeFirestoreEsAggregateStore(AGGREGATE);
     return new Store(eventStore, transaction, eventSerializer, snapshotter);
   }
 
   EsAggregateStoreSuite(makeAggregateStore);
 
-  describe('Account alone', () => {
-
+  describe("Account alone", () => {
     class AccountOpened extends EsEvent("AccountOpened", {
       id: String,
     }) {}
@@ -99,14 +98,13 @@ describe("NestedFirestoreEventStore", () => {
       }
     }
 
-    const accountStore = new (MakeNestedFirestoreEsAggregateStore(Account))(
+    const accountStore = new (MakeFirestoreEsAggregateStore(Account))(
       eventStore,
       transaction,
-      new SerializerRegistry().add(
-        AccountOpened,
-        new (AutoSerializer(AccountOpened, 1))(),
-      ).add(Deposited, new (AutoSerializer(Deposited, 1))()),
-      new NestedFirestoreSnapshotter(
+      new SerializerRegistry()
+        .add(AccountOpened, new (AutoSerializer(AccountOpened, 1))())
+        .add(Deposited, new (AutoSerializer(Deposited, 1))()),
+      new FirestoreSnapshotter(
         Account.name,
         firestore,
         new (AutoSerializer(Account, 1))(),
@@ -115,44 +113,44 @@ describe("NestedFirestoreEventStore", () => {
 
     it("should be fast", async () => {
       const accounts = [...Array(200).keys()].map(() => Account.open());
-      
+
       const expectMS = async (ms: number, fn: () => Promise<any>) => {
         const before = process.hrtime.bigint();
         await fn();
         const after = process.hrtime.bigint();
         expect(Number(after - before) / 1_000_000).toBeLessThan(ms);
-      }
-  
+      };
+
       await expectMS(5000, async () => {
-        for(const account of accounts) {
+        for (const account of accounts) {
           await accountStore.save(account);
         }
       });
-  
+
       await expectMS(5000, async () => {
-        for(const account of accounts) {
+        for (const account of accounts) {
           await accountStore.load(account.id);
         }
       });
     });
 
-    it('should allow heavily concurrent writes', async () => {
+    it("should allow heavily concurrent writes", async () => {
       const account = Account.open();
 
       await accountStore.save(account);
 
-      await Promise.all([...Array(20).keys()].map(async (i) => {
-        const fresh = await accountStore.load(account.id);
-        fresh!.deposit(1);
-        await accountStore.save(fresh!);
-      }))
+      await Promise.all(
+        [...Array(20).keys()].map(async (i) => {
+          const fresh = await accountStore.load(account.id);
+          fresh!.deposit(1);
+          await accountStore.save(fresh!);
+        }),
+      );
 
       const fresh = await accountStore.load(account.id);
       expect(fresh!.balance).toBe(20);
     });
-
-  })
-
+  });
 
   it("should support saveAll with transactions", async () => {
     class MockEventBus implements IEventBus {
@@ -233,14 +231,14 @@ describe("NestedFirestoreEventStore", () => {
       new (AutoSerializer(AccountRegistry, 1))(),
     );
 
-    const accountStore = new (MakeNestedFirestoreEsAggregateStore(Account))(
+    const accountStore = new (MakeFirestoreEsAggregateStore(Account))(
       eventStore,
       transaction,
       new SerializerRegistry().add(
         AccountOpened,
         new (AutoSerializer(AccountOpened, 1))(),
       ),
-      new NestedFirestoreSnapshotter(
+      new FirestoreSnapshotter(
         Account.name,
         firestore,
         new (AutoSerializer(Account, 1))(),
@@ -368,14 +366,14 @@ describe("NestedFirestoreEventStore", () => {
       new (AutoSerializer(AccountRegistry, 1))(),
     );
 
-    const accountStore = new (MakeNestedFirestoreEsAggregateStore(Account))(
+    const accountStore = new (MakeFirestoreEsAggregateStore(Account))(
       eventStore,
       transaction,
       new SerializerRegistry().add(
         AccountOpened,
         new (AutoSerializer(AccountOpened, 1))(),
       ),
-      new NestedFirestoreSnapshotter(
+      new FirestoreSnapshotter(
         Account.name,
         firestore,
         new (AutoSerializer(Account, 1))(),
