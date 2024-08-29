@@ -31,7 +31,7 @@ export const Multiple = <
     constructor(public value: Cache["Inline"]) {
       super();
     }
-    static $name = "multiple" as const;
+    static $shape = "multiple" as const;
 
     serialize(): Expand<Cache["Serialized"]> {
       return $Multiple.$serialize(this.value) as any;

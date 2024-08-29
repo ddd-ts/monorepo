@@ -1,118 +1,156 @@
-import type { Constructor } from "@ddd-ts/types";
-import type { INamed } from "../interfaces/named";
-import type { ISerializer } from "../interfaces/serializer";
+import type { INamed, INamedContructor } from "../interfaces/named";
+import { ISerializer } from "../interfaces/serializer";
+
+type ret<T extends (...args: any[]) => any> = Awaited<ReturnType<T>>;
 
 type IsStringLiteral<T> = string extends T ? false : true;
 
-type keys<T> = keyof T & string;
-type values<T> = T[keyof T & string];
-
 export class SerializerRegistry<
-  R extends { [key: string]: ISerializer<any> } = {},
+  R extends [INamed, ISerializer<INamed, INamed>][] = [],
+  Instances extends R[number][0] = R[number][0],
 > {
   store = new Map<string, any>();
 
+  // Ensure we can assign to a SR<[A,B]> only something that is SR<[A,B,...more]>
+  // I used a function because its an contravariant position
+  __typesafety!: (params: Instances) => void;
+
   add<
-    Item extends Constructor & INamed,
-    S extends IsStringLiteral<Item["name"]> extends true
-      ? ISerializer<InstanceType<Item>>
-      : never,
-  >(item: Item, serializer: S) {
-    this.store.set(item.name, serializer);
+    Class extends INamedContructor,
+    S extends ISerializer<InstanceType<Class>, INamed<Class["$name"]>>,
+  >(Class: Class, serializer: S) {
+    this.store.set(Class.$name, serializer);
     return this as unknown as SerializerRegistry<
-      R & { [K in Item["name"]]: S }
+      [...R, [InstanceType<Class>, S]]
     >;
   }
 
-  get<const Name extends keys<R>>(input: Name | INamed<Name>): R[Name] {
-    if (typeof input === "string") {
-      return this.store.get(input);
-    }
-    return this.store.get(input.name);
+  getForInstance<Instance extends Instances>(
+    instance: Instance,
+  ): IsStringLiteral<Instance["name"]> extends true
+    ? Instance extends unknown
+      ? Extract<
+          R[number],
+          [Instance, ISerializer<Instance, INamed<Instance["name"]>>]
+        >[1]
+      : never
+    : never {
+    return this.store.get(instance.name);
   }
 
-  getUnsafe(input: INamed | string): values<R> | undefined {
-    if (typeof input === "string") {
-      return this.store.get(input);
-    }
-    return this.store.get(input.name);
+  getForSerialized<S extends INamed<string>>(
+    serialized: S,
+  ): IsStringLiteral<S["name"]> extends true
+    ? S extends unknown
+      ? Extract<
+          R[number],
+          [INamed<S["name"]>, ISerializer<INamed<S["name"]>, INamed<S["name"]>>]
+        >[1]
+      : Extract<
+          R[number],
+          [INamed<S["name"]>, ISerializer<INamed<S["name"]>, INamed<S["name"]>>]
+        >[1]
+    : never {
+    return this.store.get(serialized.name);
   }
 
-  getUnsafeOrThrow(input: INamed | string) {
-    const serializer = this.getUnsafe(input);
+  serialize<Instance extends Instances>(
+    instance: Instance,
+  ): ret<ret<typeof this.getForInstance<Instance>>["serialize"]> {
+    const serializer = this.getForInstance(instance);
     if (!serializer) {
-      throw new Error(`Serializer for ${input} not found`);
+      throw new Error(`Could not find serializer for ${instance.name}`);
     }
-    return serializer;
+    return serializer.serialize(instance) as any;
   }
 
-  serialize<const Name extends keys<R>>(
-    ...params:
-      | [name: Name, instance: Parameters<R[Name]["serialize"]>[0]]
-      | [instance: Parameters<values<R>["serialize"]>[0] & INamed<Name>]
-  ): ReturnType<R[Name]["serialize"]> {
-    const serializer = this.get(params[0]);
-    return serializer.serialize(params[1] || params[0]) as any;
-  }
-
-  serializeUnsafe(
-    ...params: [name: string, instance: unknown] | [instance: INamed]
-  ): ReturnType<values<R>["serialize"]> | undefined {
-    const serializer = this.getUnsafe(params[0]);
-    return serializer?.serialize(params[1] || params[0]) as any;
-  }
-
-  serializeUnsafeOrThrow(
-    ...params: [name: string, instance: unknown] | [instance: INamed]
-  ): ReturnType<values<R>["serialize"]> {
-    const serializer = this.getUnsafeOrThrow(params[0]);
-    if (params.length === 2) {
-      return serializer.serialize(params[1]) as any;
-    }
-    return serializer.serialize(params[0]) as any;
-  }
-
-  deserialize<const Name extends keys<R>>(
-    ...params:
-      | [name: Name, serialized: Parameters<R[Name]["deserialize"]>[0]]
-      | [serialized: Parameters<values<R>["deserialize"]>[0] & INamed<Name>]
-  ): ReturnType<R[Name]["deserialize"]> {
-    const serializer = this.get(params[0]);
-    if (params.length === 2) {
-      return serializer.deserialize(params[1]);
-    }
-    return serializer.deserialize(params[0]);
-  }
-
-  deserializeUnsafe(
-    ...params: [name: string, serialized: unknown] | [serialized: INamed]
-  ): ReturnType<values<R>["deserialize"]> | undefined {
-    const serializer = this.getUnsafe(params[0]);
+  deserialize<
+    const S extends
+      | ret<ret<typeof this.getForSerialized<Instances>>["serialize"]>
+      | ret<typeof this.serialize<Instances>>,
+  >(
+    serialize: S,
+  ): IsStringLiteral<S["name"]> extends true
+    ? ret<ret<typeof this.getForSerialized<S>>["deserialize"]>
+    : ret<ret<typeof this.getForSerialized<S>>["deserialize"]>;
+  deserialize<const I extends Instances>(
+    serialized: INamed<Instances["name"]> & unknown,
+  ): I;
+  deserialize<
+    const I extends Instances = Instances,
+    const S = Record<string, any>,
+  >(serialized: INamed & S): I;
+  deserialize(serialized: any): any {
+    const serializer = this.store.get(serialized.name);
     if (!serializer) {
-      return;
+      throw new Error(`Could not find serializer for ${serialized.name}`);
     }
-    if (params.length === 2) {
-      return serializer.deserialize(params[1]);
-    }
-    return serializer.deserialize(params[0]);
-  }
-
-  deserializeUnsafeOrThrow(
-    ...params: [name: string, serialized: unknown] | [serialized: INamed]
-  ): ReturnType<values<R>["deserialize"]> {
-    const serializer = this.getUnsafeOrThrow(params[0]);
-    if (params.length === 2) {
-      return serializer.deserialize(params[1]);
-    }
-    return serializer.deserialize(params[0]);
+    return serializer.deserialize(serialized) as any;
   }
 }
 
 export namespace SerializerRegistry {
-  export type For<T extends INamed> = Omit<
-    SerializerRegistry<{
-      [K in T["name"]]: ISerializer<Extract<T, { name: K }>>;
-    }>,
-    "add"
-  >;
+  export type For<T extends INamed[]> = SerializerRegistry<{
+    [K in keyof T]: [T[K], ISerializer<T[K], INamed<T[K]["name"]>>];
+  }>;
 }
+
+// class A extends Derive(Named("A")) {}
+// class B extends Derive(Named("B")) {}
+
+// const reg = new SerializerRegistry()
+//   // .add(A, {} as ISerializer<A, INamed<"A"> & { value: string }>)
+//   .add(B, {} as ISerializer<B, INamed<"B"> & { value: number }>);
+// //
+// type check = SerializerRegistry.For<[A, B]>;
+
+// reg.serialize(new A({})).value;
+// reg.serialize(new B({})).value;
+
+// const anyinst = reg.deserialize({
+//   name: "A",
+//   version: 2,
+//   value: "2",
+// });
+
+// anyinst;
+// //    ^?
+
+// const inst = reg.deserialize({
+//   name: "idk",
+//   payload: "unknown",
+//   version: 2,
+// });
+
+// inst;
+// // ^?
+// function generic<X extends INamed, Y extends INamed>(x: X, y: Y) {
+//   const r = {} as SerializerRegistry.For<[X, Y]>;
+
+//   type xserialized = ret<typeof r.serialize<X>>;
+
+//   const xs = r.serialize(x);
+//   const ys = r.serialize(y);
+
+//   const xi = r.deserialize<X>(xs);
+//   const yi = r.deserialize<Y>(ys);
+
+//   const xs2 = r.serialize(xi);
+//   const ys2 = r.serialize(yi);
+
+//   const xi2 = r.deserialize(xs2);
+//   const yi2 = r.deserialize<Y>(ys2);
+
+//   return reg;
+// }
+
+// function genericWithDep<X extends INamed, Y extends INamed>(
+//   x: X,
+//   y: Y,
+//   registry: SerializerRegistry.For<[X, Y]>,
+// ) {
+//   const inst = registry.deserialize<X>({ name: "test", version: 1 });
+//   return inst;
+// }
+
+// genericWithDep(new A({}), new B({}), reg);

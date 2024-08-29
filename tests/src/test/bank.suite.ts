@@ -100,9 +100,7 @@ export function BankSuite(
   >(
     AGGREGATE: A,
     serializer: ISerializer<InstanceType<A>>,
-    eventSerializers: SerializerRegistry.For<
-      InstanceType<A>["changes"][number]
-    >,
+    eventSerializers: SerializerRegistry.For<InstanceType<A>["changes"]>,
   ) => IEsAggregateStore<InstanceType<A>>,
 ) {
   // const cashflowStore = createStore(new CashflowSerializer(), "cashflow");

@@ -30,9 +30,9 @@ export const Choice = <
   type Inline = S[number];
 
   abstract class $Choice extends (base as any as Constructor<{}>) {
-    static $name = "choice" as const;
+    static $shape = "choice" as const;
 
-    static values = config;
+    static $of = config;
 
     constructor(public value: Expand<Inline>) {
       super();

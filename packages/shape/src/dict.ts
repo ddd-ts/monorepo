@@ -29,7 +29,7 @@ export const Dict = <
   base: B = Empty as any,
 ) => {
   abstract class $Dict extends (base as any as AbstractConstructor<{}>) {
-    static $name = "dict" as const;
+    static $shape = "dict" as const;
     static $of = of;
 
     constructor(...args: any[]) {

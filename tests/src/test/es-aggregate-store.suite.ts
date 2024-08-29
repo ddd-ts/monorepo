@@ -26,7 +26,7 @@ export function EsAggregateStoreSuite(
     T extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
   >(
     AGGREGATE: T,
-    eventSerializer: SerializerRegistry.For<InstanceType<T>["changes"][number]>,
+    eventSerializer: SerializerRegistry.For<InstanceType<T>["changes"]>,
     serializer: ISerializer<InstanceType<T>>,
   ) => IEsAggregateStore<InstanceType<T>>,
 ) {

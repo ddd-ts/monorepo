@@ -209,7 +209,7 @@ export const DiscriminatedUnion = <
 
     static $of = of;
 
-    static $name = "discriminated-union" as const;
+    static $shape = "discriminated-union" as const;
 
     serialize(): Expand<IInternal["Serialized"]> {
       return ($DiscriminatedUnion as any).$serialize(this.value) as any;

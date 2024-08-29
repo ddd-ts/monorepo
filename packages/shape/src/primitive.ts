@@ -29,7 +29,7 @@ export const Primitive = <
       super();
     }
 
-    static $name = "primitive" as const;
+    static $shape = "primitive" as const;
 
     serialize(): Inline {
       return this.value;

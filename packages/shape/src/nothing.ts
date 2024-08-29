@@ -7,7 +7,7 @@ export const Nothing = <B extends AbstractConstructor<{}> = typeof Empty>(
   base: B = Empty as any,
 ) => {
   abstract class $Nothing extends (base as any as Constructor<{}>) {
-    static $name = "nothing" as const;
+    static $shape = "nothing" as const;
 
     serialize() {}
     static deserialize<T extends Constructor>(

@@ -1,4 +1,4 @@
-export type Constructor<Props = any, Result extends {} = {}> = new (
+export type Constructor<in Props = any, Result extends {} = {}> = new (
   props: Props,
 ) => Result;
 export type AbstractConstructor<
@@ -133,6 +133,17 @@ export function Derive<R extends Trait[], C extends CheckTraitRequirements<R>>(
 
   return current as any;
 }
+
+export function WithDerivations<
+  B extends AbstractConstructor<any>,
+  R extends Trait[],
+>(base: B, ...traits: R) {
+  return Derive(
+    Trait(() => base),
+    ...traits,
+  );
+}
+
 export const Trait = <
   T extends (
     base: AbstractConstructor<{}, {}>,

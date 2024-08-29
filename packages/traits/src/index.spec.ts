@@ -4,6 +4,7 @@ import {
   Props,
   Subtrait,
   Trait,
+  WithDerivations,
   implementsTrait,
 } from ".";
 
@@ -14,7 +15,7 @@ describe("Traits", () => {
         swim() {
           return 1;
         }
-      }
+      },
   );
 
   const Walk = Trait(
@@ -23,7 +24,7 @@ describe("Traits", () => {
         walk() {
           return 1;
         }
-      }
+      },
   );
 
   it("derives a trait", () => {
@@ -52,7 +53,7 @@ describe("Traits", () => {
   });
 
   it("derives multiple traits", () => {
-    class Dog extends Derive(Swim, Walk) { }
+    class Dog extends Derive(Swim, Walk) {}
 
     const dog = new Dog({});
 
@@ -71,7 +72,7 @@ describe("Traits", () => {
         run() {
           return 2 * this.speed;
         }
-      }
+      },
   );
 
   it("derives a trait with a constructor", () => {
@@ -104,7 +105,7 @@ describe("Traits", () => {
         jump() {
           return 1;
         }
-      }
+      },
   );
 
   it("derives multiple trait with a constructor", () => {
@@ -120,15 +121,14 @@ describe("Traits", () => {
   });
 
   it("asserts an instance implements a trait", () => {
-
     const Unused = Trait(
       (base) =>
         class extends base {
           constructor(props: { agility: number }) {
             super(props);
           }
-        })
-
+        },
+    );
 
     class Athlete extends Derive(Run, Jump) {
       constructor() {
@@ -156,8 +156,8 @@ describe("Traits", () => {
       Trait(
         (base) =>
           class extends base {
-            eat(_e: E) { }
-          }
+            eat(_e: E) {}
+          },
       );
 
     class Animal extends Derive(Eat<string>()) {
@@ -183,7 +183,7 @@ describe("Traits", () => {
               this.b = props.b;
               this.c = props.c;
             }
-          }
+          },
       );
 
     class Thing extends Derive(WithProperties<boolean>()) {
@@ -215,11 +215,11 @@ describe("Traits", () => {
             }
             static new<T extends Constructor>(
               this: T,
-              props: ConstructorParameters<T>[0]
+              props: ConstructorParameters<T>[0],
             ) {
               return new this({ ...props }) as InstanceType<T>;
             }
-          }
+          },
       );
 
     class Thing extends Derive(WithProperties<boolean>()) {
@@ -236,8 +236,8 @@ describe("Traits", () => {
       const Walk = Trait(
         (base) =>
           class Walk extends base {
-            walk() { }
-          }
+            walk() {}
+          },
       );
 
       const Run = Subtrait(
@@ -249,14 +249,14 @@ describe("Traits", () => {
               this.walk();
               this.walk();
             }
-          }
+          },
       );
 
       // @ts-expect-error should not allow to create a runner without a walker
-      class ErrorAthlete extends Derive(Run) { }
+      class ErrorAthlete extends Derive(Run) {}
 
       // @ts-expect-error ordering matters: an athlete is a Runner because it is a walker
-      class ErrorAthlete2 extends Derive(Run, Walk) { }
+      class ErrorAthlete2 extends Derive(Run, Walk) {}
 
       class Athlete extends Derive(Walk, Run) {
         do() {
@@ -273,7 +273,7 @@ describe("Traits", () => {
             walk() {
               return 2;
             }
-          }
+          },
       );
 
       const Run = Subtrait(
@@ -288,7 +288,7 @@ describe("Traits", () => {
             run() {
               return this.walk() * this.speed;
             }
-          }
+          },
       );
 
       class Athlete extends Derive(Walk, Run) {
@@ -317,7 +317,7 @@ describe("Traits", () => {
             walk() {
               return this.speed * 0.1;
             }
-          }
+          },
       );
 
       const Run = Subtrait(
@@ -332,7 +332,7 @@ describe("Traits", () => {
             run() {
               return this.walk() * 10 + this.weigth;
             }
-          }
+          },
       );
 
       class Athlete extends Derive(Walk, Run) {
@@ -364,7 +364,7 @@ describe("Traits", () => {
             walk() {
               return this.speed * 0.1;
             }
-          }
+          },
       );
 
       const Fly = Trait(
@@ -380,7 +380,7 @@ describe("Traits", () => {
               const s: string = this.wings;
               return this.wings;
             }
-          }
+          },
       );
 
       const Land = Subtrait(
@@ -395,22 +395,22 @@ describe("Traits", () => {
             land() {
               return this.walk() + this.fly() - this.weigth;
             }
-          }
+          },
       );
 
       // @ts-expect-error Land requires Walk & Fly
-      (class extends Derive(Land) { });
+      (class extends Derive(Land) {});
 
       // @ts-expect-error Land requires Walk & Fly
-      (class extends Derive(Walk, Land) { });
+      (class extends Derive(Walk, Land) {});
 
       // @ts-expect-error Land requires Walk & Fly
-      (class extends Derive(Fly, Land) { });
+      (class extends Derive(Fly, Land) {});
 
       // @ts-expect-error Land requires Walk & Fly in correct order
-      (class extends Derive(Land, Walk, Fly) { });
+      (class extends Derive(Land, Walk, Fly) {});
 
-      class Athlete extends Derive(Walk, Fly, Land) { }
+      class Athlete extends Derive(Walk, Fly, Land) {}
 
       // @ts-expect-error missing props
       new Athlete({ speed: 10 });
@@ -440,7 +440,7 @@ describe("Traits", () => {
             walk() {
               return this.speed * 0.1;
             }
-          }
+          },
       );
 
       const Fly = Trait(
@@ -456,7 +456,7 @@ describe("Traits", () => {
               const s: string = this.wings;
               return this.wings;
             }
-          }
+          },
       );
 
       const Land = Subtrait(
@@ -475,21 +475,21 @@ describe("Traits", () => {
             static isLander() {
               return true;
             }
-          }
+          },
       );
 
       // @ts-expect-error Land requires Walk & Fly
-      (class extends Derive(Land) { });
+      (class extends Derive(Land) {});
 
       // @ts-expect-error Land requires Walk
-      (class extends Derive(Fly, Land) { });
+      (class extends Derive(Fly, Land) {});
 
       // @ts-expect-error Land requires Walk & Fly in correct order
-      (class extends Derive(Land, Walk, Fly) { });
+      (class extends Derive(Land, Walk, Fly) {});
       // @ts-expect-error Land requires Walk & Fly in correct order
-      (class extends Derive(Fly, Land, Walk) { });
+      (class extends Derive(Fly, Land, Walk) {});
 
-      class Athlete extends Derive(Walk, Fly, Land) { }
+      class Athlete extends Derive(Walk, Fly, Land) {}
 
       // @ts-expect-error missing props
       new Athlete({ speed: 10 });
@@ -508,33 +508,56 @@ describe("Traits", () => {
     });
   });
 
-  it('allow abstract traits', () => {
+  it("allow abstract traits", () => {
     const SomeTrait = Trait((base) => {
       abstract class I extends base {
         abstract do(): void;
       }
-      return I
-    })
+      return I;
+    });
 
     const SomeSubTrait = Subtrait([SomeTrait], (base, Props) => {
       abstract class I extends base {
         constructor(props: { test: 2 } & typeof Props) {
-          super(props)
+          super(props);
         }
 
         abstract do(): void;
       }
-      return I
-    })
+      return I;
+    });
 
     class Test extends Derive(SomeTrait, SomeSubTrait) {
       do() {
-        console.log('do')
+        console.log("do");
       }
     }
 
-    new Test({ test: 2 })
+    new Test({ test: 2 });
     // @ts-expect-error
-    new Test({ anything: 2 })
-  })
+    new Test({ anything: 2 });
+  });
+
+  it("allow to derive from a base class", () => {
+    class Base {
+      constructor(public params: { a: string }) {}
+    }
+
+    const SomeTrait = Trait((base) => {
+      abstract class I extends base {
+        abstract do(): void;
+      }
+      return I;
+    });
+
+    class Test extends WithDerivations(Base, SomeTrait) {
+      do() {
+        console.log("do");
+      }
+    }
+
+    new Test({ a: "a" });
+    // @ts-expect-error
+    new Test(2);
+  });
 });

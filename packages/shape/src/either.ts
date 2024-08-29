@@ -62,41 +62,48 @@ export const Either = <
 
     static of = of;
 
-    static $name = "either" as const;
+    static $shape = "either" as const;
 
     serialize(): Expand<Serialized> {
       return ($Either as any).$serialize(this.value) as any;
     }
 
-
     match<
-    M extends Matcher<S>,
-    F extends M extends ExhaustiveMatcher<S>
-      ? []
-      : M extends UnsafeFallthroughMatcher<S>
+      M extends Matcher<S>,
+      F extends M extends ExhaustiveMatcher<S>
         ? []
-        : M extends PartialMatcher<S>
-          ? [fallback: (value: InstanceType<Omit<S, keyof M>[keyof Omit<S, keyof M>]>) => any]
-          : [],
-  >(
-    ...[matcher, fallback]: [matcher: M, ...F]
-  ): (M[keyof M] extends (...args: any[]) => any ? ReturnType<M[keyof M]> : never) | (F[0] extends (...args: any[]) => any ? ReturnType<F[0]> : never) {
-    const key: any = Object.entries(of).find(
-      ([_, v]) => v === ((this.value as any).constructor as any),
-      )?.[0] as any
-      
-    const handler = matcher[key]
-    if (handler) {
-      return handler(this.value as any);
+        : M extends UnsafeFallthroughMatcher<S>
+          ? []
+          : M extends PartialMatcher<S>
+            ? [
+                fallback: (
+                  value: InstanceType<Omit<S, keyof M>[keyof Omit<S, keyof M>]>,
+                ) => any,
+              ]
+            : [],
+    >(
+      ...[matcher, fallback]: [matcher: M, ...F]
+    ):
+      | (M[keyof M] extends (...args: any[]) => any
+          ? ReturnType<M[keyof M]>
+          : never)
+      | (F[0] extends (...args: any[]) => any ? ReturnType<F[0]> : never) {
+      const key: any = Object.entries(of).find(
+        ([_, v]) => v === ((this.value as any).constructor as any),
+      )?.[0] as any;
+
+      const handler = matcher[key];
+      if (handler) {
+        return handler(this.value as any);
+      }
+      if (fallback) {
+        return fallback(this.value as any);
+      }
+      if (matcher._) {
+        return matcher._(this.value as any);
+      }
+      throw new Error("Non-exhaustive match");
     }
-    if(fallback) {
-      return fallback(this.value as any);
-    }
-    if (matcher._) {
-      return matcher._(this.value as any);
-    }
-    throw new Error("Non-exhaustive match");
-  };
 
     static deserialize<T extends typeof $Either>(
       this: T,
