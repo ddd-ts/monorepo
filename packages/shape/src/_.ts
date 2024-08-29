@@ -16,7 +16,7 @@ export type AbstractConstructor<
 > = abstract new (...args: P) => T;
 
 export interface Definition {
-  $name: string;
+  $shape: string;
   $inline: any;
   $serialize(value: any): any;
   $deserialize(value: any): any;
@@ -75,7 +75,7 @@ export function Shape<
 
   if (
     shorthand &&
-    "$name" in shorthand &&
+    "$shape" in shorthand &&
     "name" in shorthand &&
     typeof shorthand.name === "string"
   ) {

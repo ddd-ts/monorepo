@@ -6,7 +6,6 @@ import {
   type IEsAggregateStore,
   type IEventBus,
   type Identifiable,
-  type ISerializer,
   type SerializerRegistry,
 } from "@ddd-ts/core";
 
@@ -38,21 +37,21 @@ export const MakeInMemoryEsAggregateStore = <
 
 export abstract class InMemoryEsAggregateStore<
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
+  E extends
+    InstanceType<A>["changes"][number] = InstanceType<A>["changes"][number],
 > implements IEsAggregateStore<InstanceType<A>>
 {
   constructor(
     public readonly eventStore: InMemoryEventStore,
     public readonly transaction: InMemoryTransactionPerformer,
     public readonly eventSerializer: SerializerRegistry.For<
-      InstanceType<A>["changes"][number]
+      InstanceType<A>["changes"]
     >,
     public readonly snapshotter?: InMemorySnapshotter<InstanceType<A>>,
   ) {}
 
   abstract getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId;
-  abstract loadFirst(
-    event: InstanceType<A>["changes"][number],
-  ): InstanceType<A>;
+  abstract loadFirst(event: E): InstanceType<A>;
 
   _publishEventsTo?: IEventBus;
   publishEventsTo(eventBus: IEventBus) {
@@ -71,8 +70,7 @@ export abstract class InMemoryEsAggregateStore<
       );
 
       for await (const serialized of stream) {
-        const event =
-          await this.eventSerializer.deserializeUnsafeOrThrow(serialized);
+        const event = await this.eventSerializer.deserialize<E>(serialized);
         snapshot.load(event);
       }
 
@@ -81,8 +79,7 @@ export abstract class InMemoryEsAggregateStore<
 
     let instance: InstanceType<A> | undefined = undefined;
     for await (const serialized of this.eventStore.read(streamId)) {
-      const event =
-        await this.eventSerializer.deserializeUnsafeOrThrow(serialized);
+      const event = await this.eventSerializer.deserialize<E>(serialized);
       if (!instance) {
         instance = this.loadFirst(event);
       } else {
@@ -112,9 +109,7 @@ export abstract class InMemoryEsAggregateStore<
     const changes = [...aggregate.changes];
 
     const serialized = await Promise.all(
-      changes.map((event) =>
-        this.eventSerializer.serializeUnsafeOrThrow(event),
-      ),
+      changes.map((event) => this.eventSerializer.serialize(event)),
     );
 
     try {

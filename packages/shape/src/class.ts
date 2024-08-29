@@ -17,7 +17,7 @@ export const Class = <
   type Inline = InstanceType<S>;
 
   abstract class $Class extends base {
-    static $name = "class" as const;
+    static $shape = "class" as const;
 
     static $of = of;
 

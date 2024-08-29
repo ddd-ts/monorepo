@@ -57,7 +57,7 @@ export const Mapping = <
       super();
     }
 
-    static $name = "mapping" as const;
+    static $shape = "mapping" as const;
 
     serialize(): Expand<Serialized> {
       return $Mapping.$serialize(this.value) as any;

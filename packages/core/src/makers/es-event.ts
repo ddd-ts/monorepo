@@ -6,6 +6,8 @@ import {
 } from "@ddd-ts/shape";
 import { type Constructor } from "@ddd-ts/types";
 import { EventId } from "../components/event-id";
+import { WithDerivations } from "@ddd-ts/traits";
+import { Named } from "./named";
 
 export const EsEvent = <
   const Name extends string,
@@ -15,7 +17,6 @@ export const EsEvent = <
   payload: Payload,
 ) => {
   abstract class $EsEvent {
-    static name = name;
     static new<TH extends Constructor>(
       this: TH,
       payload: DefinitionOf<Payload>["$inline"],
@@ -36,6 +37,6 @@ export const EsEvent = <
       revision: Optional(Number),
       occurredAt: Optional(Date),
     },
-    $EsEvent,
+    WithDerivations($EsEvent, Named(name)),
   );
 };

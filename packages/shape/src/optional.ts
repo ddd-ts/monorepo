@@ -32,7 +32,7 @@ export const Optional = <
       super();
     }
 
-    static $name = "optional" as const;
+    static $shape = "optional" as const;
 
     serialize(): Expand<Cache["Serialized"]> {
       return $Optional.$serialize((this as any).value) as any;

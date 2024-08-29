@@ -16,7 +16,7 @@ export const Literal = <
 
     static value = of;
 
-    static $name = "literal" as const;
+    static $shape = "literal" as const;
 
     serialize(): S {
       return of;

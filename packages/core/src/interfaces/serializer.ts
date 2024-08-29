@@ -1,7 +1,7 @@
 export type PromiseOr<T> = T | Promise<T>;
 
-export abstract class ISerializer<T> {
-  abstract serialize(value: T): PromiseOr<{ version: number }>;
+export abstract class ISerializer<T, S = {}> {
+  abstract serialize(value: T): PromiseOr<{ version: number } & S>;
   abstract deserialize(value: unknown): PromiseOr<T>;
 }
 
