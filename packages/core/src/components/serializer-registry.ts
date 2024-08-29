@@ -1,7 +1,7 @@
 import type { INamed, INamedContructor } from "../interfaces/named";
-import { ISerializer } from "../interfaces/serializer";
+import { ISerializer, type Serialized } from "../interfaces/serializer";
 
-type ret<T extends (...args: any[]) => any> = Awaited<ReturnType<T>>;
+type ret<T extends (...args: any[]) => any> = Awaited<ReturnType<Awaited<T>>>;
 
 type IsStringLiteral<T> = string extends T ? false : true;
 
@@ -27,36 +27,33 @@ export class SerializerRegistry<
 
   getForInstance<Instance extends Instances>(
     instance: Instance,
-  ): IsStringLiteral<Instance["name"]> extends true
-    ? Instance extends unknown
-      ? Extract<
-          R[number],
-          [Instance, ISerializer<Instance, INamed<Instance["name"]>>]
-        >[1]
-      : never
-    : never {
+  ): Extract<
+    R[number],
+    [Instance, ISerializer<Instance, INamed<Instance["name"]>>]
+  >[1] {
     return this.store.get(instance.name);
   }
 
   getForSerialized<S extends INamed<string>>(
     serialized: S,
   ): IsStringLiteral<S["name"]> extends true
-    ? S extends unknown
-      ? Extract<
-          R[number],
-          [INamed<S["name"]>, ISerializer<INamed<S["name"]>, INamed<S["name"]>>]
-        >[1]
-      : Extract<
-          R[number],
-          [INamed<S["name"]>, ISerializer<INamed<S["name"]>, INamed<S["name"]>>]
-        >[1]
+    ? Extract<
+        R[number],
+        [INamed<S["name"]>, ISerializer<INamed<S["name"]>, INamed<S["name"]>>]
+      >[1]
     : never {
     return this.store.get(serialized.name);
   }
 
-  serialize<Instance extends Instances>(
-    instance: Instance,
-  ): Promise<ret<ret<typeof this.getForInstance<Instance>>["serialize"]>> {
+  serialize<const I extends Instances>(
+    // When the registry has concrete instances
+    instance: IsStringLiteral<I["name"]> extends true ? I : never,
+  ): Promise<ret<ret<typeof this.getForInstance<I>>["serialize"]>>;
+  serialize<const I extends Instances>(
+    // When the registry has generic instances
+    instance: I,
+  ): Promise<Serialized<ISerializer<I, INamed<I["name"]>>>>;
+  serialize(instance: any): any {
     const serializer = this.getForInstance(instance);
     if (!serializer) {
       throw new Error(`Could not find serializer for ${instance.name}`);
@@ -64,24 +61,26 @@ export class SerializerRegistry<
     return serializer.serialize(instance) as any;
   }
 
-  deserialize<
-    const S extends
-      | ret<ret<typeof this.getForSerialized<Instances>>["serialize"]>
-      | ret<typeof this.serialize<Instances>>,
-  >(
-    serialize: S,
-  ): Promise<
-    IsStringLiteral<S["name"]> extends true
-      ? ret<ret<typeof this.getForSerialized<S>>["deserialize"]>
-      : ret<ret<typeof this.getForSerialized<S>>["deserialize"]>
-  >;
+  deserialize<const S extends ret<typeof this.serialize<Instances>>>(
+    // When the registry has concrete instances
+    serialize: IsStringLiteral<S["name"]> extends true
+      ? S & Extract<ReturnType<R[number][1]["serialize"]>, INamed<S["name"]>>
+      : never,
+  ): Promise<ReturnType<ret<typeof this.getForSerialized<S>>["deserialize"]>>;
   deserialize<const I extends Instances>(
+    // When the method is called with a parameter to narrow down the return type
     serialized: INamed<Instances["name"]> & unknown,
   ): Promise<I>;
-  deserialize<
-    const I extends Instances = Instances,
-    const S = Record<string, any>,
-  >(serialized: INamed & S): Promise<I>;
+  deserialize<const S extends INamed>(
+    // I dont know why this works, but it does.
+    serialize: IsStringLiteral<Instances["name"]> extends true
+      ? IsStringLiteral<S["name"]> extends true
+        ? INamed<S["name"]> extends Instances
+          ? Extract<ReturnType<R[number][1]["serialize"]>, INamed<S["name"]>>
+          : S
+        : Extract<ReturnType<R[number][1]["serialize"]>, INamed<S["name"]>>
+      : S,
+  ): Promise<Instances>;
   deserialize(serialized: any): any {
     const serializer = this.store.get(serialized.name);
     if (!serializer) {
@@ -93,66 +92,9 @@ export class SerializerRegistry<
 
 export namespace SerializerRegistry {
   export type For<T extends INamed[]> = SerializerRegistry<{
-    [K in keyof T]: [T[K], ISerializer<T[K], INamed<T[K]["name"]>>];
+    [K in keyof T]: [
+      T[K] & INamed<T[K]["name"]>,
+      ISerializer<T[K], INamed<T[K]["name"]>>,
+    ];
   }>;
 }
-
-// class A extends Derive(Named("A")) {}
-// class B extends Derive(Named("B")) {}
-
-// const reg = new SerializerRegistry()
-//   // .add(A, {} as ISerializer<A, INamed<"A"> & { value: string }>)
-//   .add(B, {} as ISerializer<B, INamed<"B"> & { value: number }>);
-// //
-// type check = SerializerRegistry.For<[A, B]>;
-
-// reg.serialize(new A({})).value;
-// reg.serialize(new B({})).value;
-
-// const anyinst = reg.deserialize({
-//   name: "A",
-//   version: 2,
-//   value: "2",
-// });
-
-// anyinst;
-// //    ^?
-
-// const inst = reg.deserialize({
-//   name: "idk",
-//   payload: "unknown",
-//   version: 2,
-// });
-
-// inst;
-// // ^?
-// function generic<X extends INamed, Y extends INamed>(x: X, y: Y) {
-//   const r = {} as SerializerRegistry.For<[X, Y]>;
-
-//   type xserialized = ret<typeof r.serialize<X>>;
-
-//   const xs = r.serialize(x);
-//   const ys = r.serialize(y);
-
-//   const xi = r.deserialize<X>(xs);
-//   const yi = r.deserialize<Y>(ys);
-
-//   const xs2 = r.serialize(xi);
-//   const ys2 = r.serialize(yi);
-
-//   const xi2 = r.deserialize(xs2);
-//   const yi2 = r.deserialize<Y>(ys2);
-
-//   return reg;
-// }
-
-// function genericWithDep<X extends INamed, Y extends INamed>(
-//   x: X,
-//   y: Y,
-//   registry: SerializerRegistry.For<[X, Y]>,
-// ) {
-//   const inst = registry.deserialize<X>({ name: "test", version: 1 });
-//   return inst;
-// }
-
-// genericWithDep(new A({}), new B({}), reg);
