@@ -56,7 +56,7 @@ export class SerializerRegistry<
 
   serialize<Instance extends Instances>(
     instance: Instance,
-  ): ret<ret<typeof this.getForInstance<Instance>>["serialize"]> {
+  ): Promise<ret<ret<typeof this.getForInstance<Instance>>["serialize"]>> {
     const serializer = this.getForInstance(instance);
     if (!serializer) {
       throw new Error(`Could not find serializer for ${instance.name}`);
@@ -70,16 +70,18 @@ export class SerializerRegistry<
       | ret<typeof this.serialize<Instances>>,
   >(
     serialize: S,
-  ): IsStringLiteral<S["name"]> extends true
-    ? ret<ret<typeof this.getForSerialized<S>>["deserialize"]>
-    : ret<ret<typeof this.getForSerialized<S>>["deserialize"]>;
+  ): Promise<
+    IsStringLiteral<S["name"]> extends true
+      ? ret<ret<typeof this.getForSerialized<S>>["deserialize"]>
+      : ret<ret<typeof this.getForSerialized<S>>["deserialize"]>
+  >;
   deserialize<const I extends Instances>(
     serialized: INamed<Instances["name"]> & unknown,
-  ): I;
+  ): Promise<I>;
   deserialize<
     const I extends Instances = Instances,
     const S = Record<string, any>,
-  >(serialized: INamed & S): I;
+  >(serialized: INamed & S): Promise<I>;
   deserialize(serialized: any): any {
     const serializer = this.store.get(serialized.name);
     if (!serializer) {
