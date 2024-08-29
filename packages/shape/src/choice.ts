@@ -33,6 +33,7 @@ export const Choice = <
     static $shape = "choice" as const;
 
     static $of = config;
+    static values = config;
 
     constructor(public value: Expand<Inline>) {
       super();
