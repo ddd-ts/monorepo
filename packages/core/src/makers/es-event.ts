@@ -7,7 +7,7 @@ import {
 import { type Constructor } from "@ddd-ts/types";
 import { EventId } from "../components/event-id";
 import { WithDerivations } from "@ddd-ts/traits";
-import { Named } from "./named";
+import { Named } from "../traits/named";
 
 export const EsEvent = <
   const Name extends string,

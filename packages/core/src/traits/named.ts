@@ -1,6 +1,6 @@
 import { Trait } from "@ddd-ts/traits";
 
-export const Named = <Name extends string>(name: Name) =>
+export const Named = <const Name extends string>(name: Name) =>
   Trait((base) => {
     abstract class $Named extends base {
       static $name = name;

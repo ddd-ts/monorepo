@@ -39,7 +39,6 @@ export {
   SnapshottableEsAggregate,
 } from "./makers/es-aggregate";
 export { EsEvent } from "./makers/es-event";
-export { Named } from "./makers/named";
 export { Projection } from "./makers/projection";
 
 export * from "./tools/iterator";
@@ -47,5 +46,7 @@ export * from "./tools/queue";
 
 export { EventSourced } from "./traits/event-sourced";
 export { Identifiable } from "./traits/identifiable";
+export { Named } from "./traits/named";
+export { Shaped, NamedShaped } from "./traits/shaped";
 
 import "./metadata.polyfill";

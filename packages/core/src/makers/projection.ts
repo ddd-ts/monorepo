@@ -4,7 +4,7 @@ import { Derive } from "@ddd-ts/traits";
 import type { IProjection } from "../interfaces/projection";
 import type { IEvent } from "../interfaces/event";
 import { getHandler } from "../decorators/handlers";
-import { Named } from "./named";
+import { Named } from "../traits/named";
 
 export const Projection = <
   Name extends string,
