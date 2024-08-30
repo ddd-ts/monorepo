@@ -83,12 +83,14 @@ async function concrete() {
   // This is fine, we dont always have the full data type
   // As long as we have the name, we must trust the serializer to handle it
 
-  const unknown = await r.deserialize({ name: "C" });
+  const unknown = await r.deserialize({ name: "C" as string });
   const unknownCheck: A | B = unknown;
   // I dont know if this should be never
   // Maybe there are cases where we dont even have the name type
   // Anyway, it restricts the type to A | B and will throw an error
   // If we effectively try to use it with C
+
+  const unkownName = await r.deserialize({} as unknown);
 
   const knownAndComplete = await r.deserialize({
     name: "A",
