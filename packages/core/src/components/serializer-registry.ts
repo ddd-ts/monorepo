@@ -64,23 +64,40 @@ export class SerializerRegistry<
   deserialize<const S extends ret<typeof this.serialize<Instances>>>(
     // When the registry has concrete instances
     serialize: IsStringLiteral<S["name"]> extends true
-      ? S & Extract<ReturnType<R[number][1]["serialize"]>, INamed<S["name"]>>
+      ? IsStringLiteral<Instances["name"]> extends true
+        ? R[number][1] extends ISerializer<any, infer R>
+          ? R extends S
+            ? R
+            : S extends R
+              ? S
+              : R
+          : S
+        : never
       : never,
   ): Promise<ReturnType<ret<typeof this.getForSerialized<S>>["deserialize"]>>;
+  deserialize<const N extends string, const S>(
+    // I dont know why this works, but it does.
+    serialize: S extends INamed<infer N>
+      ? IsStringLiteral<Instances["name"]> extends true
+        ? IsStringLiteral<N> extends true
+          ? INamed<N> extends Instances
+            ? never
+            : S
+          : S
+        : never
+      : unknown,
+  ): Promise<Instances>;
   deserialize<const I extends Instances>(
     // When the method is called with a parameter to narrow down the return type
-    serialized: INamed<Instances["name"]> & unknown,
+    serialized: unknown,
   ): Promise<I>;
-  deserialize<const S extends INamed>(
-    // I dont know why this works, but it does.
-    serialize: IsStringLiteral<Instances["name"]> extends true
-      ? IsStringLiteral<S["name"]> extends true
-        ? INamed<S["name"]> extends Instances
-          ? Extract<ReturnType<R[number][1]["serialize"]>, INamed<S["name"]>>
-          : S
-        : Extract<ReturnType<R[number][1]["serialize"]>, INamed<S["name"]>>
-      : S,
-  ): Promise<Instances>;
+  deserialize<const S>(
+    serialized: IsStringLiteral<Instances["name"]> extends true
+      ? S extends INamed<Instances["name"]>
+        ? never
+        : unknown
+      : never,
+  ): any;
   deserialize(serialized: any): any {
     const serializer = this.store.get(serialized.name);
     if (!serializer) {
