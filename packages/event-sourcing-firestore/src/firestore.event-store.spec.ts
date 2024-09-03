@@ -1,5 +1,4 @@
 process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
-
 import * as fb from "firebase-admin";
 
 import {
@@ -149,6 +148,32 @@ describe("FirestoreEventStore", () => {
 
       const fresh = await accountStore.load(account.id);
       expect(fresh!.balance).toBe(20);
+    });
+
+    it("should not update the snapshot if no changes are made (concurrency issues)", async () => {
+      const account = Account.open();
+
+      await accountStore.save(account);
+
+      const wait = (ms: number) =>
+        new Promise((resolve) => setTimeout(resolve, ms));
+
+      await Promise.all([
+        (async () => {
+          const acc = await accountStore.load(account.id);
+          await wait(10);
+          await accountStore.save(acc!);
+        })(),
+        (async () => {
+          const acc = await accountStore.load(account.id);
+          acc!.deposit(1);
+          await accountStore.save(acc!);
+        })(),
+      ]);
+
+      const fresh = await accountStore.load(account.id);
+      console.log(fresh!.id);
+      expect(fresh!.balance).toBe(1);
     });
   });
 

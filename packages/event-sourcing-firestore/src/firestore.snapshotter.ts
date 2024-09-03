@@ -3,7 +3,11 @@ import {
   type IIdentifiable,
   type ISerializer,
 } from "@ddd-ts/core";
-import { FirestoreStore } from "@ddd-ts/store-firestore";
+import {
+  FirestoreStore,
+  type FirestoreTransaction,
+} from "@ddd-ts/store-firestore";
+import { serverTimestamp } from "./firestore.event-store";
 
 export class FirestoreSnapshotter<
   A extends IEventSourced & IIdentifiable,
@@ -13,6 +17,7 @@ export class FirestoreSnapshotter<
     db: FirebaseFirestore.Firestore,
     serializer: ISerializer<A>,
     converter?: FirebaseFirestore.FirestoreDataConverter<FirebaseFirestore.DocumentData>,
+    private debugSnapshots = false,
   ) {
     super(
       "irrelevant",
@@ -38,5 +43,28 @@ export class FirestoreSnapshotter<
       .doc(this.aggregate)
       .collection("streams")
       .withConverter(this.converter);
+  }
+
+  async save(snapshot: A, trx: FirestoreTransaction): Promise<void> {
+    await super.save(snapshot, trx);
+
+    if (this.debugSnapshots) {
+      const ref = this.firestore
+        .collection("test-snapshots")
+        .doc(this.aggregate)
+        .collection("snapshots")
+        .doc(snapshot.id.toString())
+        .collection("versions")
+        .doc(
+          `${snapshot.acknowledgedRevision}`
+            .padStart(6, "0")
+            .concat("-", Math.random().toString().substring(2, 8)),
+        );
+
+      trx.transaction.set(ref, {
+        ...(await this.serializer.serialize(snapshot)),
+        occurredAt: serverTimestamp(),
+      });
+    }
   }
 }

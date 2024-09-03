@@ -9,7 +9,7 @@ import {
   FirestoreTransaction,
 } from "@ddd-ts/store-firestore";
 import * as fb from "firebase-admin";
-
+export const serverTimestamp = fb.firestore.FieldValue.serverTimestamp;
 export class FirestoreEventStore {
   constructor(
     public readonly firestore: fb.firestore.Firestore,
@@ -38,13 +38,6 @@ export class FirestoreEventStore {
     }[],
     trx: FirestoreTransaction,
   ) {
-    await Promise.all(
-      toAppend.map(
-        async ({ streamId, expectedRevision }) =>
-          await this.lockDocument(streamId, expectedRevision, trx),
-      ),
-    );
-
     await Promise.all(
       toAppend.map(async ({ streamId, changes, expectedRevision }) => {
         await this.commitChanges(streamId, changes, expectedRevision, trx);
@@ -97,7 +90,7 @@ export class FirestoreEventStore {
           revision: revision,
           name: change.name,
           payload: change.payload,
-          occurredAt: fb.firestore.FieldValue.serverTimestamp(),
+          occurredAt: serverTimestamp(),
         }),
       );
       revision++;
