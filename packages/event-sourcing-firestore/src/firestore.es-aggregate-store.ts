@@ -145,18 +145,24 @@ export abstract class FirestoreEsAggregateStore<
     attempts = 10,
   ): Promise<void> {
     const toSave = await Promise.all(
-      aggregates.map(async (aggregate) => ({
-        aggregate: aggregate,
-        streamId: this.getAggregateStreamId(aggregate.id),
-        changes: [...aggregate.changes],
-        serialized: await Promise.all(
-          aggregate.changes.map((event) =>
-            this.eventsSerializer.serialize(event),
+      aggregates
+        .filter((a) => a.changes.length)
+        .map(async (aggregate) => ({
+          aggregate: aggregate,
+          streamId: this.getAggregateStreamId(aggregate.id),
+          changes: [...aggregate.changes],
+          serialized: await Promise.all(
+            aggregate.changes.map((event) =>
+              this.eventsSerializer.serialize(event),
+            ),
           ),
-        ),
-        acknowledgedRevision: aggregate.acknowledgedRevision,
-      })),
+          acknowledgedRevision: aggregate.acknowledgedRevision,
+        })),
     );
+
+    if (!toSave.length) {
+      return;
+    }
 
     try {
       await this.performTransaction(parentTrx, async (trx) => {

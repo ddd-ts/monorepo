@@ -9,7 +9,7 @@
 	},
 	"dependencies": {
 		"@ddd-ts/core": "workspace:*",
-		"firebase-admin": "^11.5.0"
+		"firebase-admin": "^11.11.1"
 	},
 	"devDependencies": {
 		"@ddd-ts/tools": "workspace:*",
