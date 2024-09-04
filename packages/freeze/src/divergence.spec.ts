@@ -337,6 +337,15 @@ type Equals<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
   const check: Equals<D, expected> = true;
 }
 
+{
+  type L = string[];
+  type R = string[] | undefined;
+  type expected = never;
+  type D = Divergence<L, R>;
+
+  const check: Equals<D, expected> = true;
+}
+
 it("this is a type test file", () => {
   expect(true).toBe(true);
 });
