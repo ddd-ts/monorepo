@@ -1,5 +1,5 @@
-import { Shape, type DictShorthand, type Shorthand } from "@ddd-ts/shape";
-import { Derive, Trait } from "@ddd-ts/traits";
+import { Shape, type DictShorthand } from "@ddd-ts/shape";
+import { Trait, WithDerivations } from "@ddd-ts/traits";
 import { Named } from "./named";
 
 export const Shaped = <S extends DictShorthand>(shape: S) =>
@@ -8,4 +8,4 @@ export const Shaped = <S extends DictShorthand>(shape: S) =>
 export const NamedShaped = <const Name extends string, S extends DictShorthand>(
   name: Name,
   shape: S,
-) => Trait((base) => Derive(Named(name), Shaped({ ...shape, name })));
+) => Trait((base) => WithDerivations(base, Named(name), Shaped({ ...shape, name })));
