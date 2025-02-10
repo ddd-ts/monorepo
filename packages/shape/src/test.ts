@@ -134,8 +134,8 @@ type tests = {
 
 type check = {
   [name in keyof tests]: Equals<tests[name][0], tests[name][1]> extends true
-    ? true
-    : false;
+  ? true
+  : false;
 };
 
 type failingtests = {
@@ -193,13 +193,13 @@ export function ex<Received>(received: Received) {
       ...rest: any[]
     ) => any
       ? Equals<P, Expected> extends true
-        ? { ok: true }
-        : { expected: Expected; received: P }
+      ? { ok: true }
+      : { expected: Expected; received: P }
       : Received extends Constructor<any, [infer P, ...any[]]>
-        ? Equals<P, Expected> extends true
-          ? { ok: true }
-          : { expected: Expected; received: P }
-        : "not a function or constructor" {
+      ? Equals<P, Expected> extends true
+      ? { ok: true }
+      : { expected: Expected; received: P }
+      : "not a function or constructor" {
       return { ok: true } as any;
     },
   };
