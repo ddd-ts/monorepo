@@ -31,7 +31,7 @@ type Matcher<C extends Config> =
   | PartialMatcher<C>;
 
 export type EitherConfiguration = {
-  [key: string]: PrimitiveShorthand | ClassShorthand;
+  [key: string]: ClassShorthand;
 };
 
 export const Either = <
@@ -42,7 +42,7 @@ export const Either = <
   base: B = Empty as any,
 ) => {
   type Serialized = {
-    [K in keyof S]: [K, ReturnType<DefinitionOf<S[K]>["$serialize"]>];
+    [K in keyof S]: { _key: K } & ReturnType<DefinitionOf<S[K]>["$serialize"]>;
   }[keyof S];
 
   type Inline = DefinitionOf<S[keyof S]>["$inline"];
@@ -71,22 +71,22 @@ export const Either = <
     match<
       M extends Matcher<S>,
       F extends M extends ExhaustiveMatcher<S>
-        ? []
-        : M extends UnsafeFallthroughMatcher<S>
-          ? []
-          : M extends PartialMatcher<S>
-            ? [
-                fallback: (
-                  value: InstanceType<Omit<S, keyof M>[keyof Omit<S, keyof M>]>,
-                ) => any,
-              ]
-            : [],
+      ? []
+      : M extends UnsafeFallthroughMatcher<S>
+      ? []
+      : M extends PartialMatcher<S>
+      ? [
+        fallback: (
+          value: InstanceType<Omit<S, keyof M>[keyof Omit<S, keyof M>]>,
+        ) => any,
+      ]
+      : [],
     >(
       ...[matcher, fallback]: [matcher: M, ...F]
     ):
       | (M[keyof M] extends (...args: any[]) => any
-          ? ReturnType<M[keyof M]>
-          : never)
+        ? ReturnType<M[keyof M]>
+        : never)
       | (F[0] extends (...args: any[]) => any ? ReturnType<F[0]> : never) {
       const key: any = Object.entries(of).find(
         ([_, v]) => v === ((this.value as any).constructor as any),
@@ -116,7 +116,7 @@ export const Either = <
       this: T,
       value: Serialized,
     ): Inline {
-      const [key, serialized] = value as any;
+      const { _key: key, ...serialized } = value as any;
       const definition = definitions[key];
       if (!definition) {
         throw new Error("Cannot deserialize Either");
@@ -139,7 +139,7 @@ export const Either = <
       if (!definition) {
         throw new Error("Cannot serialize Either");
       }
-      return [key, (definition as any).$serialize(value)] as any;
+      return { ...(definition as any).$serialize(value), _key: key } as any;
     }
 
     static $inline: Inline;
