@@ -21,7 +21,7 @@ export const MakeInMemoryEsAggregateStore = <
 >(
   AGGREGATE: A,
 ) => {
-  return class $FirestoreEsAggregateStore extends InMemoryEsAggregateStore<A> {
+  return class $InMemoryEsAggregateStore extends InMemoryEsAggregateStore<A> {
     loadFirst(event: InstanceType<A>["changes"][number]): InstanceType<A> {
       return AGGREGATE.loadFirst(event);
     }

@@ -15,11 +15,11 @@
 		"@ddd-ts/core": "workspace:*",
 		"@ddd-ts/traits": "workspace:*",
 		"@ddd-ts/types": "workspace:*",
+		"@ddd-ts/store-firestore": "workspace:*",
 		"firebase-admin": "^11.11.1"
 	},
 	"devDependencies": {
 		"@ddd-ts/tools": "workspace:*",
-		"@ddd-ts/store-firestore": "workspace:*",
 		"@ddd-ts/tests": "workspace:*",
 		"@ddd-ts/types": "workspace:*",
 		"@types/jest": "^29.5.1"
