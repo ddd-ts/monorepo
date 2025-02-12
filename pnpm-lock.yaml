@@ -85,6 +85,9 @@ importers:
       '@ddd-ts/core':
         specifier: workspace:*
         version: link:../core
+      '@ddd-ts/store-firestore':
+        specifier: workspace:*
+        version: link:../store-firestore
       '@ddd-ts/traits':
         specifier: workspace:*
         version: link:../traits
@@ -95,9 +98,6 @@ importers:
         specifier: ^11.11.1
         version: 11.11.1
     devDependencies:
-      '@ddd-ts/store-firestore':
-        specifier: workspace:*
-        version: link:../store-firestore
       '@ddd-ts/tests':
         specifier: workspace:*
         version: link:../../tests
