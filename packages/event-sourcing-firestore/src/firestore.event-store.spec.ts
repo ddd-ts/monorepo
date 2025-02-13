@@ -5,6 +5,7 @@ import {
   AutoSerializer,
   EsAggregate,
   EsEvent,
+  EventsOf,
   On,
   SerializerRegistry,
   type EventSourced,
@@ -23,7 +24,7 @@ import { EsAggregateStoreSuite } from "@ddd-ts/tests";
 import { FirestoreEventStore } from "./firestore.event-store";
 import { MakeFirestoreEsAggregateStore } from "./firestore.es-aggregate-store";
 import { FirestoreSnapshotter } from "./firestore.snapshotter";
-import { Primitive, Shape } from "../../shape/dist";
+import { Primitive, Shape } from "@ddd-ts/shape";
 
 jest.setTimeout(10000);
 
@@ -40,7 +41,7 @@ describe("FirestoreEventStore", () => {
     T extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
   >(
     AGGREGATE: T,
-    eventSerializer: SerializerRegistry.For<InstanceType<T>["changes"]>,
+    eventSerializer: SerializerRegistry.For<EventsOf<T>>,
     serializer: ISerializer<InstanceType<T>>,
   ) {
     const snapshotter = new FirestoreSnapshotter(
@@ -52,19 +53,19 @@ describe("FirestoreEventStore", () => {
     return new Store(eventStore, transaction, eventSerializer, snapshotter);
   }
 
-  class AccountId extends Primitive(String) { }
+  class AccountId extends Primitive(String) {}
 
   EsAggregateStoreSuite(makeAggregateStore);
 
   describe("Account alone", () => {
     class AccountOpened extends EsEvent("AccountOpened", {
       id: AccountId,
-    }) { }
+    }) {}
 
     class Deposited extends EsEvent("Deposited", {
       id: AccountId,
       amount: Number,
-    }) { }
+    }) {}
 
     class Account extends EsAggregate("Account", {
       events: [AccountOpened, Deposited],
@@ -99,16 +100,19 @@ describe("FirestoreEventStore", () => {
       }
     }
 
+    const registry = new SerializerRegistry()
+      .auto(AccountOpened)
+      .add(Deposited, new (AutoSerializer.First(Deposited))())
+      .add(Account, new (AutoSerializer(Account, 1))());
+
     const accountStore = new (MakeFirestoreEsAggregateStore(Account))(
       eventStore,
       transaction,
-      new SerializerRegistry()
-        .add(AccountOpened, new (AutoSerializer(AccountOpened, 1))())
-        .add(Deposited, new (AutoSerializer(Deposited, 1))()),
+      registry,
       new FirestoreSnapshotter(
         Account.name,
         firestore,
-        new (AutoSerializer(Account, 1))(),
+        AutoSerializer.first(Account),
       ),
     );
 
@@ -196,13 +200,13 @@ describe("FirestoreEventStore", () => {
       }
     }
 
-    class AccountRegistryId extends Primitive(String) { }
+    class AccountRegistryId extends Primitive(String) {}
 
     class AccountOpened extends EsEvent("AccountOpened", {
       id: AccountId,
       index: Number,
       registryId: AccountRegistryId,
-    }) { }
+    }) {}
 
     class Account extends EsAggregate("Account", {
       events: [AccountOpened],
@@ -298,7 +302,7 @@ describe("FirestoreEventStore", () => {
     expect(freshRegistry!.index).toBe(30);
 
     const result = await accountStore.snapshotter?.collection
-      .where("registryId", "==", registry.id)
+      .where("registryId", "==", registry.id.serialize())
       .get();
     const documents = result?.docs.map((doc) => doc.data());
 
@@ -333,13 +337,13 @@ describe("FirestoreEventStore", () => {
       }
     }
 
-    class AccountRegistryId extends Primitive(String) { }
+    class AccountRegistryId extends Primitive(String) {}
 
     class AccountOpened extends EsEvent("AccountOpened", {
       id: AccountId,
       index: Number,
       registryId: AccountRegistryId,
-    }) { }
+    }) {}
 
     class Account extends EsAggregate("Account", {
       events: [AccountOpened],
@@ -445,7 +449,7 @@ describe("FirestoreEventStore", () => {
     expect(freshRegistry!.index).toBe(2);
 
     const result = await accountStore.snapshotter?.collection
-      .where("registryId", "==", registry.id)
+      .where("registryId", "==", registry.id.serialize())
       .get();
     const documents = result?.docs.map((doc) => doc.data());
 

@@ -7,6 +7,8 @@ import {
   type IEventBus,
   type Identifiable,
   type SerializerRegistry,
+  type EventOf,
+  type EventsOf,
 } from "@ddd-ts/core";
 
 import type { InMemoryEventStore } from "./event-store/in-memory.event-store";
@@ -22,7 +24,7 @@ export const MakeInMemoryEsAggregateStore = <
   AGGREGATE: A,
 ) => {
   return class $InMemoryEsAggregateStore extends InMemoryEsAggregateStore<A> {
-    loadFirst(event: InstanceType<A>["changes"][number]): InstanceType<A> {
+    loadFirst(event: EventsOf<A>[number]): InstanceType<A> {
       return AGGREGATE.loadFirst(event);
     }
 
@@ -37,21 +39,17 @@ export const MakeInMemoryEsAggregateStore = <
 
 export abstract class InMemoryEsAggregateStore<
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
-  E extends
-    InstanceType<A>["changes"][number] = InstanceType<A>["changes"][number],
 > implements IEsAggregateStore<InstanceType<A>>
 {
   constructor(
     public readonly eventStore: InMemoryEventStore,
     public readonly transaction: InMemoryTransactionPerformer,
-    public readonly eventSerializer: SerializerRegistry.For<
-      InstanceType<A>["changes"]
-    >,
+    public readonly eventSerializer: SerializerRegistry.For<EventsOf<A>>,
     public readonly snapshotter?: InMemorySnapshotter<InstanceType<A>>,
   ) {}
 
   abstract getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId;
-  abstract loadFirst(event: E): InstanceType<A>;
+  abstract loadFirst(event: EventOf<A>): InstanceType<A>;
 
   _publishEventsTo?: IEventBus;
   publishEventsTo(eventBus: IEventBus) {
@@ -70,7 +68,8 @@ export abstract class InMemoryEsAggregateStore<
       );
 
       for await (const serialized of stream) {
-        const event = await this.eventSerializer.deserialize<E>(serialized);
+        const event =
+          await this.eventSerializer.deserialize<EventOf<A>>(serialized);
         snapshot.load(event);
       }
 
@@ -79,7 +78,8 @@ export abstract class InMemoryEsAggregateStore<
 
     let instance: InstanceType<A> | undefined = undefined;
     for await (const serialized of this.eventStore.read(streamId)) {
-      const event = await this.eventSerializer.deserialize<E>(serialized);
+      const event =
+        await this.eventSerializer.deserialize<EventOf<A>>(serialized);
       if (!instance) {
         instance = this.loadFirst(event);
       } else {

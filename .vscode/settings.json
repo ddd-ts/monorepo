@@ -4,5 +4,5 @@
     "type": "on-demand"
   },
   "jest.jestCommandLine": "./tools/node_modules/.bin/jest --config tools/jest.ws.config.ts",
-  "typescript.tsdk": "./tools/node_modules/typescript/lib"
+  "typescript.tsdk": "./tools/node_modules/typescript/lib",
 }

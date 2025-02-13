@@ -16,10 +16,32 @@ export interface IEsEvent<Name extends string = string, Payload = any>
   revision?: number;
 }
 
+export interface ISerializedEvent {
+  $kind: string;
+  name: string;
+  id: string;
+  occurredAt?: Date;
+  revision?: number;
+  payload: any;
+  version: number;
+}
+
 export interface ISerializedChange {
+  $kind: string;
   name: string;
   id: string;
   occurredAt: undefined;
   revision: undefined;
   payload: any;
+  version: number;
+}
+
+export interface ISerializedFact {
+  $kind: string;
+  name: string;
+  id: string;
+  occurredAt: Date;
+  revision: number;
+  payload: any;
+  version: number;
 }

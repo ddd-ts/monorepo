@@ -1,19 +1,19 @@
-import { Trait } from "@ddd-ts/traits";
+import { HasTrait, Trait } from "@ddd-ts/traits";
 import type { Constructor } from "@ddd-ts/types";
 
 import type { IEsEvent } from "../interfaces/es-event";
 import type { IEventSourced } from "../interfaces/event-sourced";
 import { getHandler } from "../decorators/handlers";
+import { IKinded } from "../interfaces/kinded";
 
-type Config = Constructor<IEsEvent>[];
+type Config = (IKinded & Constructor<IEsEvent & IKinded>)[];
 
 export const EventSourced = <C extends Config>(config: C) =>
   Trait((base) => {
-    type Event = InstanceType<C[number]>;
+    type Event = InstanceType<C[number]> & IKinded;
     abstract class $EventSourced extends base implements IEventSourced<Event> {
       acknowledgedRevision = -1;
       changes: Event[] = [];
-
       static events = config;
 
       load(fact: Event) {
@@ -105,3 +105,17 @@ export const EventSourced = <C extends Config>(config: C) =>
 
     return $EventSourced;
   });
+
+export type EventsOf<E> = E extends HasTrait<
+  typeof EventSourced<infer C extends Config>
+>
+  ? {
+      [K in keyof C]: InstanceType<C[K]>;
+    }
+  : never;
+
+export type EventOf<E> = E extends HasTrait<
+  typeof EventSourced<infer C extends Config>
+>
+  ? InstanceType<C[number]>
+  : never;

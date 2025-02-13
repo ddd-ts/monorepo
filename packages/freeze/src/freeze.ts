@@ -68,7 +68,7 @@ for (const ref of references) {
     const typeParameter = decorator.getTypeArguments()[0];
     if (typeParameter) {
       console.log(
-        `${rpath} - ${classDeclaration.getName()}: Already frozen with <${typeParameter.getText()}>`,
+        `${classDeclaration.getName()}: Already frozen with <${typeParameter.getText()}>`,
       );
       continue;
     }

@@ -18,11 +18,11 @@
 	"dependencies": {
 		"@ddd-ts/core": "workspace:*",
 		"@ddd-ts/shape": "workspace:*",
-		"@ddd-ts/traits": "workspace:*"
+		"@ddd-ts/traits": "workspace:*",
+		"@ddd-ts/types": "workspace:*"
 	},
 	"devDependencies": {
 		"@ddd-ts/tools": "workspace:*",
-		"@ddd-ts/types": "workspace:*",
 		"@types/jest": "^29.5.1",
 		"@types/node": "^17.0.13"
 	}

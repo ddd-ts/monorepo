@@ -22,6 +22,7 @@
 		"@ddd-ts/tools": "workspace:*",
 		"@ddd-ts/tests": "workspace:*",
 		"@ddd-ts/types": "workspace:*",
+		"@ddd-ts/shape": "workspace:*",
 		"@types/jest": "^29.5.1"
 	}
 }
