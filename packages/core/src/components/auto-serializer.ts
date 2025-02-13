@@ -5,6 +5,10 @@ export type AutoSerializable = Constructor<{ serialize(): any }> & {
   deserialize(value: any): any;
 };
 
+export type TypedAutoSerializable<T> = Constructor<T> & {
+  deserialize(value: string): T;
+};
+
 export const AutoSerializer = <
   T extends AutoSerializable,
   const V extends number,
