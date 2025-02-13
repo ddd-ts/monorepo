@@ -1,117 +1,108 @@
-import type { INamed, INamedContructor } from "../interfaces/named";
+import type { IKinded, IKindedContructor } from "../interfaces/kinded";
 import { ISerializer, type Serialized } from "../interfaces/serializer";
+import { AutoSerializable, AutoSerializer } from "./auto-serializer";
 
-type ret<T extends (...args: any[]) => any> = Awaited<ReturnType<Awaited<T>>>;
+type IsStringLiteral<T> = [string] extends [T] ? false : true;
 
-type IsStringLiteral<T> = string extends T ? false : true;
+type Pretty<T> = {
+  [K in keyof T]: T[K];
+} & {};
 
 export class SerializerRegistry<
-  R extends [INamed, ISerializer<INamed, INamed>][] = [],
+  R extends [IKinded, ISerializer<IKinded, IKinded>][] = [],
   Instances extends R[number][0] = R[number][0],
 > {
   store = new Map<string, any>();
 
   // Ensure we can assign to a SR<[A,B]> only something that is SR<[A,B,...more]>
   // I used a function because its an contravariant position
-  __typesafety!: (params: Instances) => void;
+  declare __typesafety: (params: Instances) => void;
+
+  auto<Class extends IKindedContructor & AutoSerializable>(Class: Class) {
+    const first = AutoSerializer.first(Class);
+    this.store.set(Class.$kind, first);
+    return this as unknown as SerializerRegistry<
+      [...R, [InstanceType<Class>, typeof first]]
+    >;
+  }
 
   add<
-    Class extends INamedContructor,
-    S extends ISerializer<InstanceType<Class>, INamed<Class["$name"]>>,
+    Class extends IKindedContructor,
+    S extends ISerializer<InstanceType<Class>, IKinded<Class["$kind"]>>,
   >(Class: Class, serializer: S) {
-    this.store.set(Class.$name, serializer);
+    this.store.set(Class.$kind, serializer);
     return this as unknown as SerializerRegistry<
       [...R, [InstanceType<Class>, S]]
     >;
   }
-
-  getForInstance<Instance extends Instances>(
-    instance: Instance,
-  ): Extract<
-    R[number],
-    [Instance, ISerializer<Instance, INamed<Instance["name"]>>]
-  >[1] {
-    return this.store.get(instance.name);
-  }
-
-  getForSerialized<S extends INamed<string>>(
-    serialized: S,
-  ): IsStringLiteral<S["name"]> extends true
-    ? Extract<
-        R[number],
-        [INamed<S["name"]>, ISerializer<INamed<S["name"]>, INamed<S["name"]>>]
-      >[1]
+  get<const I extends Instances["$kind"]>(
+    kind: I | IKinded<I>,
+  ): this extends SerializerRegistry<infer RRR, any>
+    ? Extract<RRR[number], [IKinded<I>, any]>[1]
     : never {
-    return this.store.get(serialized.name);
+    const key = typeof kind === "string" ? kind : kind.$kind;
+    return this.store.get(key as any);
   }
 
-  serialize<const I extends Instances>(
-    // When the registry has concrete instances
-    instance: IsStringLiteral<I["name"]> extends true ? I : never,
-  ): Promise<ret<ret<typeof this.getForInstance<I>>["serialize"]>>;
-  serialize<const I extends Instances>(
-    // When the registry has generic instances
+  serialize<
+    const I extends IKinded,
+    const TH extends SerializerRegistry<any, I>,
+  >(
+    this: TH,
+    instance: IsStringLiteral<I["$kind"]> extends true ? I : never,
+  ): TH extends SerializerRegistry<infer RRR, any>
+    ? Pretty<ReturnType<Extract<RRR[number], [I, any]>[1]["serialize"]>>
+    : never;
+  serialize<
+    const I extends IKinded,
+    const TH extends SerializerRegistry<any, I>,
+  >(
+    this: TH,
     instance: I,
-  ): Promise<Serialized<ISerializer<I, INamed<I["name"]>>>>;
-  serialize(instance: any): any {
-    const serializer = this.getForInstance(instance);
+  ): Pretty<Serialized<ISerializer<I, IKinded<I["$kind"]>>>>;
+  serialize(instance: IKinded): unknown {
+    const kind = instance.$kind;
+    const serializer = this.store.get(kind);
     if (!serializer) {
-      throw new Error(`Could not find serializer for ${instance.name}`);
+      throw new Error(`No serializer for ${kind}`);
     }
-    return serializer.serialize(instance) as any;
+    return serializer.serialize(instance);
   }
 
-  deserialize<const S extends ret<typeof this.serialize<Instances>>>(
-    // When the registry has concrete instances
-    serialize: IsStringLiteral<S["name"]> extends true
-      ? IsStringLiteral<Instances["name"]> extends true
-        ? R[number][1] extends ISerializer<any, infer R>
-          ? R extends S
-            ? R
-            : S extends R
-              ? S
-              : R
-          : S
-        : never
-      : never,
-  ): Promise<ReturnType<ret<typeof this.getForSerialized<S>>["deserialize"]>>;
-  deserialize<const N extends string, const S>(
-    // I dont know why this works, but it does.
-    serialize: S extends INamed<infer N>
-      ? IsStringLiteral<Instances["name"]> extends true
-        ? IsStringLiteral<N> extends true
-          ? INamed<N> extends Instances
-            ? never
-            : S
-          : S
-        : never
-      : unknown,
-  ): Promise<Instances>;
-  deserialize<const I extends Instances>(
-    // When the method is called with a parameter to narrow down the return type
-    serialized: unknown,
-  ): Promise<I>;
-  deserialize<const S>(
-    serialized: IsStringLiteral<Instances["name"]> extends true
-      ? S extends INamed<Instances["name"]>
-        ? never
-        : unknown
-      : never,
-  ): any;
-  deserialize(serialized: any): any {
-    const serializer = this.store.get(serialized.name);
-    if (!serializer) {
-      throw new Error(`Could not find serializer for ${serialized.name}`);
+  deserialize<
+    const TH extends SerializerRegistry<any, any>,
+    const S extends IKinded,
+  >(
+    this: TH,
+    serialized: IsStringLiteral<S["$kind"]> extends true ? S : never,
+  ): TH extends SerializerRegistry<infer RRR, any>
+    ? Extract<RRR[number], [IKinded<S["$kind"]>, any]>[0]
+    : never;
+  deserialize<const I extends Instances>(serialized: unknown): NoInfer<I>;
+  // deserialize(serialized: unknown): unknown;
+  deserialize(serialized: unknown): unknown {
+    const kind =
+      typeof serialized === "object" &&
+      serialized !== null &&
+      "$kind" in serialized &&
+      typeof serialized.$kind === "string" &&
+      serialized.$kind;
+
+    if (!kind) {
+      throw new Error("No $kind in serialized object");
     }
-    return serializer.deserialize(serialized) as any;
+
+    const serializer = this.store.get(kind);
+    if (!serializer) {
+      throw new Error(`No serializer for ${kind}`);
+    }
+
+    return serializer.deserialize(serialized);
   }
 }
 
 export namespace SerializerRegistry {
-  export type For<T extends INamed[]> = SerializerRegistry<{
-    [K in keyof T]: [
-      T[K] & INamed<T[K]["name"]>,
-      ISerializer<T[K], INamed<T[K]["name"]>>,
-    ];
+  export type For<T extends IKinded[]> = SerializerRegistry<{
+    [K in keyof T]: [T[K], ISerializer<T[K], IKinded<T[K]["$kind"]>>];
   }>;
 }
