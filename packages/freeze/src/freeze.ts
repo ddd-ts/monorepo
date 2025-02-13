@@ -140,9 +140,9 @@ for (const ref of references) {
       continue;
     }
 
-    const serializedName = `${name}Serialized${version}`;
+    const serializedName = `${name}Serialized${version}n`;
     const serializedFilename = lowercasefirstletter(
-      `${name}.serialized.${version}`,
+      `${name}.serialized.${version}n`,
     );
 
     const directory = refref.getSourceFile().getDirectory();
