@@ -18,7 +18,7 @@ import {
   InMemoryTransactionPerformer,
 } from "@ddd-ts/store-inmemory";
 import { MakeInMemoryEsAggregateStore } from "../in-memory.es-aggregate-store";
-import { Shape } from "../../../shape/dist";
+import { Primitive, Shape } from "../../../shape/dist";
 
 describe("InMemoryEventStore", () => {
   const database = new InMemoryDatabase();
@@ -60,19 +60,22 @@ describe("InMemoryEventStore", () => {
       }
     }
 
+    class AccountId extends Primitive(String) {}
+    class AccountRegistryId extends Primitive(String) {}
+
     class AccountOpened extends EsEvent("AccountOpened", {
-      id: String,
+      id: AccountId,
       index: Number,
-      registryId: String,
+      registryId: AccountRegistryId,
     }) {}
 
     class Account extends EsAggregate("Account", {
       events: [AccountOpened],
       state: {
-        id: String,
+        id: AccountId,
         index: Number,
         balance: Number,
-        registryId: String,
+        registryId: AccountRegistryId,
       },
     }) {
       @On(AccountOpened)
@@ -85,10 +88,10 @@ describe("InMemoryEventStore", () => {
         });
       }
 
-      static open(registryId: string, index: number) {
+      static open(registryId: AccountRegistryId, index: number) {
         return this.new(
           AccountOpened.new({
-            id: Math.random().toString(36).slice(2),
+            id: AccountId.deserialize(Math.random().toString(36).slice(2)),
             index,
             registryId,
           }),
@@ -97,7 +100,7 @@ describe("InMemoryEventStore", () => {
     }
 
     class AccountRegistry extends Shape({
-      id: String,
+      id: AccountRegistryId,
       index: Number,
     }) {
       increment(shouldFailInMiddle = false) {
@@ -110,7 +113,7 @@ describe("InMemoryEventStore", () => {
 
       static new() {
         return new AccountRegistry({
-          id: Math.random().toString().slice(2),
+          id: AccountId.deserialize(Math.random().toString().slice(2)),
           index: 0,
         });
       }
@@ -160,7 +163,7 @@ describe("InMemoryEventStore", () => {
     expect(freshRegistry!.index).toBe(30);
 
     const result = await accountStore.snapshotter?.filter(
-      (a) => a.registryId === registry.id,
+      (a) => a.registryId.serialize() === registry.id.serialize(),
     );
     const documents = result;
 

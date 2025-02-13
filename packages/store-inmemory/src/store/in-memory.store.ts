@@ -36,7 +36,7 @@ export class InMemoryStore<M extends IIdentifiable> implements Store<M> {
   async save(model: M, trx?: InMemoryTransaction): Promise<void> {
     await this.database.save(
       this.collection,
-      model.id.toString(),
+      model.id.serialize(),
       await this.serializer.serialize(model),
       trx?.transaction,
     );
@@ -49,7 +49,7 @@ export class InMemoryStore<M extends IIdentifiable> implements Store<M> {
   async load(id: M["id"], trx?: InMemoryTransaction): Promise<M | undefined> {
     const serialized = await this.database.load(
       this.collection,
-      id.toString(),
+      id.serialize(),
       trx?.transaction,
     );
 
@@ -77,7 +77,7 @@ export class InMemoryStore<M extends IIdentifiable> implements Store<M> {
   }
 
   async delete(id: M["id"], trx?: InMemoryTransaction): Promise<void> {
-    this.database.delete(this.collection, id.toString(), trx?.transaction);
+    this.database.delete(this.collection, id.serialize(), trx?.transaction);
   }
 
   async countAll() {

@@ -6,6 +6,8 @@ import type { IEsEvent } from "../interfaces/es-event";
 import { Named } from "../traits/named";
 import { Shape, type DictShorthand } from "@ddd-ts/shape";
 import { Identifiable } from "../traits/identifiable";
+import { Identifier } from "../interfaces/identifiable";
+import { TypedAutoSerializable } from "../components/auto-serializer";
 
 export const BasicEsAggregate = <
   const Name extends string,
@@ -21,7 +23,7 @@ export const BasicEsAggregate = <
     Named(name),
     EventSourced(config.events as Config["events"]),
   );
-  abstract class $EsAggregate extends base {}
+  abstract class $EsAggregate extends base { }
 
   return $EsAggregate;
 };
@@ -50,7 +52,7 @@ export const EsAggregate = <
   const Name extends string,
   const Config extends {
     events: Constructor<IEsEvent>[];
-    state?: DictShorthand;
+    state?: DictShorthand & { id: TypedAutoSerializable<Identifier> };
   },
 >(
   name: Name,

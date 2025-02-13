@@ -23,7 +23,7 @@ import { EsAggregateStoreSuite } from "@ddd-ts/tests";
 import { FirestoreEventStore } from "./firestore.event-store";
 import { MakeFirestoreEsAggregateStore } from "./firestore.es-aggregate-store";
 import { FirestoreSnapshotter } from "./firestore.snapshotter";
-import { Shape } from "../../shape/dist";
+import { Primitive, Shape } from "../../shape/dist";
 
 jest.setTimeout(10000);
 
@@ -52,22 +52,24 @@ describe("FirestoreEventStore", () => {
     return new Store(eventStore, transaction, eventSerializer, snapshotter);
   }
 
+  class AccountId extends Primitive(String) { }
+
   EsAggregateStoreSuite(makeAggregateStore);
 
   describe("Account alone", () => {
     class AccountOpened extends EsEvent("AccountOpened", {
-      id: String,
-    }) {}
+      id: AccountId,
+    }) { }
 
     class Deposited extends EsEvent("Deposited", {
-      id: String,
+      id: AccountId,
       amount: Number,
-    }) {}
+    }) { }
 
     class Account extends EsAggregate("Account", {
       events: [AccountOpened, Deposited],
       state: {
-        id: String,
+        id: AccountId,
         balance: Number,
       },
     }) {
@@ -91,7 +93,7 @@ describe("FirestoreEventStore", () => {
       static open() {
         return this.new(
           AccountOpened.new({
-            id: Math.random().toString(36).slice(2),
+            id: new AccountId(Math.random().toString(36).slice(2)),
           }),
         );
       }
@@ -194,19 +196,21 @@ describe("FirestoreEventStore", () => {
       }
     }
 
+    class AccountRegistryId extends Primitive(String) { }
+
     class AccountOpened extends EsEvent("AccountOpened", {
-      id: String,
+      id: AccountId,
       index: Number,
-      registryId: String,
-    }) {}
+      registryId: AccountRegistryId,
+    }) { }
 
     class Account extends EsAggregate("Account", {
       events: [AccountOpened],
       state: {
-        id: String,
+        id: AccountId,
         index: Number,
         balance: Number,
-        registryId: String,
+        registryId: AccountRegistryId,
       },
     }) {
       @On(AccountOpened)
@@ -219,10 +223,10 @@ describe("FirestoreEventStore", () => {
         });
       }
 
-      static open(registryId: string, index: number) {
+      static open(registryId: AccountRegistryId, index: number) {
         return this.new(
           AccountOpened.new({
-            id: Math.random().toString(36).slice(2),
+            id: new AccountId(Math.random().toString(36).slice(2)),
             index,
             registryId,
           }),
@@ -231,7 +235,7 @@ describe("FirestoreEventStore", () => {
     }
 
     class AccountRegistry extends Shape({
-      id: String,
+      id: AccountRegistryId,
       index: Number,
     }) {
       increment(shouldFailInMiddle = false) {
@@ -244,7 +248,7 @@ describe("FirestoreEventStore", () => {
 
       static new() {
         return new AccountRegistry({
-          id: Math.random().toString().slice(2),
+          id: AccountRegistryId.deserialize(Math.random().toString().slice(2)),
           index: 0,
         });
       }
@@ -329,19 +333,21 @@ describe("FirestoreEventStore", () => {
       }
     }
 
+    class AccountRegistryId extends Primitive(String) { }
+
     class AccountOpened extends EsEvent("AccountOpened", {
-      id: String,
+      id: AccountId,
       index: Number,
-      registryId: String,
-    }) {}
+      registryId: AccountRegistryId,
+    }) { }
 
     class Account extends EsAggregate("Account", {
       events: [AccountOpened],
       state: {
-        id: String,
+        id: AccountId,
         index: Number,
         balance: Number,
-        registryId: String,
+        registryId: AccountRegistryId,
       },
     }) {
       @On(AccountOpened)
@@ -354,10 +360,10 @@ describe("FirestoreEventStore", () => {
         });
       }
 
-      static open(registryId: string, index: number) {
+      static open(registryId: AccountRegistryId, index: number) {
         return this.new(
           AccountOpened.new({
-            id: Math.random().toString(36).slice(2),
+            id: new AccountId(Math.random().toString(36).slice(2)),
             index,
             registryId,
           }),
@@ -366,7 +372,7 @@ describe("FirestoreEventStore", () => {
     }
 
     class AccountRegistry extends Shape({
-      id: String,
+      id: AccountRegistryId,
       index: Number,
     }) {
       increment(shouldFailInMiddle = false) {
@@ -379,7 +385,7 @@ describe("FirestoreEventStore", () => {
 
       static new() {
         return new AccountRegistry({
-          id: Math.random().toString().slice(2),
+          id: AccountRegistryId.deserialize(Math.random().toString().slice(2)),
           index: 0,
         });
       }

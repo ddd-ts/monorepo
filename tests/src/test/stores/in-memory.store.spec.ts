@@ -1,4 +1,4 @@
-import { StoreSuite, MyElementSerializer, MyElement } from "../store.suite";
+import { StoreSuite, MyElementSerializer, MyElement, MyElementId } from "../store.suite";
 import {
 	InMemoryStore,
 	InMemoryDatabase,
@@ -33,7 +33,7 @@ describe("InMemoryStore", () => {
 
 		await expect(
 			transactionPerformer.perform(async (transaction) => {
-				const element = new MyElement("myid", "timothee", false);
+				const element = new MyElement(MyElementId.deserialize("myid"), "timothee", false);
 				await store.save(element, transaction);
 				await store.load(element.id, transaction);
 			}),
@@ -44,7 +44,7 @@ describe("InMemoryStore", () => {
 		let uniqueId = 0;
 		const { store, transactionPerformer } = getStore();
 
-		const element = new MyElement("myid", "timothee", false);
+		const element = new MyElement(MyElementId.deserialize("myid"), "timothee", false);
 		await store.save(element);
 
 		let effectCalled = 0;
@@ -67,7 +67,7 @@ describe("InMemoryStore", () => {
 		let uniqueId = 0;
 		const { store, transactionPerformer } = getStore();
 
-		const element = new MyElement("myid", "timothee", false);
+		const element = new MyElement(MyElementId.deserialize("myid"), "timothee", false);
 		await store.save(element);
 
 		let effectCalled = 0;
@@ -96,7 +96,7 @@ describe("InMemoryStore", () => {
 		let uniqueId = 0;
 		const { store, transactionPerformer } = getStore();
 
-		const element = new MyElement("myid", "timothee", false);
+		const element = new MyElement(MyElementId.deserialize("myid"), "timothee", false);
 		await store.save(element);
 
 		let onCommitCalled = 0;

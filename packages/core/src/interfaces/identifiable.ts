@@ -1,4 +1,4 @@
-export type Identifier = { toString(): string };
+export type Identifier = { serialize(): string };
 
 export interface IIdentifiable {
   id: Identifier;
