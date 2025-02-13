@@ -3,8 +3,8 @@ import {
   type AggregateStreamId,
   type IChange,
 } from "@ddd-ts/core";
-import { Stream } from "./stream";
 import type { InMemoryTransaction } from "@ddd-ts/store-inmemory";
+import { Stream } from "./stream";
 
 export class InMemoryEventStore {
   private streams = new Map<string, Stream>();

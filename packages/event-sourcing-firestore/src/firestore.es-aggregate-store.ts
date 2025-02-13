@@ -2,6 +2,8 @@ import { HasTrait } from "@ddd-ts/traits";
 import {
   AggregateStreamId,
   ConcurrencyError,
+  EventOf,
+  EventsOf,
   EventSourced,
   type Identifiable,
   type IEsAggregateStore,
@@ -18,13 +20,11 @@ import type { FirestoreEventStore } from "./firestore.event-store";
 
 export const MakeFirestoreEsAggregateStore = <
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
-  E extends
-    InstanceType<A>["changes"][number] = InstanceType<A>["changes"][number],
 >(
   AGGREGATE: A,
 ) => {
   return class $FirestoreEsAggregateStore extends FirestoreEsAggregateStore<A> {
-    loadFirst(event: E): InstanceType<A> {
+    loadFirst(event: EventOf<A>): InstanceType<A> {
       return AGGREGATE.loadFirst(event);
     }
 
@@ -39,23 +39,17 @@ export const MakeFirestoreEsAggregateStore = <
 
 export abstract class FirestoreEsAggregateStore<
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
-  E extends
-    InstanceType<A>["changes"][number] = InstanceType<A>["changes"][number],
 > implements IEsAggregateStore<InstanceType<A>>
 {
   constructor(
     public readonly eventStore: FirestoreEventStore,
     public readonly transaction: FirestoreTransactionPerformer,
-    public readonly eventsSerializer: SerializerRegistry.For<
-      InstanceType<A>["changes"]
-    >,
+    public readonly eventsSerializer: SerializerRegistry.For<EventsOf<A>>,
     public readonly snapshotter: FirestoreSnapshotter<InstanceType<A>>,
   ) {}
 
   abstract getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId;
-  abstract loadFirst(
-    event: InstanceType<A>["changes"][number],
-  ): InstanceType<A>;
+  abstract loadFirst(event: EventOf<A>): InstanceType<A>;
 
   _publishEventsTo?: IEventBus;
   publishEventsTo(eventBus: IEventBus) {
@@ -71,7 +65,8 @@ export abstract class FirestoreEsAggregateStore<
     );
 
     for await (const serialized of stream) {
-      const event = await this.eventsSerializer.deserialize(serialized);
+      const event =
+        await this.eventsSerializer.deserialize<EventOf<A>>(serialized);
       snapshot.load(event);
     }
 
@@ -83,7 +78,8 @@ export abstract class FirestoreEsAggregateStore<
 
     let instance: InstanceType<A> | undefined = undefined;
     for await (const serialized of this.eventStore.read(streamId)) {
-      const event = await this.eventsSerializer.deserialize(serialized);
+      const event =
+        await this.eventsSerializer.deserialize<EventOf<A>>(serialized);
 
       if (!instance) {
         instance = this.loadFirst(event);

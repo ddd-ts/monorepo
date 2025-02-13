@@ -15,7 +15,14 @@ export {
 export { On, getHandler } from "./decorators/handlers";
 
 export type { IEsAggregateStore } from "./interfaces/es-aggregate-store";
-export type { IEsEvent, IChange, IFact } from "./interfaces/es-event";
+export type {
+  IEsEvent,
+  IChange,
+  IFact,
+  ISerializedEvent,
+  ISerializedChange,
+  ISerializedFact,
+} from "./interfaces/es-event";
 export type { IEventBus } from "./interfaces/event-bus";
 export type { IEventSourced } from "./interfaces/event-sourced";
 export type { IEventStore } from "./interfaces/event-store";
@@ -24,7 +31,7 @@ export type {
   IIdentifiable,
   Identifier,
 } from "./interfaces/identifiable";
-export type { INamed } from "./interfaces/named";
+export type { IKinded } from "./interfaces/kinded";
 export type { IProjection } from "./interfaces/projection";
 export type {
   ISerializer,
@@ -44,9 +51,13 @@ export { Projection } from "./makers/projection";
 export * from "./tools/iterator";
 export * from "./tools/queue";
 
-export { EventSourced } from "./traits/event-sourced";
+export {
+  EventSourced,
+  type EventsOf,
+  type EventOf,
+} from "./traits/event-sourced";
 export { Identifiable } from "./traits/identifiable";
-export { Named } from "./traits/named";
-export { Shaped, NamedShaped } from "./traits/shaped";
+export { Kinded } from "./traits/kinded";
+export { Shaped, KindedShaped } from "./traits/shaped";
 
 import "./metadata.polyfill";

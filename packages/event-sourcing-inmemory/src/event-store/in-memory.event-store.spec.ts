@@ -1,6 +1,7 @@
 import { EsAggregateStoreSuite } from "@ddd-ts/tests";
-import { InMemoryEventStore } from "./in-memory.event-store";
 import type { HasTrait } from "@ddd-ts/traits";
+import { Primitive, Shape } from "@ddd-ts/shape";
+import type { EventsOf, IEvent, IEventBus, ISerializer } from "@ddd-ts/core";
 import {
   AutoSerializer,
   EsAggregate,
@@ -10,15 +11,16 @@ import {
   type EventSourced,
   type Identifiable,
 } from "@ddd-ts/core";
-import type { IEvent, IEventBus, ISerializer } from "@ddd-ts/core";
-import { InMemorySnapshotter } from "../in-memory.snapshotter";
+
 import {
   InMemoryDatabase,
   InMemoryStore,
   InMemoryTransactionPerformer,
 } from "@ddd-ts/store-inmemory";
+
+import { InMemorySnapshotter } from "../in-memory.snapshotter";
 import { MakeInMemoryEsAggregateStore } from "../in-memory.es-aggregate-store";
-import { Primitive, Shape } from "../../../shape/dist";
+import { InMemoryEventStore } from "./in-memory.event-store";
 
 describe("InMemoryEventStore", () => {
   const database = new InMemoryDatabase();
@@ -28,7 +30,7 @@ describe("InMemoryEventStore", () => {
     T extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
   >(
     AGGREGATE: T,
-    eventSerializer: SerializerRegistry.For<InstanceType<T>["changes"]>,
+    eventSerializer: SerializerRegistry.For<EventsOf<T>>,
     serializer: ISerializer<InstanceType<T>>,
   ) {
     const snapshotter = new InMemorySnapshotter(
@@ -125,17 +127,18 @@ describe("InMemoryEventStore", () => {
       new (AutoSerializer(AccountRegistry, 1))(),
     );
 
+    const serializerRegistry = new SerializerRegistry()
+      .add(AccountOpened, new (AutoSerializer(AccountOpened, 1))())
+      .add(Account, new (AutoSerializer(Account, 1))());
+
     const accountStore = new (MakeInMemoryEsAggregateStore(Account))(
       eventStore,
       transaction,
-      new SerializerRegistry().add(
-        AccountOpened,
-        new (AutoSerializer(AccountOpened, 1))(),
-      ),
+      serializerRegistry,
       new InMemorySnapshotter(
         Account.name,
         database,
-        new (AutoSerializer(Account, 1))(),
+        serializerRegistry.get(Account),
       ),
     );
 

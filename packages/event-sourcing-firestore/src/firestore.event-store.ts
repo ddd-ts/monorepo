@@ -1,10 +1,9 @@
 import {
   AggregateStreamId,
-  ConcurrencyError,
-  IChange,
-  IFact,
+  type ISerializedChange,
+  type ISerializedFact,
 } from "@ddd-ts/core";
-import { ISerializedChange } from "@ddd-ts/core/dist/interfaces/es-event";
+
 import {
   DefaultConverter,
   FirestoreTransaction,
@@ -15,7 +14,7 @@ export class FirestoreEventStore {
   constructor(
     public readonly firestore: fb.firestore.Firestore,
     public readonly converter: fb.firestore.FirestoreDataConverter<fb.firestore.DocumentData> = new DefaultConverter(),
-  ) { }
+  ) {}
 
   get collection() {
     return this.firestore.collection("event-store");
@@ -29,7 +28,7 @@ export class FirestoreEventStore {
       .collection("events");
   }
 
-  async close() { }
+  async close() {}
 
   async bulkAppend(
     toAppend: {
@@ -79,14 +78,13 @@ export class FirestoreEventStore {
     expectedRevision: number,
     trx: FirestoreTransaction,
   ): Promise<void> {
-    await this.lockDocument(streamId, expectedRevision, trx);
     await this.commitChanges(streamId, changes, expectedRevision, trx);
   }
 
   async *read(
     streamId: AggregateStreamId,
     from?: number,
-  ): AsyncIterable<IFact> {
+  ): AsyncIterable<ISerializedFact> {
     const collection = this.getStream(streamId);
 
     const query = collection
@@ -100,6 +98,7 @@ export class FirestoreEventStore {
         id: data.eventId,
         revision: data.revision,
         name: data.name,
+        $kind: data.name,
         payload: data.payload,
         occurredAt: data.occurredAt,
         version: data.version ?? 1,
