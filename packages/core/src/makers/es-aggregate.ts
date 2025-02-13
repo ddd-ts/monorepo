@@ -3,16 +3,17 @@ import type { Constructor } from "@ddd-ts/types";
 
 import { EventSourced } from "../traits/event-sourced";
 import type { IEsEvent } from "../interfaces/es-event";
-import { Named } from "../traits/named";
+import { Kinded } from "../traits/kinded";
 import { Shape, type DictShorthand } from "@ddd-ts/shape";
 import { Identifiable } from "../traits/identifiable";
 import { Identifier } from "../interfaces/identifiable";
 import { TypedAutoSerializable } from "../components/auto-serializer";
+import { IKindedContructor } from "../interfaces/kinded";
 
 export const BasicEsAggregate = <
   const Name extends string,
   const Config extends {
-    events: Constructor<IEsEvent>[];
+    events: (IKindedContructor & Constructor<IEsEvent>)[];
   },
 >(
   name: Name,
@@ -20,10 +21,10 @@ export const BasicEsAggregate = <
 ) => {
   const base = Derive(
     Identifiable,
-    Named(name),
+    Kinded(name),
     EventSourced(config.events as Config["events"]),
   );
-  abstract class $EsAggregate extends base { }
+  abstract class $EsAggregate extends base {}
 
   return $EsAggregate;
 };
@@ -31,7 +32,7 @@ export const BasicEsAggregate = <
 export const SnapshottableEsAggregate = <
   const Name extends string,
   const Config extends {
-    events: Constructor<IEsEvent>[];
+    events: (IKindedContructor & Constructor<IEsEvent>)[];
     state: DictShorthand;
   },
 >(
@@ -42,7 +43,7 @@ export const SnapshottableEsAggregate = <
     config.state as Config["state"],
     Derive(
       Identifiable,
-      Named(name),
+      Kinded(name),
       EventSourced(config.events as Config["events"]),
     ),
   );
@@ -51,7 +52,7 @@ export const SnapshottableEsAggregate = <
 export const EsAggregate = <
   const Name extends string,
   const Config extends {
-    events: Constructor<IEsEvent>[];
+    events: (IKindedContructor & Constructor<IEsEvent>)[];
     state?: DictShorthand & { id: TypedAutoSerializable<Identifier> };
   },
 >(
