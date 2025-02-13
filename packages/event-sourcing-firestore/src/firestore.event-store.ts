@@ -46,32 +46,6 @@ export class FirestoreEventStore {
     );
   }
 
-  private async lockDocument(
-    streamId: AggregateStreamId,
-    expectedRevision: number,
-    trx: FirestoreTransaction,
-  ) {
-    // const collection = this.getStream(streamId);
-    // const [targetOp, prevOp] = [
-    //   trx.transaction.get(collection.doc(`${expectedRevision + 1}`)),
-    //   trx.transaction.get(collection.doc(`${expectedRevision}`)),
-    // ]
-    // const target = await targetOp;
-    // if (target.exists) {
-    //   throw new ConcurrencyError(
-    //     `Concurrency error on ${streamId.aggregate} ${streamId.id}`,
-    //   );
-    // }
-    // if (expectedRevision > -1) {
-    //   const previous = await prevOp;
-    //   if (!previous.exists) {
-    //     throw new Error(
-    //       `Expected revision ${expectedRevision} not found for ${streamId.aggregate} ${streamId.id}`,
-    //     );
-    //   }
-    // }
-  }
-
   private async commitChanges(
     streamId: AggregateStreamId,
     changes: ISerializedChange[],
@@ -92,6 +66,7 @@ export class FirestoreEventStore {
           name: change.name,
           payload: change.payload,
           occurredAt: serverTimestamp(),
+          version: change.version,
         }),
       );
       revision++;
@@ -127,6 +102,7 @@ export class FirestoreEventStore {
         name: data.name,
         payload: data.payload,
         occurredAt: data.occurredAt,
+        version: data.version ?? 1,
       };
     }
   }
