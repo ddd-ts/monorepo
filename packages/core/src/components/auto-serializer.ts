@@ -21,7 +21,7 @@ export const AutoSerializer = <
   return class $AutoSerializer implements ISerializer<Instance> {
     serialize(
       value: Instance,
-    ): ReturnType<Instance["serialize"]> & { version: V } {
+    ): { version: V } & ReturnType<Instance["serialize"]> {
       return {
         ...value.serialize(),
         version,
@@ -34,3 +34,9 @@ export const AutoSerializer = <
     }
   };
 };
+
+AutoSerializer.First = <T extends AutoSerializable>(of: T) =>
+  class FirstSerializer extends AutoSerializer(of, 1) {};
+
+AutoSerializer.first = <T extends AutoSerializable>(of: T) =>
+  new (class FirstSerializer extends AutoSerializer(of, 1) {})();
