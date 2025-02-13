@@ -4,7 +4,7 @@ import { Derive } from "@ddd-ts/traits";
 import type { IProjection } from "../interfaces/projection";
 import type { IEvent } from "../interfaces/event";
 import { getHandler } from "../decorators/handlers";
-import { Named } from "../traits/named";
+import { Kinded } from "../traits/kinded";
 
 export const Projection = <
   Name extends string,
@@ -15,7 +15,7 @@ export const Projection = <
 ) => {
   type Event = InstanceType<On[number]>;
 
-  return class $Projection extends Derive(Named(name)) implements IProjection {
+  return class $Projection extends Derive(Kinded(name)) implements IProjection {
     on = on;
 
     handle(event: Event) {

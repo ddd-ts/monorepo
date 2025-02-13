@@ -1,6 +1,6 @@
 import type { Constructor } from "@ddd-ts/types";
 import type { IEvent } from "../interfaces/event";
-import type { INamed } from "../interfaces/named";
+import type { IKinded } from "../interfaces/kinded";
 
 export function getHandler(target: any, name: any): Function | undefined {
   const handlers =
@@ -21,7 +21,7 @@ export function getHandler(target: any, name: any): Function | undefined {
 //   };
 // }
 
-export function On(EVENT: Constructor<IEvent> & INamed) {
+export function On(EVENT: Constructor<IEvent> & IKinded) {
   return (target: any, key: string, descriptor: PropertyDescriptor) => {
     const metadata = target[Symbol.metadata] || {};
     const handlers = metadata.handlers || new Map();

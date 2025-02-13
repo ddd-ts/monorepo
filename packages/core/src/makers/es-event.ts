@@ -7,7 +7,7 @@ import {
 import { type Constructor } from "@ddd-ts/types";
 import { EventId } from "../components/event-id";
 import { WithDerivations } from "@ddd-ts/traits";
-import { Named } from "../traits/named";
+import { Kinded } from "../traits/kinded";
 
 export const EsEvent = <
   const Name extends string,
@@ -37,6 +37,6 @@ export const EsEvent = <
       revision: Optional(Number),
       occurredAt: Optional(Date),
     },
-    WithDerivations($EsEvent, Named(name)),
+    WithDerivations($EsEvent, Kinded(name)),
   );
 };
