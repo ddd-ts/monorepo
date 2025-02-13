@@ -31,7 +31,7 @@ export const MakeFirestoreEsAggregateStore = <
     getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId {
       return new AggregateStreamId({
         aggregate: AGGREGATE.name,
-        id: id.toString(),
+        id: id.serialize(),
       });
     }
   };

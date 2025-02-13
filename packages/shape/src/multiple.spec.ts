@@ -1,7 +1,6 @@
 import { Multiple, MultipleConfiguration } from "./multiple";
 import { Dict } from "./dict";
 import { ex } from "./test";
-import { Expand, DefinitionOf } from "./_";
 
 describe("Multiple", () => {
   it("class definition", () => {

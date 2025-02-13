@@ -2,23 +2,26 @@ import { EsAggregate, EsEvent, On } from "@ddd-ts/core";
 import { AccountId } from "../account/account-id";
 
 import { v4 } from "uuid";
+import { Primitive } from "@ddd-ts/shape";
+
+export class TransferId extends Primitive(String) {}
 
 export class TransferInitiated extends EsEvent("TransferInitiated", {
-  transferId: String,
+  transferId: TransferId,
   from: AccountId,
   to: AccountId,
   amount: Number,
 }) {}
 
 export class TransferAmountClaimed extends EsEvent("TransferAmountClaimed", {
-  transferId: String,
+  transferId: TransferId,
 }) {}
 
 export class Transfer extends EsAggregate("Transfer", {
   events: [TransferInitiated, TransferAmountClaimed],
 }) {
   constructor(
-    public transferId: string,
+    public transferId: TransferId,
     public from: AccountId,
     public to: AccountId,
     public amount: number,
@@ -49,7 +52,7 @@ export class Transfer extends EsAggregate("Transfer", {
         amount,
         from,
         to,
-        transferId: v4(),
+        transferId: new TransferId(v4()),
       }),
     );
   }
@@ -59,7 +62,7 @@ export class Transfer extends EsAggregate("Transfer", {
   }
 
   static deserialize(
-    transferId: string,
+    transferId: TransferId,
     from: AccountId,
     to: AccountId,
     amount: number,

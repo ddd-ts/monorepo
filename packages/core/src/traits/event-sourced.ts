@@ -3,9 +3,7 @@ import type { Constructor } from "@ddd-ts/types";
 
 import type { IEsEvent } from "../interfaces/es-event";
 import type { IEventSourced } from "../interfaces/event-sourced";
-import { AggregateStreamId } from "../components/aggregate-stream-id";
 import { getHandler } from "../decorators/handlers";
-import type { Identifier } from "../interfaces/identifiable";
 
 type Config = Constructor<IEsEvent>[];
 

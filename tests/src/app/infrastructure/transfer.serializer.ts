@@ -3,15 +3,16 @@ import { AccountId } from "../domain/write/account/account-id";
 import {
   Transfer,
   TransferAmountClaimed,
+  TransferId,
   TransferInitiated,
 } from "../domain/write/transfer/transfer";
 
 export class TransferSerializer implements ISerializer<Transfer> {
   serialize(model: Transfer) {
     return {
-      id: model.transferId.toString(),
-      from: model.from.toString(),
-      to: model.to.toString(),
+      id: model.transferId.serialize(),
+      from: model.from.serialize(),
+      to: model.to.serialize(),
       amount: model.amount,
       amountClaimed: model.amountClaimed,
       version: 1,
@@ -20,7 +21,7 @@ export class TransferSerializer implements ISerializer<Transfer> {
 
   async deserialize(serialized: Serialized<this>) {
     return new Transfer(
-      serialized.id,
+      TransferId.deserialize(serialized.id),
       AccountId.deserialize(serialized.from),
       AccountId.deserialize(serialized.to),
       serialized.amount,
