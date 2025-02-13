@@ -7,7 +7,7 @@ import {
   FirestoreTransactionPerformer,
 } from "@ddd-ts/store-firestore";
 import { Firestore } from "firebase-admin/firestore";
-import { StoreSuite, MyElementSerializer, MyElement } from "../store.suite";
+import { StoreSuite, MyElementSerializer, MyElement, MyElementId } from "../store.suite";
 import type { Store } from "@ddd-ts/core";
 
 class MyElementStore
@@ -42,7 +42,7 @@ describe("FirestoreStore", () => {
     const elements = [...Array.from({ length: 100 }).keys()].map(
       (_, index) =>
         new MyElement(
-          index.toString(),
+          MyElementId.deserialize(index.toString()),
           `name-${index.toString()}`,
           index % 2 === 0,
         ),

@@ -53,7 +53,7 @@ export class FirestoreSnapshotter<
         .collection("test-snapshots")
         .doc(this.aggregate)
         .collection("snapshots")
-        .doc(snapshot.id.toString())
+        .doc(snapshot.id.serialize())
         .collection("versions")
         .doc(
           `${snapshot.acknowledgedRevision}`

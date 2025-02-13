@@ -29,7 +29,7 @@ export const MakeInMemoryEsAggregateStore = <
     getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId {
       return new AggregateStreamId({
         aggregate: AGGREGATE.name,
-        id: id.toString(),
+        id: id.serialize(),
       });
     }
   };
@@ -61,7 +61,7 @@ export abstract class InMemoryEsAggregateStore<
   async load(id: InstanceType<A>["id"]) {
     const streamId = this.getAggregateStreamId(id);
 
-    const snapshot = await this.snapshotter?.load(streamId);
+    const snapshot = await this.snapshotter?.load(id);
 
     if (snapshot) {
       const stream = this.eventStore.read(

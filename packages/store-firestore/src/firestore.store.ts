@@ -88,7 +88,7 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
 
   async save(model: M, trx?: FirestoreTransaction): Promise<void> {
     const serialized = await this.serializer.serialize(model);
-    const ref = this.collection.doc(model.id.toString());
+    const ref = this.collection.doc(model.id.serialize());
 
     trx ? trx.transaction.set(ref, serialized) : await ref.set(serialized);
   }
@@ -98,7 +98,7 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
   }
 
   async load(id: M["id"], trx?: FirestoreTransaction): Promise<M | undefined> {
-    const ref = this.collection.doc(id.toString());
+    const ref = this.collection.doc(id.serialize());
 
     const snapshot = trx ? await trx.transaction.get(ref) : await ref.get();
 
@@ -107,7 +107,7 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
     }
 
     return this.serializer.deserialize({
-      id: id.toString(),
+      id: id.serialize(),
       ...(snapshot.data() as any),
     });
   }
@@ -129,9 +129,9 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
 
   async delete(id: M["id"], trx?: FirestoreTransaction): Promise<void> {
     if (trx) {
-      trx.transaction.delete(this.collection.doc(id.toString()));
+      trx.transaction.delete(this.collection.doc(id.serialize()));
     } else {
-      await this.collection.doc(id.toString()).delete();
+      await this.collection.doc(id.serialize()).delete();
     }
   }
 

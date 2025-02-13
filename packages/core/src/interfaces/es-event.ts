@@ -15,3 +15,11 @@ export interface IEsEvent<Name extends string = string, Payload = any>
   occurredAt?: Date;
   revision?: number;
 }
+
+export interface ISerializedChange {
+  name: string;
+  id: string;
+  occurredAt: undefined;
+  revision: undefined;
+  payload: any;
+}
