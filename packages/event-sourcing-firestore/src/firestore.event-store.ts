@@ -98,7 +98,7 @@ export class FirestoreEventStore {
         id: data.eventId,
         revision: data.revision,
         name: data.name,
-        $kind: data.name,
+        $name: data.name,
         payload: data.payload,
         occurredAt: data.occurredAt,
         version: data.version ?? 1,

@@ -88,9 +88,9 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
 
   async save(model: M, trx?: FirestoreTransaction): Promise<void> {
     const serialized = await this.serializer.serialize(model);
-    if ("$kind" in serialized) {
+    if ("$name" in serialized) {
       // biome-ignore lint/performance/noDelete: <explanation>
-      delete serialized.$kind;
+      delete serialized.$name;
     }
 
     const ref = this.collection.doc(model.id.serialize());

@@ -4,13 +4,13 @@ import type { Constructor } from "@ddd-ts/types";
 import type { IEsEvent } from "../interfaces/es-event";
 import type { IEventSourced } from "../interfaces/event-sourced";
 import { getHandler } from "../decorators/handlers";
-import { IKinded } from "../interfaces/kinded";
+import { INamed } from "../interfaces/named";
 
-type Config = (IKinded & Constructor<IEsEvent & IKinded>)[];
+type Config = (INamed & Constructor<IEsEvent & INamed>)[];
 
 export const EventSourced = <C extends Config>(config: C) =>
   Trait((base) => {
-    type Event = InstanceType<C[number]> & IKinded;
+    type Event = InstanceType<C[number]> & INamed;
     abstract class $EventSourced extends base implements IEventSourced<Event> {
       acknowledgedRevision = -1;
       changes: Event[] = [];

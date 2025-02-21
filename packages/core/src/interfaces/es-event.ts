@@ -17,7 +17,7 @@ export interface IEsEvent<Name extends string = string, Payload = any>
 }
 
 export interface ISerializedEvent {
-  $kind: string;
+  $name: string;
   name: string;
   id: string;
   occurredAt?: Date;
@@ -27,7 +27,7 @@ export interface ISerializedEvent {
 }
 
 export interface ISerializedChange {
-  $kind: string;
+  $name: string;
   name: string;
   id: string;
   occurredAt: undefined;
@@ -37,7 +37,7 @@ export interface ISerializedChange {
 }
 
 export interface ISerializedFact {
-  $kind: string;
+  $name: string;
   name: string;
   id: string;
   occurredAt: Date;
