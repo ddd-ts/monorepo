@@ -9,6 +9,7 @@ import { Identifiable } from "../traits/identifiable";
 import { Identifier } from "../interfaces/identifiable";
 import { TypedAutoSerializable } from "../components/auto-serializer";
 import { INamedContructor } from "../interfaces/named";
+import { Serialized } from "../interfaces/serializer";
 
 export const BasicEsAggregate = <
   const Name extends string,
@@ -20,11 +21,11 @@ export const BasicEsAggregate = <
   config: Config,
 ) => {
   const base = Derive(
-    Identifiable,
+    Identifiable(),
     Named(name),
     EventSourced(config.events as Config["events"]),
   );
-  abstract class $EsAggregate extends base {}
+  abstract class $EsAggregate extends base { }
 
   return $EsAggregate;
 };
@@ -33,7 +34,7 @@ export const SnapshottableEsAggregate = <
   const Name extends string,
   const Config extends {
     events: (INamedContructor & Constructor<IEsEvent>)[];
-    state: DictShorthand;
+    state: DictShorthand & { id: TypedAutoSerializable<Identifier> };
   },
 >(
   name: Name,
@@ -42,7 +43,7 @@ export const SnapshottableEsAggregate = <
   return Shape(
     config.state as Config["state"],
     Derive(
-      Identifiable,
+      Identifiable<Serialized<InstanceType<Config['state']['id']>>>(),
       Named(name),
       EventSourced(config.events as Config["events"]),
     ),
