@@ -12,7 +12,7 @@ export type DictShorthand = { [key: string]: Shorthand };
 
 type Internal<S extends DictShorthand, B extends AbstractConstructor<{}>> = {
   Definition: { -readonly [K in keyof S]: DefinitionOf<S[K]> };
-  Serialized: (B extends { $kind: infer U } ? { $kind: U } : {}) & {
+  Serialized: (B extends { $name: infer U } ? { $name: U } : {}) & {
     -readonly [K in keyof S]: ReturnType<DefinitionOf<S[K]>["$serialize"]>;
   };
   Inline: {
@@ -75,8 +75,8 @@ export const Dict = <
       });
       const merge = Object.fromEntries(transform);
 
-      if ("$kind" in base) {
-        return { ...merge, $kind: base.$kind } as any;
+      if ("$name" in base) {
+        return { ...merge, $name: base.$name } as any;
       }
 
       return merge as any;

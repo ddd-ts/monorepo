@@ -31,7 +31,7 @@ export type {
   IIdentifiable,
   Identifier,
 } from "./interfaces/identifiable";
-export type { IKinded } from "./interfaces/kinded";
+export type { INamed } from "./interfaces/named";
 export type { IProjection } from "./interfaces/projection";
 export type {
   ISerializer,
@@ -57,7 +57,7 @@ export {
   type EventOf,
 } from "./traits/event-sourced";
 export { Identifiable } from "./traits/identifiable";
-export { Kinded } from "./traits/kinded";
-export { Shaped, KindedShaped } from "./traits/shaped";
+export { Named } from "./traits/named";
+export { Shaped, NamedShape } from "./traits/shaped";
 
 import "./metadata.polyfill";
