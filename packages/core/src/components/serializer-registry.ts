@@ -1,5 +1,5 @@
 import type { INamed, INamedContructor } from "../interfaces/named";
-import { ISerializer, type Serialized } from "../interfaces/serializer";
+import { ISerializer, PromiseOr, type Serialized } from "../interfaces/serializer";
 import { AutoSerializable, AutoSerializer } from "./auto-serializer";
 
 type IsStringLiteral<T> = [string] extends [T] ? false : true;
@@ -51,7 +51,7 @@ export class SerializerRegistry<
     this: TH,
     instance: IsStringLiteral<I["$name"]> extends true ? I : never,
   ): TH extends SerializerRegistry<infer RRR, any>
-    ? Pretty<ReturnType<Extract<RRR[number], [I, any]>[1]["serialize"]>>
+    ? PromiseOr<Pretty<ReturnType<Extract<RRR[number], [I, any]>[1]["serialize"]>>>
     : never;
   serialize<
     const I extends INamed,
@@ -59,8 +59,8 @@ export class SerializerRegistry<
   >(
     this: TH,
     instance: I,
-  ): Pretty<Serialized<ISerializer<I, INamed<I["$name"]>>>>;
-  serialize(instance: INamed): unknown {
+  ): PromiseOr<Pretty<Serialized<ISerializer<I, INamed<I["$name"]>>>>>;
+  serialize(instance: INamed): PromiseOr<unknown> {
     const name = instance.$name;
     const serializer = this.store.get(name);
     if (!serializer) {
@@ -76,11 +76,11 @@ export class SerializerRegistry<
     this: TH,
     serialized: IsStringLiteral<S["$name"]> extends true ? S : never,
   ): TH extends SerializerRegistry<infer RRR, any>
-    ? Extract<RRR[number], [INamed<S["$name"]>, any]>[0]
+    ? PromiseOr<Extract<RRR[number], [INamed<S["$name"]>, any]>[0]>
     : never;
-  deserialize<const I extends Instances>(serialized: unknown): NoInfer<I>;
+  deserialize<const I extends Instances>(serialized: unknown): PromiseOr<NoInfer<I>>;
   // deserialize(serialized: unknown): unknown;
-  deserialize(serialized: unknown): unknown {
+  deserialize(serialized: unknown): PromiseOr<unknown> {
     const name =
       typeof serialized === "object" &&
       serialized !== null &&

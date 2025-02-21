@@ -121,7 +121,7 @@ async function concrete() {
   generic(A.new(), B.new(), r);
 }
 
-{
+async function abstract() {
   class A extends EsEvent("A", { value: String }) { }
   class AS extends AutoSerializer(A, 1) { }
 
@@ -144,7 +144,7 @@ async function concrete() {
   type ET = Expected["serialize"];
   const c: ET = {} as AT;
 
-  const a: Serialized<AS> = registry.serialize(A.new({ value: "test" }));
+  const a: Serialized<AS> = await registry.serialize(A.new({ value: "test" }));
   const r: Expected = registry;
 }
 
