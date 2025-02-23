@@ -46,11 +46,13 @@ export const Mapping = <
 
   const { $key, $value } = { $key: _key, $value: _value };
 
-  type Definition = MappingOf<C>["value"];
+  type D = MappingOf<C>["value"];
   type K = MappingOf<C>["key"];
   type Key = MappingKeyRuntimeFromConstructor<K>;
-  type Serialized = Record<Key, ReturnType<Definition["$serialize"]>>;
-  type Inline = Record<Key, Definition["$inline"]>;
+  type Serialized = Record<Key, ReturnType<D["$serialize"]>>;
+  type Inline = Record<Key, D["$inline"]>;
+
+  const valueDefinition = Shape($value) as Definition;
 
   abstract class $Mapping extends (base as any as Constructor<{}>) {
     constructor(public value: Inline) {
@@ -76,8 +78,7 @@ export const Mapping = <
     ): Inline {
       const split = Object.entries(value);
       const transform = split.map(([key, child]) => {
-        const longhand = Shape(_value) as any;
-        const deserialized = longhand.$deserialize(child as any);
+        const deserialized = valueDefinition.$deserialize(child as any);
         return [key, deserialized] as const;
       });
       return Object.fromEntries(transform) as any;
@@ -89,8 +90,7 @@ export const Mapping = <
     ): Serialized {
       const split = Object.entries(value);
       const transform = split.map(([key, child]) => {
-        const longhand = Shape($value) as any;
-        const serialized = longhand.$serialize(child as any);
+        const serialized = valueDefinition.$serialize(child as any);
         return [key, serialized];
       });
       const merge = Object.fromEntries(transform);

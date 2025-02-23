@@ -7,7 +7,6 @@ import {
   Empty,
 } from "./_";
 import { ClassShorthand } from "./class";
-import { PrimitiveShorthand } from "./primitive";
 
 type Config = { [key: string]: any };
 
@@ -71,22 +70,22 @@ export const Either = <
     match<
       M extends Matcher<S>,
       F extends M extends ExhaustiveMatcher<S>
-      ? []
-      : M extends UnsafeFallthroughMatcher<S>
-      ? []
-      : M extends PartialMatcher<S>
-      ? [
-        fallback: (
-          value: InstanceType<Omit<S, keyof M>[keyof Omit<S, keyof M>]>,
-        ) => any,
-      ]
-      : [],
+        ? []
+        : M extends UnsafeFallthroughMatcher<S>
+          ? []
+          : M extends PartialMatcher<S>
+            ? [
+                fallback: (
+                  value: InstanceType<Omit<S, keyof M>[keyof Omit<S, keyof M>]>,
+                ) => any,
+              ]
+            : [],
     >(
       ...[matcher, fallback]: [matcher: M, ...F]
     ):
       | (M[keyof M] extends (...args: any[]) => any
-        ? ReturnType<M[keyof M]>
-        : never)
+          ? ReturnType<M[keyof M]>
+          : never)
       | (F[0] extends (...args: any[]) => any ? ReturnType<F[0]> : never) {
       const key: any = Object.entries(of).find(
         ([_, v]) => v === ((this.value as any).constructor as any),
