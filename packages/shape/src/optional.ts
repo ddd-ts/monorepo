@@ -27,6 +27,8 @@ export const Optional = <
   of: S,
   base: B = Empty as any,
 ) => {
+  const definition = Shape(of) as Definition;
+
   abstract class $Optional extends (base as any as Constructor<{}>) {
     constructor(public value: Cache["Inline"]) {
       super();
@@ -58,16 +60,14 @@ export const Optional = <
       if (value === undefined) {
         return undefined;
       }
-      return (Shape(of) as any).$deserialize(value);
+      return definition.$deserialize(value);
     }
 
     static $serialize<T extends typeof $Optional>(
       this: T,
       value: Cache["Inline"],
     ): Cache["Serialized"] {
-      return value === undefined
-        ? undefined
-        : (Shape(of) as any).$serialize(value);
+      return value === undefined ? undefined : definition.$serialize(value);
     }
 
     static $inline: Cache["Inline"];
