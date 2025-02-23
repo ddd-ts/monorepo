@@ -52,14 +52,14 @@ async function concrete() {
 
   A.new().serialize();
 
-  class ASerializer extends AutoSerializer(A, 1) { }
+  class ASerializer extends AutoSerializer(A, 1) {}
   class B extends Derive(NamedShape("B", { value: Number })) {
     static new() {
       return new B({ value: 2 });
     }
   }
   new ASerializer().serialize;
-  class BSerializer extends AutoSerializer(B, 1) { }
+  class BSerializer extends AutoSerializer(B, 1) {}
 
   const r = new SerializerRegistry()
     .add(A, new ASerializer())
@@ -122,14 +122,14 @@ async function concrete() {
 }
 
 async function abstract() {
-  class A extends EsEvent("A", { value: String }) { }
-  class AS extends AutoSerializer(A, 1) { }
+  class A extends EsEvent("A", { value: String }) {}
+  class AS extends AutoSerializer(A, 1) {}
 
-  class B extends EsEvent("B", { value: Number }) { }
-  class BS extends AutoSerializer(B, 1) { }
+  class B extends EsEvent("B", { value: Number }) {}
+  class BS extends AutoSerializer(B, 1) {}
 
-  class C extends EsEvent("C", { value: Date }) { }
-  class CS extends AutoSerializer(C, 1) { }
+  class C extends EsEvent("C", { value: Date }) {}
+  class CS extends AutoSerializer(C, 1) {}
 
   const registry = new SerializerRegistry()
     .add(A, new AS())
@@ -146,6 +146,28 @@ async function abstract() {
 
   const a: Serialized<AS> = await registry.serialize(A.new({ value: "test" }));
   const r: Expected = registry;
+}
+
+async function merge() {
+  class A extends EsEvent("A", { value: String }) {}
+  class AS extends AutoSerializer(A, 1) {}
+  function moduleA() {
+    return new SerializerRegistry().add(A, new AS());
+  }
+
+  class B extends EsEvent("B", { value: Number }) {}
+  class BS extends AutoSerializer(B, 1) {}
+  function moduleB() {
+    return new SerializerRegistry().add(B, new BS());
+  }
+
+  const mergedInstance = moduleA().merge(moduleB());
+  const mergedStatic = SerializerRegistry.merge(moduleA(), moduleB());
+
+  const resultInstance = await mergedInstance.serialize(
+    A.new({ value: "test" }),
+  );
+  const resultStatic = await mergedStatic.serialize(A.new({ value: "test" }));
 }
 
 it("pass", () => {
