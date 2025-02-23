@@ -1,5 +1,9 @@
 import type { INamed, INamedContructor } from "../interfaces/named";
-import { ISerializer, PromiseOr, type Serialized } from "../interfaces/serializer";
+import {
+  ISerializer,
+  PromiseOr,
+  type Serialized,
+} from "../interfaces/serializer";
 import { AutoSerializable, AutoSerializer } from "./auto-serializer";
 
 type IsStringLiteral<T> = [string] extends [T] ? false : true;
@@ -35,6 +39,7 @@ export class SerializerRegistry<
       [...R, [InstanceType<Class>, S]]
     >;
   }
+
   get<const I extends Instances["$name"]>(
     name: I | INamed<I>,
   ): this extends SerializerRegistry<infer RRR, any>
@@ -44,6 +49,34 @@ export class SerializerRegistry<
     return this.store.get(key as any);
   }
 
+  merge<
+    TH extends SerializerRegistry<any, any>,
+    OTHER extends SerializerRegistry<any, any>,
+  >(this: TH, other: OTHER) {
+    return SerializerRegistry.merge(this, other);
+  }
+
+  static merge<
+    LEFT extends SerializerRegistry<any, any>,
+    RIGHT extends SerializerRegistry<any, any>,
+  >(
+    left: LEFT,
+    right: RIGHT,
+  ): LEFT extends SerializerRegistry<infer LEFT_R, infer LEFT_I>
+    ? RIGHT extends SerializerRegistry<infer RIGHT_R, infer RIGHT_I>
+      ? SerializerRegistry<[...LEFT_R, ...RIGHT_R], LEFT_I | RIGHT_I>
+      : never
+    : never {
+    const merged = new SerializerRegistry();
+    for (const [key, value] of left.store) {
+      merged.store.set(key, value);
+    }
+    for (const [key, value] of right.store) {
+      merged.store.set(key, value);
+    }
+    return merged as any;
+  }
+
   serialize<
     const I extends INamed,
     const TH extends SerializerRegistry<any, I>,
@@ -51,7 +84,9 @@ export class SerializerRegistry<
     this: TH,
     instance: IsStringLiteral<I["$name"]> extends true ? I : never,
   ): TH extends SerializerRegistry<infer RRR, any>
-    ? PromiseOr<Pretty<ReturnType<Extract<RRR[number], [I, any]>[1]["serialize"]>>>
+    ? PromiseOr<
+        Pretty<ReturnType<Extract<RRR[number], [I, any]>[1]["serialize"]>>
+      >
     : never;
   serialize<
     const I extends INamed,
@@ -78,7 +113,9 @@ export class SerializerRegistry<
   ): TH extends SerializerRegistry<infer RRR, any>
     ? PromiseOr<Extract<RRR[number], [INamed<S["$name"]>, any]>[0]>
     : never;
-  deserialize<const I extends Instances>(serialized: unknown): PromiseOr<NoInfer<I>>;
+  deserialize<const I extends Instances>(
+    serialized: unknown,
+  ): PromiseOr<NoInfer<I>>;
   // deserialize(serialized: unknown): unknown;
   deserialize(serialized: unknown): PromiseOr<unknown> {
     const name =
