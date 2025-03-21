@@ -5,6 +5,7 @@ import { SerializerRegistry } from "./serializer-registry";
 import { AutoSerializer } from "./auto-serializer";
 import { NamedShape } from "../traits/shaped";
 import { EsEvent } from "../makers/es-event";
+import { Shape } from "@ddd-ts/shape";
 
 async function generic<X extends INamed, Y extends INamed>(
   x: X,
@@ -52,14 +53,14 @@ async function concrete() {
 
   A.new().serialize();
 
-  class ASerializer extends AutoSerializer(A, 1) {}
+  class ASerializer extends AutoSerializer(A, 1) { }
   class B extends Derive(NamedShape("B", { value: Number })) {
     static new() {
       return new B({ value: 2 });
     }
   }
   new ASerializer().serialize;
-  class BSerializer extends AutoSerializer(B, 1) {}
+  class BSerializer extends AutoSerializer(B, 1) { }
 
   const r = new SerializerRegistry()
     .add(A, new ASerializer())
@@ -122,14 +123,14 @@ async function concrete() {
 }
 
 async function abstract() {
-  class A extends EsEvent("A", { value: String }) {}
-  class AS extends AutoSerializer(A, 1) {}
+  class A extends EsEvent("A", { value: String }) { }
+  class AS extends AutoSerializer(A, 1) { }
 
-  class B extends EsEvent("B", { value: Number }) {}
-  class BS extends AutoSerializer(B, 1) {}
+  class B extends EsEvent("B", { value: Number }) { }
+  class BS extends AutoSerializer(B, 1) { }
 
-  class C extends EsEvent("C", { value: Date }) {}
-  class CS extends AutoSerializer(C, 1) {}
+  class C extends EsEvent("C", { value: Date }) { }
+  class CS extends AutoSerializer(C, 1) { }
 
   const registry = new SerializerRegistry()
     .add(A, new AS())
@@ -149,14 +150,14 @@ async function abstract() {
 }
 
 async function merge() {
-  class A extends EsEvent("A", { value: String }) {}
-  class AS extends AutoSerializer(A, 1) {}
+  class A extends EsEvent("A", { value: String }) { }
+  class AS extends AutoSerializer(A, 1) { }
   function moduleA() {
     return new SerializerRegistry().add(A, new AS());
   }
 
-  class B extends EsEvent("B", { value: Number }) {}
-  class BS extends AutoSerializer(B, 1) {}
+  class B extends EsEvent("B", { value: Number }) { }
+  class BS extends AutoSerializer(B, 1) { }
   function moduleB() {
     return new SerializerRegistry().add(B, new BS());
   }
@@ -168,6 +169,29 @@ async function merge() {
     A.new({ value: "test" }),
   );
   const resultStatic = await mergedStatic.serialize(A.new({ value: "test" }));
+}
+
+type Valid<T> = never extends T ? false : true;
+
+async function mergeChain() {
+  class A extends Derive(NamedShape("A", { string: String })) { }
+  class ASerializer extends AutoSerializer(A, 1) { }
+  const aSerializerRegistry = new SerializerRegistry().add(A, new ASerializer())
+
+  class B extends Derive(NamedShape("B", { number: Number })) { }
+  class BSerializer extends AutoSerializer(B, 1) { }
+  const bSerializerRegistry = new SerializerRegistry().add(B, new BSerializer())
+
+  class C extends Derive(NamedShape("C", { boolean: Boolean })) { }
+  class CSerializer extends AutoSerializer(C, 1) { }
+  const cSerializerRegistry = new SerializerRegistry().add(C, new CSerializer())
+
+  class D extends Derive(NamedShape("D", { boolean: Boolean })) { }
+  class DSerializer extends AutoSerializer(D, 1) { }
+  const dSerializerRegistry = new SerializerRegistry().add(D, new DSerializer())
+
+  const a = new SerializerRegistry().merge(aSerializerRegistry).merge(bSerializerRegistry).merge(cSerializerRegistry).merge(dSerializerRegistry);
+  const b: SerializerRegistry.For<[A, B, C]> = a;
 }
 
 it("pass", () => {
