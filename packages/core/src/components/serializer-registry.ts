@@ -12,6 +12,12 @@ type Pretty<T> = {
   [K in keyof T]: T[K];
 } & {};
 
+type Merge<LEFT, RIGHT> = LEFT extends SerializerRegistry<infer LEFT_R, infer LEFT_I>
+  ? RIGHT extends SerializerRegistry<infer RIGHT_R, infer RIGHT_I>
+  ? SerializerRegistry<[...LEFT_R, ...RIGHT_R], [...LEFT_R, ...RIGHT_R][number][0]>
+  : never
+  : never
+
 export class SerializerRegistry<
   R extends [INamed, ISerializer<INamed, INamed>][] = [],
   Instances extends R[number][0] = R[number][0],
@@ -50,10 +56,14 @@ export class SerializerRegistry<
   }
 
   merge<
+    TH extends SerializerRegistry<any, never>,
+    OTHER extends SerializerRegistry<any, any>,
+  >(this: TH, other: OTHER): Merge<TH, OTHER>
+  merge<
     TH extends SerializerRegistry<any, any>,
     OTHER extends SerializerRegistry<any, any>,
-  >(this: TH, other: OTHER) {
-    return SerializerRegistry.merge(this, other);
+  >(this: TH, other: OTHER): Merge<TH, OTHER> {
+    return SerializerRegistry.merge(this as any, other) as any;
   }
 
   static merge<
@@ -62,16 +72,15 @@ export class SerializerRegistry<
   >(
     left: LEFT,
     right: RIGHT,
-  ): LEFT extends SerializerRegistry<infer LEFT_R, infer LEFT_I>
-    ? RIGHT extends SerializerRegistry<infer RIGHT_R, infer RIGHT_I>
-      ? SerializerRegistry<[...LEFT_R, ...RIGHT_R], LEFT_I | RIGHT_I>
-      : never
-    : never {
+  ): Merge<LEFT, RIGHT> {
     const merged = new SerializerRegistry();
     for (const [key, value] of left.store) {
       merged.store.set(key, value);
     }
     for (const [key, value] of right.store) {
+      if (merged.store.has(key)) {
+        throw new Error("Serializer already exists in left");
+      }
       merged.store.set(key, value);
     }
     return merged as any;
@@ -85,8 +94,8 @@ export class SerializerRegistry<
     instance: IsStringLiteral<I["$name"]> extends true ? I : never,
   ): TH extends SerializerRegistry<infer RRR, any>
     ? PromiseOr<
-        Pretty<ReturnType<Extract<RRR[number], [I, any]>[1]["serialize"]>>
-      >
+      Pretty<ReturnType<Extract<RRR[number], [I, any]>[1]["serialize"]>>
+    >
     : never;
   serialize<
     const I extends INamed,
