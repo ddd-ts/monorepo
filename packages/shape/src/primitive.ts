@@ -47,6 +47,9 @@ export const Primitive = <
     }
 
     static $deserialize(value: Inline): Inline {
+      if (of === Date && typeof value === "string") {
+        return new Date(value);
+      }
       return value;
     }
 
