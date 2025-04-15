@@ -1,4 +1,4 @@
-import { type IFact, type IEsEvent, ISerializedEvent, ISerializedFact } from "@ddd-ts/core";
+import { type IFact, type IEsEvent, ISerializedEvent, ISerializedFact, EventId } from "@ddd-ts/core";
 
 export class Stream {
   facts: ISerializedFact[] = [];
@@ -30,6 +30,25 @@ export class Stream {
   *read(from = 0) {
     for (let i = from; i < this.facts.length; i++) {
       yield this.facts[i];
+    }
+  }
+
+  *readLake(startAfter?: EventId, endAt?: EventId){
+    let started = !startAfter;
+    for(const fact of this.facts){
+      if(!started && startAfter && fact.id === startAfter.serialize()){
+        started = true;
+        continue;
+      }
+
+      if(started && endAt && fact.id === endAt.serialize()){
+        yield fact;
+        break;
+      }
+
+      if (started) {
+        yield fact;
+      }
     }
   }
 }
