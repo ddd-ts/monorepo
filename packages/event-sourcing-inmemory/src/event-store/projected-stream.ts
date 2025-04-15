@@ -1,9 +1,9 @@
-import { closeable, type IFact, map, Queue } from "@ddd-ts/core";
+import { closeable, type ISerializedFact, map, Queue } from "@ddd-ts/core";
 import { Stream } from "./stream";
 
 export class ProjectedStream extends Stream {
-  followers = new Set<Queue<IFact>>();
-  competitions = new Map<string, Queue<IFact>>();
+  followers = new Set<Queue<ISerializedFact>>();
+  competitions = new Map<string, Queue<ISerializedFact>>();
 
   onCloseCallbacks: any[] = [];
 
@@ -12,7 +12,7 @@ export class ProjectedStream extends Stream {
   }
 
   async follow(from = 0) {
-    const follower = new Queue<IFact>();
+    const follower = new Queue<ISerializedFact>();
     this.followers.add(follower);
 
     for await (const fact of this.read(from)) {
@@ -31,7 +31,7 @@ export class ProjectedStream extends Stream {
 
   private getCompetition(competitionName: string) {
     if (!this.competitions.has(competitionName)) {
-      const competition = new Queue<IFact>();
+      const competition = new Queue<ISerializedFact>();
       const unsubscribe = this.subscribe((fact) => {
         competition.push(fact);
       });

@@ -1,6 +1,6 @@
 import { HasTrait } from "@ddd-ts/traits";
 import {
-  AggregateStreamId,
+  StreamId,
   ConcurrencyError,
   EventOf,
   EventsOf,
@@ -16,7 +16,7 @@ import type {
 } from "@ddd-ts/store-firestore";
 
 import type { FirestoreSnapshotter } from "./firestore.snapshotter";
-import type { FirestoreEventStore } from "./firestore.event-store";
+import type { FirestoreEventStreamStore } from "./firestore.event-stream-store";
 
 export const MakeFirestoreEsAggregateStore = <
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
@@ -28,11 +28,8 @@ export const MakeFirestoreEsAggregateStore = <
       return AGGREGATE.loadFirst(event);
     }
 
-    getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId {
-      return new AggregateStreamId({
-        aggregate: AGGREGATE.name,
-        id: id.serialize(),
-      });
+    getStreamId(id: InstanceType<A>["id"]): StreamId {
+      return StreamId.from(AGGREGATE.name, id.serialize());
     }
   };
 };
@@ -42,13 +39,13 @@ export abstract class FirestoreEsAggregateStore<
 > implements IEsAggregateStore<InstanceType<A>>
 {
   constructor(
-    public readonly eventStore: FirestoreEventStore,
+    public readonly streamStore: FirestoreEventStreamStore,
     public readonly transaction: FirestoreTransactionPerformer,
     public readonly eventsSerializer: SerializerRegistry.For<EventsOf<A>>,
     public readonly snapshotter: FirestoreSnapshotter<InstanceType<A>>,
   ) {}
 
-  abstract getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId;
+  abstract getStreamId(id: InstanceType<A>["id"]): StreamId;
   abstract loadFirst(event: EventOf<A>): InstanceType<A>;
 
   _publishEventsTo?: IEventBus;
@@ -57,9 +54,9 @@ export abstract class FirestoreEsAggregateStore<
   }
 
   async loadFromSnapshot(snapshot: InstanceType<A>) {
-    const streamId = this.getAggregateStreamId(snapshot.id);
+    const streamId = this.getStreamId(snapshot.id);
 
-    const stream = this.eventStore.read(
+    const stream = this.streamStore.read(
       streamId,
       snapshot.acknowledgedRevision + 1,
     );
@@ -74,10 +71,10 @@ export abstract class FirestoreEsAggregateStore<
   }
 
   async loadFromScratch(id: InstanceType<A>["id"]) {
-    const streamId = this.getAggregateStreamId(id);
+    const streamId = this.getStreamId(id);
 
     let instance: InstanceType<A> | undefined = undefined;
-    for await (const serialized of this.eventStore.read(streamId)) {
+    for await (const serialized of this.streamStore.read(streamId)) {
       const event =
         await this.eventsSerializer.deserialize<EventOf<A>>(serialized);
 
@@ -145,7 +142,7 @@ export abstract class FirestoreEsAggregateStore<
         .filter((a) => a.changes.length)
         .map(async (aggregate) => ({
           aggregate: aggregate,
-          streamId: this.getAggregateStreamId(aggregate.id),
+          streamId: this.getStreamId(aggregate.id),
           changes: [...aggregate.changes],
           serialized: await Promise.all(
             aggregate.changes.map((event) =>
@@ -162,14 +159,10 @@ export abstract class FirestoreEsAggregateStore<
 
     try {
       await this.performTransaction(parentTrx, async (trx) => {
-        await this.eventStore.bulkAppend(
-          toSave.map((save) => ({
-            streamId: save.streamId,
-            changes: save.serialized as any,
-            expectedRevision: save.acknowledgedRevision,
-          })),
-          trx,
-        );
+
+        for(const save of toSave) {
+          await this.streamStore.append(save.streamId, save.serialized as any, save.acknowledgedRevision, trx);
+        }
 
         for (const save of toSave) {
           save.aggregate.acknowledgeChanges();

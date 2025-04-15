@@ -1,6 +1,6 @@
 import { HasTrait } from "@ddd-ts/traits";
 import {
-  AggregateStreamId,
+  StreamId,
   ConcurrencyError,
   EventSourced,
   type IEsAggregateStore,
@@ -9,9 +9,10 @@ import {
   type SerializerRegistry,
   type EventOf,
   type EventsOf,
+  ISerializedChange,
 } from "@ddd-ts/core";
 
-import type { InMemoryEventStore } from "./event-store/in-memory.event-store";
+import type { InMemoryEventStreamStore } from "./event-store/in-memory.event-stream-store";
 import type { InMemorySnapshotter } from "./in-memory.snapshotter";
 import type {
   InMemoryTransaction,
@@ -28,11 +29,8 @@ export const MakeInMemoryEsAggregateStore = <
       return AGGREGATE.loadFirst(event);
     }
 
-    getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId {
-      return new AggregateStreamId({
-        aggregate: AGGREGATE.name,
-        id: id.serialize(),
-      });
+    getStreamId(id: InstanceType<A>["id"]): StreamId {
+      return StreamId.from(AGGREGATE.name, id.serialize());
     }
   };
 };
@@ -42,13 +40,13 @@ export abstract class InMemoryEsAggregateStore<
 > implements IEsAggregateStore<InstanceType<A>>
 {
   constructor(
-    public readonly eventStore: InMemoryEventStore,
+    public readonly streamStore: InMemoryEventStreamStore,
     public readonly transaction: InMemoryTransactionPerformer,
     public readonly eventSerializer: SerializerRegistry.For<EventsOf<A>>,
     public readonly snapshotter?: InMemorySnapshotter<InstanceType<A>>,
   ) {}
 
-  abstract getAggregateStreamId(id: InstanceType<A>["id"]): AggregateStreamId;
+  abstract getStreamId(id: InstanceType<A>["id"]): StreamId;
   abstract loadFirst(event: EventOf<A>): InstanceType<A>;
 
   _publishEventsTo?: IEventBus;
@@ -57,12 +55,12 @@ export abstract class InMemoryEsAggregateStore<
   }
 
   async load(id: InstanceType<A>["id"]) {
-    const streamId = this.getAggregateStreamId(id);
+    const streamId = this.getStreamId(id);
 
     const snapshot = await this.snapshotter?.load(id);
 
     if (snapshot) {
-      const stream = this.eventStore.read(
+      const stream = this.streamStore.read(
         streamId,
         snapshot.acknowledgedRevision + 1,
       );
@@ -77,7 +75,7 @@ export abstract class InMemoryEsAggregateStore<
     }
 
     let instance: InstanceType<A> | undefined = undefined;
-    for await (const serialized of this.eventStore.read(streamId)) {
+    for await (const serialized of this.streamStore.read(streamId)) {
       const event =
         await this.eventSerializer.deserialize<EventOf<A>>(serialized);
       if (!instance) {
@@ -105,7 +103,13 @@ export abstract class InMemoryEsAggregateStore<
     trx?: InMemoryTransaction,
     attempts = 10,
   ): Promise<void> {
-    const streamId = this.getAggregateStreamId(aggregate.id);
+
+    if(!trx){
+      return await this.transaction.perform(async (trx) => {
+        return await this.save(aggregate, trx, attempts);
+      });
+    }
+    const streamId = this.getStreamId(aggregate.id);
     const changes = [...aggregate.changes];
 
     const serialized = await Promise.all(
@@ -113,9 +117,9 @@ export abstract class InMemoryEsAggregateStore<
     );
 
     try {
-      await this.eventStore.append(
+      await this.streamStore.append(
         streamId,
-        serialized as any,
+        serialized as ISerializedChange[],
         aggregate.acknowledgedRevision,
         trx,
       );

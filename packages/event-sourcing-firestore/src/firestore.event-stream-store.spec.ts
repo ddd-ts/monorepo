@@ -21,21 +21,21 @@ import {
 } from "@ddd-ts/store-firestore";
 import { EsAggregateStoreSuite } from "@ddd-ts/tests";
 
-import { FirestoreEventStore } from "./firestore.event-store";
+import { FirestoreEventStreamStore } from "./firestore.event-stream-store";
 import { MakeFirestoreEsAggregateStore } from "./firestore.es-aggregate-store";
 import { FirestoreSnapshotter } from "./firestore.snapshotter";
 import { Primitive, Shape } from "@ddd-ts/shape";
 
 jest.setTimeout(10000);
 
-describe("FirestoreEventStore", () => {
+describe("FirestoreEventStreamStore", () => {
   const app = fb.initializeApp({
     projectId: "demo-es",
   });
   const firestore = app.firestore();
 
   const transaction = new FirestoreTransactionPerformer(firestore);
-  const eventStore = new FirestoreEventStore(firestore);
+  const streamStore = new FirestoreEventStreamStore(firestore);
 
   function makeAggregateStore<
     T extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
@@ -50,7 +50,7 @@ describe("FirestoreEventStore", () => {
       serializer,
     );
     const Store = MakeFirestoreEsAggregateStore(AGGREGATE);
-    return new Store(eventStore, transaction, eventSerializer, snapshotter);
+    return new Store(streamStore, transaction, eventSerializer, snapshotter);
   }
 
   class AccountId extends Primitive(String) {}
@@ -106,7 +106,7 @@ describe("FirestoreEventStore", () => {
       .add(Account, new (AutoSerializer(Account, 1))());
 
     const accountStore = new (MakeFirestoreEsAggregateStore(Account))(
-      eventStore,
+      streamStore,
       transaction,
       registry,
       new FirestoreSnapshotter(
@@ -265,7 +265,7 @@ describe("FirestoreEventStore", () => {
     );
 
     const accountStore = new (MakeFirestoreEsAggregateStore(Account))(
-      eventStore,
+      streamStore,
       transaction,
       new SerializerRegistry().add(
         AccountOpened,
@@ -402,7 +402,7 @@ describe("FirestoreEventStore", () => {
     );
 
     const accountStore = new (MakeFirestoreEsAggregateStore(Account))(
-      eventStore,
+      streamStore,
       transaction,
       new SerializerRegistry().add(
         AccountOpened,

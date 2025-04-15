@@ -1,11 +1,13 @@
-import type { AggregateStreamId } from "../components/aggregate-stream-id";
-import type { IChange, IFact } from "./es-event";
+import type { StreamId } from "../components/stream-id";
+import { Transaction } from "../components/transaction";
+import type { ISerializedChange, ISerializedFact } from "./es-event";
 
-export interface IEventStore {
+export interface IEventStreamStore {
   append(
-    streamId: AggregateStreamId,
-    changes: IChange[],
+    streamId: StreamId,
+    changes: ISerializedChange[],
     expectedRevision: number,
+    trx: Transaction
   ): Promise<void>;
-  read(streamId: AggregateStreamId, from?: number): AsyncIterable<IFact>;
+  read(streamId: StreamId, from?: number): AsyncIterable<ISerializedFact>;
 }

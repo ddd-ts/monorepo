@@ -1,4 +1,4 @@
-export { FirestoreEventStore } from "./firestore.event-store";
+export { FirestoreEventStreamStore } from "./firestore.event-stream-store";
 export { FirestoreSnapshotter } from "./firestore.snapshotter";
 export {
   FirestoreEsAggregateStore,

@@ -1,0 +1,40 @@
+{
+  "extends": "@ddd-ts/tools/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "references": [
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./packages/event-sourcing-esdb"
+    },
+    {
+      "path": "./packages/event-sourcing-firestore"
+    },
+    {
+      "path": "./packages/event-sourcing-inmemory"
+    },
+    {
+      "path": "./packages/freeze"
+    },
+    {
+      "path": "./packages/shape"
+    },
+    {
+      "path": "./packages/store-firestore"
+    },
+    {
+      "path": "./packages/store-inmemory"
+    },
+    {
+      "path": "./packages/traits"
+    },
+    {
+      "path": "./packages/types"
+    }
+  ],
+  "include": []
+}

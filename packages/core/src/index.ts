@@ -1,4 +1,4 @@
-export { AggregateStreamId } from "./components/aggregate-stream-id";
+export { StreamId, LakeId } from "./components/stream-id";
 export { AutoSerializable, AutoSerializer } from "./components/auto-serializer";
 export { EventBusProjectionProcessor } from "./components/event-bus.projection-processor";
 export { EventId } from "./components/event-id";
@@ -25,7 +25,7 @@ export type {
 } from "./interfaces/es-event";
 export type { IEventBus } from "./interfaces/event-bus";
 export type { IEventSourced } from "./interfaces/event-sourced";
-export type { IEventStore } from "./interfaces/event-store";
+export type { IEventStreamStore } from "./interfaces/event-store";
 export type { IEvent } from "./interfaces/event";
 export type {
   IIdentifiable,
