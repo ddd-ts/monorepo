@@ -5,12 +5,12 @@ import {
   InMemoryTransactionPerformer,
 } from "@ddd-ts/store-inmemory";
 import { BankSuite } from "@ddd-ts/tests";
-import { InMemoryEventStore } from "..";
+import { InMemoryEventStreamStore } from "../event-store/in-memory.event-stream-store";
 import { InMemorySnapshotter } from "../in-memory.snapshotter";
 import { MakeInMemoryEsAggregateStore } from "../in-memory.es-aggregate-store";
 
 describe("EventSourcingInMemory", () => {
-  const es = new InMemoryEventStore();
+  const es = new InMemoryEventStreamStore();
   const database = new InMemoryDatabase();
   const transaction = new InMemoryTransactionPerformer(database);
   const eventBus = new DetachedEventBus();

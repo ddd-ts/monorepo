@@ -1,11 +1,11 @@
-import { type IFact, type IEsEvent } from "@ddd-ts/core";
+import { type IFact, type IEsEvent, ISerializedEvent, ISerializedFact } from "@ddd-ts/core";
 
 export class Stream {
-  facts: IFact[] = [];
+  facts: ISerializedFact[] = [];
 
-  subscribers = new Set<(fact: IFact) => void>();
+  subscribers = new Set<(fact: ISerializedFact) => void>();
 
-  append(change: IEsEvent) {
+  append(change: ISerializedEvent) {
     const revision = this.facts.length;
     const occurredAt = new Date();
     const fact = {
@@ -20,7 +20,7 @@ export class Stream {
     }
   }
 
-  subscribe(subscriber: (fact: IFact) => void) {
+  subscribe(subscriber: (fact: ISerializedFact) => void) {
     this.subscribers.add(subscriber);
     return () => {
       this.subscribers.delete(subscriber);

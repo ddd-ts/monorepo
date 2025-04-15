@@ -6,6 +6,7 @@ coverage
 
 build
 dist
+tsconfig.tsbuildinfo
 
 # misc
 .DS_Store
