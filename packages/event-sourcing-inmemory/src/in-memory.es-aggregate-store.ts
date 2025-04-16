@@ -12,7 +12,7 @@ import {
   ISerializedChange,
 } from "@ddd-ts/core";
 
-import type { InMemoryEventStreamStore } from "./event-store/in-memory.event-stream-store";
+import type { InMemoryEventStreamStore } from "./event-store/in-memory.event-stream.store";
 import type { InMemorySnapshotter } from "./in-memory.snapshotter";
 import type {
   InMemoryTransaction,
@@ -103,8 +103,7 @@ export abstract class InMemoryEsAggregateStore<
     trx?: InMemoryTransaction,
     attempts = 10,
   ): Promise<void> {
-
-    if(!trx){
+    if (!trx) {
       return await this.transaction.perform(async (trx) => {
         return await this.save(aggregate, trx, attempts);
       });

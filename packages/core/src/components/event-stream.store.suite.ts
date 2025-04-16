@@ -94,4 +94,24 @@ export function EventStreamStoreSuite(config: {
       "Withdrawn:3",
     ]);
   });
+
+  it("should fail if the expected revision is not met", async () => {
+    const streamId = StreamId.from("Bank", BankId.generate().serialize());
+    const accountId = AccountId.generate();
+
+    const events = [
+      Deposited.new({ id: accountId, amount: 100 }),
+      Withdrawn.new({ id: accountId, amount: 1 }),
+    ];
+
+    await transaction.perform((trx) =>
+      streamStore.append(streamId, events, -1, trx),
+    );
+
+    await expect(
+      transaction.perform((trx) =>
+        streamStore.append(streamId, events, 0, trx),
+      ),
+    ).rejects.toThrow();
+  });
 }
