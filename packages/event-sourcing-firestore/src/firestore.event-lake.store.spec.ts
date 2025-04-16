@@ -2,17 +2,17 @@ process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
 import * as fb from "firebase-admin";
 
 import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
-import { EventStreamStoreSuite } from "@ddd-ts/core";
-import { FirestoreEventStreamStorageLayer } from "./firestore.event-stream.storage-layer";
+import { EventLakeStoreSuite } from "@ddd-ts/core";
+import { FirestoreEventLakeStorageLayer } from "./firestore.event-lake.storage-layer";
 
 jest.setTimeout(10000);
 
-describe("FirestoreEventStreamStore", () => {
+describe("FirestoreEventLakeStore", () => {
   const app = fb.initializeApp({ projectId: "demo-es" });
   const firestore = app.firestore();
 
-  EventStreamStoreSuite({
+  EventLakeStoreSuite({
     transaction: new FirestoreTransactionPerformer(firestore),
-    streamStorageLayer: new FirestoreEventStreamStorageLayer(firestore),
+    lakeStorageLayer: new FirestoreEventLakeStorageLayer(firestore),
   });
 });

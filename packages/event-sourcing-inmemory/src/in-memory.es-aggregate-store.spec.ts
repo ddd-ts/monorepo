@@ -18,11 +18,11 @@ import {
   InMemoryTransactionPerformer,
 } from "@ddd-ts/store-inmemory";
 
-import { InMemorySnapshotter } from "../in-memory.snapshotter";
-import { MakeInMemoryEsAggregateStore } from "../in-memory.es-aggregate-store";
-import { InMemoryEventStreamStore } from "./in-memory.event-stream-store";
+import { InMemorySnapshotter } from "./in-memory.snapshotter";
+import { MakeInMemoryEsAggregateStore } from "./in-memory.es-aggregate-store";
+import { InMemoryEventStreamStore } from "./event-store/in-memory.event-stream-store";
 
-describe("InMemoryEventStreamStore", () => {
+describe("InMemoryEsAggregateStore", () => {
   const database = new InMemoryDatabase();
   const transaction = new InMemoryTransactionPerformer(database);
   const streamStore = new InMemoryEventStreamStore();

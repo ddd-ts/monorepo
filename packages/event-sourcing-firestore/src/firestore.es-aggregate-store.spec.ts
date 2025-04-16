@@ -21,17 +21,14 @@ import {
 } from "@ddd-ts/store-firestore";
 import { EsAggregateStoreSuite } from "@ddd-ts/tests";
 
-import {
-  FirestoreEventStreamStore,
-  FirestoreSerializedEventStreamStore,
-} from "./firestore.event-stream-store";
 import { MakeFirestoreEsAggregateStore } from "./firestore.es-aggregate-store";
 import { FirestoreSnapshotter } from "./firestore.snapshotter";
 import { Primitive, Shape } from "@ddd-ts/shape";
+import { FirestoreEventStreamStore } from "./firestore.event-stream.store";
 
 jest.setTimeout(10000);
 
-describe("FirestoreEventStreamStore", () => {
+describe("FirestoreEsAggregateStore", () => {
   const app = fb.initializeApp({
     projectId: "demo-es",
   });
@@ -53,7 +50,7 @@ describe("FirestoreEventStreamStore", () => {
     );
     const Store = MakeFirestoreEsAggregateStore(AGGREGATE);
     const streamStore = new FirestoreEventStreamStore(
-      new FirestoreSerializedEventStreamStore(firestore),
+      firestore,
       eventSerializer,
     );
     return new Store(streamStore, transaction, snapshotter);

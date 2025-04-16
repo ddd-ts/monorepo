@@ -1,46 +1,42 @@
-process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
-import * as fb from "firebase-admin";
-
-import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
-import {
-  FirestoreEventLakeStore,
-  FirestoreSerializedEventLakeStore,
-} from "./firestore.event-lake-store";
 import { Primitive } from "@ddd-ts/shape";
+import { EventId } from "./event-id";
+import { EsEvent } from "../makers/es-event";
+import { SerializerRegistry } from "./serializer-registry";
+import { TransactionPerformer } from "./transaction";
 import {
-  buffer,
-  EsEvent,
-  EventId,
-  IChange,
-  LakeId,
-  SerializerRegistry,
-  StreamId,
-} from "@ddd-ts/core";
-import {
-  FirestoreSerializedEventStreamStore,
-  FirestoreEventStreamStore,
-} from "./firestore.event-stream-store";
-import {
-  FirestoreProjectedStreamReader,
-  FirestoreSerializedProjectedStreamReader,
   LakeSource,
   ProjectedStream,
+  ProjectedStreamReader,
+  ProjectedStreamStorageLayer,
   StreamSource,
-} from "./firestore.projected-stream-reader";
+} from "./projected-stream";
+import {
+  EventStreamStorageLayer,
+  EventStreamStore,
+} from "./event-stream.store";
+import { EventLakeStorageLayer, EventLakeStore } from "./event-lake.store";
+import { LakeId, StreamId } from "./stream-id";
+import { IChange } from "../interfaces/es-event";
+import { buffer } from "../tools/iterator";
 
-jest.setTimeout(10000);
-
-describe("FirestoreProjectedStreamStore", () => {
-  const app = fb.initializeApp({
-    projectId: "demo-es",
-  });
-  const firestore = app.firestore();
-
+export function ProjectedStreamReaderSuite(config: {
+  transaction: TransactionPerformer;
+  lakeStorageLayer: EventLakeStorageLayer;
+  streamStorageLayer: EventStreamStorageLayer;
+  readerStorageLayer: ProjectedStreamStorageLayer;
+}) {
   class AccountId extends Primitive(String) {
     static generate() {
-      return new AccountId(EventId.generate().serialize());
+      return new AccountId(`A${EventId.generate().serialize().slice(0, 8)}`);
     }
   }
+
+  class BankId extends Primitive(String) {
+    static generate() {
+      return new BankId(`B${EventId.generate().serialize().slice(0, 8)}`);
+    }
+  }
+
   class Added extends EsEvent("Added", {
     id: AccountId,
     amount: Number,
@@ -61,22 +57,10 @@ describe("FirestoreProjectedStreamStore", () => {
     .auto(Removed)
     .auto(Multiplied);
 
-  const transaction = new FirestoreTransactionPerformer(firestore);
-
-  const lakeStore = new FirestoreEventLakeStore(
-    new FirestoreSerializedEventLakeStore(firestore),
-    registry,
-  );
-
-  const streamStore = new FirestoreEventStreamStore(
-    new FirestoreSerializedEventStreamStore(firestore),
-    registry,
-  );
-
-  const projectedStreamReader = new FirestoreProjectedStreamReader(
-    new FirestoreSerializedProjectedStreamReader(firestore),
-    registry,
-  );
+  const transaction = config.transaction;
+  const lakeStore = new EventLakeStore(config.lakeStorageLayer, registry);
+  const streamStore = new EventStreamStore(config.streamStorageLayer, registry);
+  const reader = new ProjectedStreamReader(config.readerStorageLayer, registry);
 
   function appendToLake(
     lakeId: LakeId,
@@ -96,12 +80,10 @@ describe("FirestoreProjectedStreamStore", () => {
   }
 
   it("should read events in order", async () => {
+    const lakeId = LakeId.from("Bank", BankId.generate().serialize());
+
     const accountId = AccountId.generate();
 
-    const lakeId = LakeId.from(
-      "Bank",
-      EventId.generate().serialize().slice(0, 8),
-    );
     const streamId = StreamId.from("Account", accountId.serialize());
 
     await appendToStream(streamId, -1, [
@@ -121,22 +103,23 @@ describe("FirestoreProjectedStreamStore", () => {
       Multiplied.new({ id: accountId, factor: 3 }),
     ]);
 
+    const projectedStream = new ProjectedStream({
+      sources: [
+        new StreamSource({
+          aggregateType: "Account",
+          shardKey: "id",
+          events: [Added.name, Removed.name, Multiplied.name],
+        }),
+        new LakeSource({
+          shardType: "Bank",
+          shardKey: "id",
+          events: [Added.name, Removed.name, Multiplied.name],
+        }),
+      ],
+    });
+
     const result = await buffer(
-      projectedStreamReader.read(
-        new ProjectedStream([
-          new StreamSource({
-            aggregateType: "Account",
-            shardKey: "id",
-            events: [Added.name, Removed.name, Multiplied.name],
-          }),
-          new LakeSource({
-            shardType: "Bank",
-            shardKey: "id",
-            events: [Added.name, Removed.name, Multiplied.name],
-          }),
-        ]),
-        accountId.serialize(),
-      ),
+      reader.read(projectedStream, accountId.serialize()),
     );
 
     expect(
@@ -157,11 +140,7 @@ describe("FirestoreProjectedStreamStore", () => {
 
   it("should read events in order with startAfter and endAt", async () => {
     const accountId = AccountId.generate();
-
-    const lakeId = LakeId.from(
-      "Bank",
-      EventId.generate().serialize().slice(0, 8),
-    );
+    const lakeId = LakeId.from("Bank", BankId.generate().serialize());
     const streamId = StreamId.from("Account", accountId.serialize());
 
     const [start] = await appendToStream(streamId, -1, [
@@ -181,24 +160,23 @@ describe("FirestoreProjectedStreamStore", () => {
       Multiplied.new({ id: accountId, factor: 3 }),
     ]);
 
+    const projectedStream = new ProjectedStream({
+      sources: [
+        new StreamSource({
+          aggregateType: "Account",
+          shardKey: "id",
+          events: [Added.name, Removed.name, Multiplied.name],
+        }),
+        new LakeSource({
+          shardType: "Bank",
+          shardKey: "id",
+          events: [Added.name, Removed.name, Multiplied.name],
+        }),
+      ],
+    });
+
     const result = await buffer(
-      projectedStreamReader.read(
-        new ProjectedStream([
-          new StreamSource({
-            aggregateType: "Account",
-            shardKey: "id",
-            events: [Added.name, Removed.name, Multiplied.name],
-          }),
-          new LakeSource({
-            shardType: "Bank",
-            shardKey: "id",
-            events: [Added.name, Removed.name, Multiplied.name],
-          }),
-        ]),
-        accountId.serialize(),
-        start,
-        end,
-      ),
+      reader.read(projectedStream, accountId.serialize(), start, end),
     );
 
     expect(
@@ -214,4 +192,4 @@ describe("FirestoreProjectedStreamStore", () => {
       "Added:50",
     ]);
   });
-});
+}

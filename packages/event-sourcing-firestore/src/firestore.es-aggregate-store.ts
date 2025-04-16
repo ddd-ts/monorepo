@@ -9,6 +9,7 @@ import {
   type IEventBus,
   IChange,
   IFact,
+  EventStreamStore,
 } from "@ddd-ts/core";
 import type {
   FirestoreTransaction,
@@ -16,7 +17,6 @@ import type {
 } from "@ddd-ts/store-firestore";
 
 import type { FirestoreSnapshotter } from "./firestore.snapshotter";
-import type { FirestoreEventStreamStore } from "./firestore.event-stream-store";
 
 export const MakeFirestoreEsAggregateStore = <
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
@@ -39,7 +39,7 @@ export abstract class FirestoreEsAggregateStore<
 > implements IEsAggregateStore<InstanceType<A>>
 {
   constructor(
-    public readonly streamStore: FirestoreEventStreamStore<EventsOf<A>>,
+    public readonly streamStore: EventStreamStore<EventsOf<A>>,
     public readonly transaction: FirestoreTransactionPerformer,
     public readonly snapshotter: FirestoreSnapshotter<InstanceType<A>>,
   ) {}

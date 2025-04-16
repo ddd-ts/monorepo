@@ -7,7 +7,7 @@ import {
   FirestoreStore,
   type FirestoreTransaction,
 } from "@ddd-ts/store-firestore";
-import { serverTimestamp } from "./firestore.event-stream-store";
+import { serverTimestamp } from "./firestore.event-stream.storage-layer";
 
 export class FirestoreSnapshotter<
   A extends IEventSourced & IIdentifiable,
