@@ -1,23 +1,29 @@
-import { type IFact, type IEsEvent, ISerializedEvent, ISerializedFact, EventId } from "@ddd-ts/core";
+import { ISerializedEvent, ISerializedFact, EventId, StreamId, EventReference, LakeId } from "@ddd-ts/core";
 
 export class Stream {
+
+  constructor(public readonly id: StreamId | LakeId) {}
   facts: ISerializedFact[] = [];
 
   subscribers = new Set<(fact: ISerializedFact) => void>();
 
   append(change: ISerializedEvent) {
+    const ref = `${this.id.serialize()}:${change.id}`
     const revision = this.facts.length;
     const occurredAt = new Date();
     const fact = {
       ...change,
       revision,
       occurredAt,
+      ref,
     };
 
     this.facts.push(fact);
     for (const subscriber of this.subscribers) {
       subscriber(fact);
     }
+
+    return ref
   }
 
   subscribe(subscriber: (fact: ISerializedFact) => void) {

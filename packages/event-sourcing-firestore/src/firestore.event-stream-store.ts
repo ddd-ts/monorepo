@@ -5,6 +5,7 @@ import {
   type ISerializedChange,
   type ISerializedFact,
   IEventStreamStore,
+  EventReference,
 } from "@ddd-ts/core";
 
 import {
@@ -21,7 +22,7 @@ export class FirestoreEventStreamStore implements IEventStreamStore {
 
   constructor(
     public readonly firestore: fb.firestore.Firestore,
-    public readonly converter: fb.firestore.FirestoreDataConverter<fb.firestore.DocumentData> = new DefaultConverter(),
+    public readonly converter = new DefaultConverter(),
   ) {}
 
   getCollection(streamId: StreamId) {
@@ -34,11 +35,21 @@ export class FirestoreEventStreamStore implements IEventStreamStore {
 
   async append(streamId: StreamId, changes: ISerializedChange[], expectedRevision: number, trx: FirestoreTransaction) {
     const collection = this.getCollection(streamId);
+    const refs: EventReference[] = [];
 
     let revision = expectedRevision + 1;
     for (const change of changes) {
+
+      
+      
+      const ref = collection.doc(`${revision}`);
+      
+      
+      
+      refs.push(new EventReference(ref.path)); 
+      
       trx.transaction.create(
-        collection.doc(`${revision}`),
+        ref,
         this.converter.toFirestore({
           aggregateType: streamId.aggregateType,
           eventId: change.id,
@@ -52,6 +63,8 @@ export class FirestoreEventStreamStore implements IEventStreamStore {
       );
       revision++;
     }
+
+    return refs;
   }
 
   async *read(streamId: StreamId, startAt?: number): AsyncIterable<ISerializedFact> {
@@ -66,71 +79,7 @@ export class FirestoreEventStreamStore implements IEventStreamStore {
       const data = this.converter.fromFirestore(e);
       yield {
         id: data.eventId,
-        revision: data.revision,
-        name: data.name,
-        $name: data.name,
-        payload: data.payload,
-        occurredAt: data.occurredAt,
-        version: data.version ?? 1,
-      };
-    }
-  }
-}
-
-
-export class FirestoreEventLakeStore {
-  constructor(
-    public readonly firestore: fb.firestore.Firestore,
-    public readonly converter: fb.firestore.FirestoreDataConverter<fb.firestore.DocumentData> = new DefaultConverter(),
-  ) {}
-
-
-  getCollection(lakeId: LakeId) {
-    return this.firestore
-      .collection("event-store")
-      .doc('Lakes')
-      .collection(lakeId.shardType)
-      .doc(lakeId.shardId)
-      .collection("events");
-  }
-
-  append(lakeId: LakeId, changes: ISerializedChange[], trx: FirestoreTransaction) {
-    const collection = this.getCollection(lakeId);
-
-    let revision = 0;
-    for (const change of changes) {
-      trx.transaction.create(
-        collection.doc(change.id),
-        this.converter.toFirestore({
-          eventId: change.id,
-          name: change.name,
-          payload: change.payload,
-          occurredAt: serverTimestamp(),
-          version: change.version,
-          revision: revision,
-        }),
-      );
-      revision++;
-    }
-  }
-
-  async *read(lakeId: LakeId, startAfter?: EventId, endAt?: EventId): AsyncIterable<ISerializedFact> {
-    const collection = this.getCollection(lakeId);
-
-    const query = collection
-      .where("eventId", ">=", startAfter || "")
-      .orderBy("eventId", "asc")
-      .limit(100);
-
-    if (endAt) {
-      query.where("eventId", "<=", endAt);
-    }
-
-    for await (const event of query.stream()) {
-      const e = event as any as fb.firestore.QueryDocumentSnapshot<any>;
-      const data = this.converter.fromFirestore(e);
-      yield {
-        id: data.eventId,
+        ref: e.ref.path,
         revision: data.revision,
         name: data.name,
         $name: data.name,

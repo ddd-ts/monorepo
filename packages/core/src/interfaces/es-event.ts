@@ -1,6 +1,7 @@
 import type { IEvent } from "./event";
 
 export type IFact<T extends IEsEvent = IEsEvent> = T & {
+  ref: string;
   revision: number;
   occurredAt: Date;
 };
@@ -40,6 +41,7 @@ export interface ISerializedFact {
   $name: string;
   name: string;
   id: string;
+  ref: string;
   occurredAt: Date;
   revision: number;
   payload: any;

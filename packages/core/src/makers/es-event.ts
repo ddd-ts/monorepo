@@ -45,6 +45,7 @@ export const EsEvent = <
       payload,
       revision: Optional(Number),
       occurredAt: Optional(Date),
+      ref: Optional(String),
     },
     WithDerivations($EsEvent, Named(name)),
   );

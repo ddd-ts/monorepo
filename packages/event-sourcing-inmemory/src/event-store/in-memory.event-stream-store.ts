@@ -3,6 +3,7 @@ import {
   type StreamId,
   type IChange,
   ISerializedChange,
+  EventReference,
 } from "@ddd-ts/core";
 import type { InMemoryTransaction } from "@ddd-ts/store-inmemory";
 import { Stream } from "./stream";
@@ -27,7 +28,7 @@ export class InMemoryEventStreamStore implements IEventStreamStore {
   ) {
 
     if (!this.streams.has(streamId.serialize())) {
-      const stream = new Stream();
+      const stream = new Stream(streamId);
       this.streams.set(streamId.serialize(), stream);
     }
 
@@ -40,9 +41,14 @@ export class InMemoryEventStreamStore implements IEventStreamStore {
       );
     }
 
+    const refs: EventReference[] = [];
+
     for (const change of changes) {
-      stream.append(change);
+      const ref = stream.append(change);
+      refs.push(new EventReference(ref));
     }
+
+    return refs;
   }
 
   async *read(streamId: StreamId, from = 0) {

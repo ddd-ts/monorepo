@@ -15,3 +15,10 @@ export class EventId extends Primitive(String) {
     return new EventId(generate());
   }
 }
+
+
+export class EventReference extends Primitive(String) {
+  toString() {
+    return this.value;
+  }
+}
