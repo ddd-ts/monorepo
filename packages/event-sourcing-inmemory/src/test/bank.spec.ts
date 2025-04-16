@@ -5,7 +5,7 @@ import {
   InMemoryTransactionPerformer,
 } from "@ddd-ts/store-inmemory";
 import { BankSuite } from "@ddd-ts/tests";
-import { InMemoryEventStreamStore } from "../event-store/in-memory.event-stream-store";
+import { InMemoryEventStreamStore } from "../event-store/in-memory.event-stream.store";
 import { InMemorySnapshotter } from "../in-memory.snapshotter";
 import { MakeInMemoryEsAggregateStore } from "../in-memory.es-aggregate-store";
 

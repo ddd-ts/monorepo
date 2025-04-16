@@ -20,7 +20,7 @@ import {
 
 import { InMemorySnapshotter } from "./in-memory.snapshotter";
 import { MakeInMemoryEsAggregateStore } from "./in-memory.es-aggregate-store";
-import { InMemoryEventStreamStore } from "./event-store/in-memory.event-stream-store";
+import { InMemoryEventStreamStore } from "./event-store/in-memory.event-stream.store";
 
 describe("InMemoryEsAggregateStore", () => {
   const database = new InMemoryDatabase();
