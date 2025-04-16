@@ -1,12 +1,19 @@
 process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
 import * as fb from "firebase-admin";
 
+import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
 import {
-  FirestoreTransactionPerformer,
-} from "@ddd-ts/store-firestore";
-import { FirestoreEventLakeStore } from "./firestore.event-lake-store";
+  FirestoreEventLakeStore,
+  FirestoreSerializedEventLakeStore,
+} from "./firestore.event-lake-store";
 import { Primitive } from "@ddd-ts/shape";
-import { buffer, EsEvent, EventId, LakeId } from "@ddd-ts/core";
+import {
+  buffer,
+  EsEvent,
+  EventId,
+  LakeId,
+  SerializerRegistry,
+} from "@ddd-ts/core";
 
 jest.setTimeout(10000);
 
@@ -16,9 +23,6 @@ describe("FirestoreEventLakeStore", () => {
   });
   const firestore = app.firestore();
 
-  const transaction = new FirestoreTransactionPerformer(firestore);
-  const lakeStore = new FirestoreEventLakeStore(firestore);
-  
   class AccountId extends Primitive(String) {}
 
   class Deposited extends EsEvent("Deposited", {
@@ -31,8 +35,20 @@ describe("FirestoreEventLakeStore", () => {
     amount: Number,
   }) {}
 
-  it('should append and read events', async () => {
-    const lakeId = LakeId.from("Bank", EventId.generate().serialize().slice(0, 8));
+  const registry = new SerializerRegistry().auto(Deposited).auto(Withdrawn);
+
+  const transaction = new FirestoreTransactionPerformer(firestore);
+
+  const lakeStore = new FirestoreEventLakeStore(
+    new FirestoreSerializedEventLakeStore(firestore),
+    registry,
+  );
+
+  it("should append and read events", async () => {
+    const lakeId = LakeId.from(
+      "Bank",
+      EventId.generate().serialize().slice(0, 8),
+    );
 
     const accountId = new AccountId("123");
     const events = [
@@ -40,23 +56,25 @@ describe("FirestoreEventLakeStore", () => {
       Withdrawn.new({ id: accountId, amount: 1 }),
       Withdrawn.new({ id: accountId, amount: 2 }),
       Withdrawn.new({ id: accountId, amount: 3 }),
-    ].map(e => e.serializeChange());
-
+    ];
 
     await transaction.perform((trx) => lakeStore.append(lakeId, events, trx));
 
     const result = await buffer(lakeStore.read(lakeId));
 
-    expect(result.map(e => `${e.name}:${e.payload.amount}`)).toEqual([
+    expect(result.map((e) => `${e.name}:${e.payload.amount}`)).toEqual([
       "Deposited:100",
       "Withdrawn:1",
       "Withdrawn:2",
       "Withdrawn:3",
     ]);
-  })
+  });
 
-  it('should read events in the correct order, within and across transactions', async () => {
-    const lakeId = LakeId.from("Bank", EventId.generate().serialize().slice(0, 8));
+  it("should read events in the correct order, within and across transactions", async () => {
+    const lakeId = LakeId.from(
+      "Bank",
+      EventId.generate().serialize().slice(0, 8),
+    );
 
     const accountId = new AccountId("123");
 
@@ -65,9 +83,8 @@ describe("FirestoreEventLakeStore", () => {
       Withdrawn.new({ id: accountId, amount: 1 }),
       Withdrawn.new({ id: accountId, amount: 2 }),
       Withdrawn.new({ id: accountId, amount: 3 }),
-    ].map(e => e.serializeChange());
-    
-    
+    ];
+
     await transaction.perform(async (trx) => {
       lakeStore.append(lakeId, [events[0], events[1]], trx);
     });
@@ -78,7 +95,7 @@ describe("FirestoreEventLakeStore", () => {
 
     const result = await buffer(lakeStore.read(lakeId));
 
-    expect(result.map(e => `${e.name}:${e.payload.amount}`)).toEqual([
+    expect(result.map((e) => `${e.name}:${e.payload.amount}`)).toEqual([
       "Deposited:100",
       "Withdrawn:1",
       "Withdrawn:2",
@@ -86,8 +103,11 @@ describe("FirestoreEventLakeStore", () => {
     ]);
   });
 
-  it('should read events with startAfter and endAt', async () => {
-    const lakeId = LakeId.from("Bank", EventId.generate().serialize().slice(0, 8));
+  it("should read events with startAfter and endAt", async () => {
+    const lakeId = LakeId.from(
+      "Bank",
+      EventId.generate().serialize().slice(0, 8),
+    );
 
     const accountId = new AccountId("123");
 
@@ -97,16 +117,18 @@ describe("FirestoreEventLakeStore", () => {
       Withdrawn.new({ id: accountId, amount: 2 }),
       Withdrawn.new({ id: accountId, amount: 3 }),
     ];
-    
+
     await transaction.perform(async (trx) => {
-      lakeStore.append(lakeId, events.map(e => e.serializeChange()), trx);
+      lakeStore.append(lakeId, events, trx);
     });
 
-    const result = await buffer(lakeStore.read(lakeId, events[0].id, events[2].id));
-    
-    expect(result.map(e => `${e.name}:${e.payload.amount}`)).toEqual([
+    const result = await buffer(
+      lakeStore.read(lakeId, events[0].id, events[2].id),
+    );
+
+    expect(result.map((e) => `${e.name}:${e.payload.amount}`)).toEqual([
       "Withdrawn:1",
       "Withdrawn:2",
     ]);
-  })
+  });
 });

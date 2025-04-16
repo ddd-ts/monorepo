@@ -1,11 +1,15 @@
 import {
   StreamId,
-  LakeId,
-  EventId,
   type ISerializedChange,
   type ISerializedFact,
-  IEventStreamStore,
   EventReference,
+  ISerializedEventStreamStore,
+  IEsEvent,
+  INamed,
+  IEventStreamStore,
+  SerializerRegistry,
+  IChange,
+  IFact,
 } from "@ddd-ts/core";
 
 import {
@@ -18,7 +22,7 @@ import * as fb from "firebase-admin";
 export const serverTimestamp = fb.firestore.FieldValue.serverTimestamp;
 
 
-export class FirestoreEventStreamStore implements IEventStreamStore {
+export class FirestoreSerializedEventStreamStore implements ISerializedEventStreamStore {
 
   constructor(
     public readonly firestore: fb.firestore.Firestore,
@@ -39,13 +43,8 @@ export class FirestoreEventStreamStore implements IEventStreamStore {
 
     let revision = expectedRevision + 1;
     for (const change of changes) {
-
-      
-      
       const ref = collection.doc(`${revision}`);
-      
-      
-      
+    
       refs.push(new EventReference(ref.path)); 
       
       trx.transaction.create(
@@ -87,6 +86,31 @@ export class FirestoreEventStreamStore implements IEventStreamStore {
         occurredAt: data.occurredAt,
         version: data.version ?? 1,
       };
+    }
+  }
+}
+
+
+export class FirestoreEventStreamStore<Events extends (IEsEvent & INamed)[]> implements IEventStreamStore<Events> {
+
+  constructor(
+    public readonly streamStore: FirestoreSerializedEventStreamStore,
+    public readonly serializer: SerializerRegistry.For<Events>,
+  ) {}
+
+  async append(
+    streamId: StreamId,
+    changes: IChange<Events[number]>[],
+    expectedRevision: number,
+    trx: FirestoreTransaction,
+  ) {
+    const serialized = await Promise.all(changes.map((change) => this.serializer.serialize(change)));
+    return this.streamStore.append(streamId, serialized as any, expectedRevision, trx);
+  }
+
+  async *read(streamId: StreamId, from?: number) {
+    for await (const serialized of this.streamStore.read(streamId, from)) {
+      yield await this.serializer.deserialize<IFact<Events[number]>>(serialized);
     }
   }
 }

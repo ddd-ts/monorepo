@@ -8,7 +8,11 @@ import { type Constructor } from "@ddd-ts/types";
 import { EventId } from "../components/event-id";
 import { WithDerivations } from "@ddd-ts/traits";
 import { Named } from "../traits/named";
-import { ISerializedChange, ISerializedFact } from "../interfaces/es-event";
+import {
+  IChange,
+  ISerializedChange,
+  ISerializedFact,
+} from "../interfaces/es-event";
 
 export const EsEvent = <
   const Name extends string,
@@ -26,14 +30,18 @@ export const EsEvent = <
         name,
         id: EventId.generate(),
         payload,
-      }) as InstanceType<TH>;
+      }) as IChange<InstanceType<TH>>;
     }
 
-    serializeChange<T extends { serialize: () => any }>(this: T): ReturnType<T["serialize"]> & ISerializedChange {
+    serializeChange<T extends { serialize: () => any }>(
+      this: T,
+    ): ReturnType<T["serialize"]> & ISerializedChange {
       return this.serialize();
     }
 
-    serializeFact<T extends { serialize: () => any }>(this: T): ReturnType<T["serialize"]> & ISerializedFact {
+    serializeFact<T extends { serialize: () => any }>(
+      this: T,
+    ): ReturnType<T["serialize"]> & ISerializedFact {
       return this.serialize();
     }
   }

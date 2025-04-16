@@ -1,18 +1,28 @@
-import { EventReference } from "@ddd-ts/core";
+import {
+  EventReference,
+  IEsEvent,
+  IFact,
+  INamed,
+  SerializerRegistry,
+} from "@ddd-ts/core";
 import { Shape } from "@ddd-ts/shape";
 import { DefaultConverter } from "@ddd-ts/store-firestore";
-import { Filter, Firestore, QueryDocumentSnapshot } from "firebase-admin/firestore";
+import {
+  Filter,
+  Firestore,
+  QueryDocumentSnapshot,
+} from "firebase-admin/firestore";
 
 export class StreamSource extends Shape({
   aggregateType: String,
   shardKey: String,
-  events: [String]
+  events: [String],
 }) {}
 
 export class LakeSource extends Shape({
   shardType: String,
   shardKey: String,
-  events: [String]
+  events: [String],
 }) {}
 
 export class ProjectedStream {
@@ -33,20 +43,27 @@ export class FirestoreStreamSourceFilter {
     return Filter.and(
       Filter.where("aggregateType", "==", streamSource.aggregateType),
       Filter.where(`payload.${streamSource.shardKey}`, "==", shard),
-      Filter.where("name", "in",  streamSource.events),
+      Filter.where("name", "in", streamSource.events),
     );
   }
 }
 
-
-export class FirestoreProjectedStreamReader {
+export class FirestoreSerializedProjectedStreamReader {
   constructor(
     private readonly firestore: Firestore,
     public readonly converter = new DefaultConverter(),
   ) {}
 
-  async *read(projectedStream: ProjectedStream, shard: string, startAfter?: EventReference, endAt?: EventReference) {
-    let query = this.firestore.collectionGroup("events").orderBy("occurredAt").orderBy('revision');
+  async *read(
+    projectedStream: ProjectedStream,
+    shard: string,
+    startAfter?: EventReference,
+    endAt?: EventReference,
+  ) {
+    let query = this.firestore
+      .collectionGroup("events")
+      .orderBy("occurredAt")
+      .orderBy("revision");
 
     const [start, end] = await Promise.all([
       startAfter ? this.firestore.doc(startAfter.serialize()).get() : null,
@@ -60,7 +77,7 @@ export class FirestoreProjectedStreamReader {
     if (endAt && !end?.exists) {
       throw new Error(`EndAt event not found: ${endAt}`);
     }
-    
+
     const filters = projectedStream.sources.map((source) => {
       if (source instanceof LakeSource) {
         return new FirestoreLakeSourceFilter().filter(shard, source);
@@ -81,7 +98,6 @@ export class FirestoreProjectedStreamReader {
       query = query.endAt(end);
     }
 
-    
     for await (const doc of query.stream() as AsyncIterable<QueryDocumentSnapshot>) {
       const data = this.converter.fromFirestore(doc);
       yield {
@@ -93,6 +109,28 @@ export class FirestoreProjectedStreamReader {
         occurredAt: data.occurredAt,
         version: data.version ?? 1,
       };
+    }
+  }
+}
+
+export class FirestoreProjectedStreamReader<
+  Events extends (IEsEvent & INamed)[],
+> {
+  constructor(
+    private readonly reader: FirestoreSerializedProjectedStreamReader,
+    private readonly registry: SerializerRegistry.For<Events>,
+  ) {}
+
+  async *read(
+    projectedStream: ProjectedStream,
+    shard: string,
+    startAfter?: EventReference,
+    endAt?: EventReference,
+  ) {
+    const stream = this.reader.read(projectedStream, shard, startAfter, endAt);
+
+    for await (const fact of stream) {
+      yield this.registry.deserialize<IFact<Events[number]>>(fact);
     }
   }
 }
