@@ -29,7 +29,11 @@ export class DefaultConverter<T extends FirebaseFirestore.DocumentData>
 }
 
 export function removeUndefined<T>(obj: T): T {
-  if (obj instanceof Date || obj instanceof FieldValue) {
+  if (
+    obj instanceof Date ||
+    obj instanceof FieldValue ||
+    obj?.constructor?.name === "VectorValue"
+  ) {
     return obj;
   }
   if (Array.isArray(obj)) {
