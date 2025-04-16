@@ -3,13 +3,7 @@ import {
   type ISerializedChange,
   type ISerializedFact,
   EventReference,
-  ISerializedEventStreamStore,
-  IEsEvent,
-  INamed,
-  IEventStreamStore,
-  SerializerRegistry,
-  IChange,
-  IFact,
+  EventStreamStorageLayer,
 } from "@ddd-ts/core";
 
 import {
@@ -18,35 +12,40 @@ import {
 } from "@ddd-ts/store-firestore";
 import * as fb from "firebase-admin";
 
-
 export const serverTimestamp = fb.firestore.FieldValue.serverTimestamp;
 
-
-export class FirestoreSerializedEventStreamStore implements ISerializedEventStreamStore {
-
+export class FirestoreEventStreamStorageLayer
+  implements EventStreamStorageLayer
+{
   constructor(
     public readonly firestore: fb.firestore.Firestore,
     public readonly converter = new DefaultConverter(),
   ) {}
 
   getCollection(streamId: StreamId) {
-    return this.firestore.collection("event-store")
+    return this.firestore
+      .collection("event-store")
       .doc(streamId.aggregateType)
       .collection("streams")
       .doc(streamId.aggregateId)
       .collection("events");
   }
 
-  async append(streamId: StreamId, changes: ISerializedChange[], expectedRevision: number, trx: FirestoreTransaction) {
+  async append(
+    streamId: StreamId,
+    changes: ISerializedChange[],
+    expectedRevision: number,
+    trx: FirestoreTransaction,
+  ) {
     const collection = this.getCollection(streamId);
     const refs: EventReference[] = [];
 
     let revision = expectedRevision + 1;
     for (const change of changes) {
       const ref = collection.doc(`${revision}`);
-    
-      refs.push(new EventReference(ref.path)); 
-      
+
+      refs.push(new EventReference(ref.path));
+
       trx.transaction.create(
         ref,
         this.converter.toFirestore({
@@ -66,7 +65,10 @@ export class FirestoreSerializedEventStreamStore implements ISerializedEventStre
     return refs;
   }
 
-  async *read(streamId: StreamId, startAt?: number): AsyncIterable<ISerializedFact> {
+  async *read(
+    streamId: StreamId,
+    startAt?: number,
+  ): AsyncIterable<ISerializedFact> {
     const collection = this.getCollection(streamId);
 
     const query = collection
@@ -86,31 +88,6 @@ export class FirestoreSerializedEventStreamStore implements ISerializedEventStre
         occurredAt: data.occurredAt,
         version: data.version ?? 1,
       };
-    }
-  }
-}
-
-
-export class FirestoreEventStreamStore<Events extends (IEsEvent & INamed)[]> implements IEventStreamStore<Events> {
-
-  constructor(
-    public readonly streamStore: FirestoreSerializedEventStreamStore,
-    public readonly serializer: SerializerRegistry.For<Events>,
-  ) {}
-
-  async append(
-    streamId: StreamId,
-    changes: IChange<Events[number]>[],
-    expectedRevision: number,
-    trx: FirestoreTransaction,
-  ) {
-    const serialized = await Promise.all(changes.map((change) => this.serializer.serialize(change)));
-    return this.streamStore.append(streamId, serialized as any, expectedRevision, trx);
-  }
-
-  async *read(streamId: StreamId, from?: number) {
-    for await (const serialized of this.streamStore.read(streamId, from)) {
-      yield await this.serializer.deserialize<IFact<Events[number]>>(serialized);
     }
   }
 }

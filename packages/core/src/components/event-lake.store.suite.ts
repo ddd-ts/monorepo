@@ -1,29 +1,29 @@
-process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
-import * as fb from "firebase-admin";
-
-import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
-import {
-  FirestoreEventLakeStore,
-  FirestoreSerializedEventLakeStore,
-} from "./firestore.event-lake-store";
 import { Primitive } from "@ddd-ts/shape";
-import {
-  buffer,
-  EsEvent,
-  EventId,
-  LakeId,
-  SerializerRegistry,
-} from "@ddd-ts/core";
+import { EsEvent } from "../makers/es-event";
+import { SerializerRegistry } from "./serializer-registry";
+import { TransactionPerformer } from "./transaction";
+import { EventLakeStorageLayer, EventLakeStore } from "./event-lake.store";
+import { LakeId } from "./stream-id";
+import { EventId } from "./event-id";
+import { buffer } from "../tools/iterator";
 
-jest.setTimeout(10000);
+export function EventLakeStoreSuite(config: {
+  transaction: TransactionPerformer;
+  lakeStorageLayer: EventLakeStorageLayer;
+}) {
+  const { transaction, lakeStorageLayer } = config;
 
-describe("FirestoreEventLakeStore", () => {
-  const app = fb.initializeApp({
-    projectId: "demo-es",
-  });
-  const firestore = app.firestore();
+  class AccountId extends Primitive(String) {
+    static generate() {
+      return new AccountId(`A${EventId.generate().serialize().slice(0, 8)}`);
+    }
+  }
 
-  class AccountId extends Primitive(String) {}
+  class BankId extends Primitive(String) {
+    static generate() {
+      return new BankId(`B${EventId.generate().serialize().slice(0, 8)}`);
+    }
+  }
 
   class Deposited extends EsEvent("Deposited", {
     id: AccountId,
@@ -37,20 +37,12 @@ describe("FirestoreEventLakeStore", () => {
 
   const registry = new SerializerRegistry().auto(Deposited).auto(Withdrawn);
 
-  const transaction = new FirestoreTransactionPerformer(firestore);
-
-  const lakeStore = new FirestoreEventLakeStore(
-    new FirestoreSerializedEventLakeStore(firestore),
-    registry,
-  );
+  const lakeStore = new EventLakeStore(lakeStorageLayer, registry);
 
   it("should append and read events", async () => {
-    const lakeId = LakeId.from(
-      "Bank",
-      EventId.generate().serialize().slice(0, 8),
-    );
+    const lakeId = LakeId.from("Bank", BankId.generate().serialize());
 
-    const accountId = new AccountId("123");
+    const accountId = AccountId.generate();
     const events = [
       Deposited.new({ id: accountId, amount: 100 }),
       Withdrawn.new({ id: accountId, amount: 1 }),
@@ -71,12 +63,9 @@ describe("FirestoreEventLakeStore", () => {
   });
 
   it("should read events in the correct order, within and across transactions", async () => {
-    const lakeId = LakeId.from(
-      "Bank",
-      EventId.generate().serialize().slice(0, 8),
-    );
+    const lakeId = LakeId.from("Bank", BankId.generate().serialize());
 
-    const accountId = new AccountId("123");
+    const accountId = AccountId.generate();
 
     const events = [
       Deposited.new({ id: accountId, amount: 100 }),
@@ -104,12 +93,9 @@ describe("FirestoreEventLakeStore", () => {
   });
 
   it("should read events with startAfter and endAt", async () => {
-    const lakeId = LakeId.from(
-      "Bank",
-      EventId.generate().serialize().slice(0, 8),
-    );
+    const lakeId = LakeId.from("Bank", BankId.generate().serialize());
 
-    const accountId = new AccountId("123");
+    const accountId = AccountId.generate();
 
     const events = [
       Deposited.new({ id: accountId, amount: 100 }),
@@ -131,4 +117,4 @@ describe("FirestoreEventLakeStore", () => {
       "Withdrawn:2",
     ]);
   });
-});
+}

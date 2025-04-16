@@ -2,6 +2,24 @@ export { StreamId, LakeId } from "./components/stream-id";
 export { AutoSerializable, AutoSerializer } from "./components/auto-serializer";
 export { EventBusProjectionProcessor } from "./components/event-bus.projection-processor";
 export { EventId, EventReference } from "./components/event-id";
+export {
+  EventLakeStore,
+  EventLakeStorageLayer,
+} from "./components/event-lake.store";
+export { EventLakeStoreSuite } from "./components/event-lake.store.suite";
+export {
+  EventStreamStore,
+  EventStreamStorageLayer,
+} from "./components/event-stream.store";
+export { EventStreamStoreSuite } from "./components/event-stream.store.suite";
+export {
+  LakeSource,
+  StreamSource,
+  ProjectedStream,
+  ProjectedStreamStorageLayer,
+  ProjectedStreamReader,
+} from "./components/projected-stream";
+export { ProjectedStreamReaderSuite } from "./components/projected-stream.reader.suite";
 export { SerializerRegistry } from "./components/serializer-registry";
 export { DetachedEventBus } from "./components/detached.event-bus";
 export { ConcurrencyError } from "./components/concurrency-error";
@@ -25,7 +43,10 @@ export type {
 } from "./interfaces/es-event";
 export type { IEventBus } from "./interfaces/event-bus";
 export type { IEventSourced } from "./interfaces/event-sourced";
-export type { ISerializedEventStreamStore,  IEventStreamStore } from "./interfaces/event-store";
+export type {
+  ISerializedEventStreamStore,
+  IEventStreamStore,
+} from "./interfaces/event-store";
 export type { IEvent } from "./interfaces/event";
 export type {
   IIdentifiable,

@@ -4,10 +4,7 @@ import {
   type ISerializedChange,
   type ISerializedFact,
   EventReference,
-  IEsEvent,
-  INamed,
-  SerializerRegistry,
-  IChange,
+  EventLakeStorageLayer,
 } from "@ddd-ts/core";
 
 import {
@@ -18,7 +15,7 @@ import * as fb from "firebase-admin";
 
 export const serverTimestamp = fb.firestore.FieldValue.serverTimestamp;
 
-export class FirestoreSerializedEventLakeStore {
+export class FirestoreEventLakeStorageLayer implements EventLakeStorageLayer {
   constructor(
     public readonly firestore: fb.firestore.Firestore,
     public readonly converter = new DefaultConverter(),
@@ -107,36 +104,7 @@ export class FirestoreSerializedEventLakeStore {
         payload: data.payload,
         occurredAt: data.occurredAt,
         version: data.version ?? 1,
-      };
-    }
-  }
-}
-
-export class FirestoreEventLakeStore<Events extends (IEsEvent & INamed)[]> {
-  constructor(
-    public readonly lakeStore: FirestoreSerializedEventLakeStore,
-    public readonly serializer: SerializerRegistry.For<Events>,
-  ) {}
-
-  async append(
-    lakeId: LakeId,
-    changes: IChange<Events[number]>[],
-    trx: FirestoreTransaction,
-  ) {
-    const serialized = await Promise.all(
-      changes.map((change) => this.serializer.serialize(change)),
-    );
-    return this.lakeStore.append(lakeId, serialized as any, trx);
-  }
-
-  async *read(
-    lakeId: LakeId,
-    startAfter?: EventReference,
-    endAt?: EventReference,
-  ) {
-    const lake = this.lakeStore.read(lakeId, startAfter, endAt);
-    for await (const serialized of lake) {
-      yield this.serializer.deserialize(serialized);
+      } as ISerializedFact;
     }
   }
 }

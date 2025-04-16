@@ -3,31 +3,18 @@ import {
   IEsEvent,
   IFact,
   INamed,
+  LakeSource,
+  ProjectedStream,
+  ProjectedStreamStorageLayer,
   SerializerRegistry,
+  StreamSource,
 } from "@ddd-ts/core";
-import { Shape } from "@ddd-ts/shape";
 import { DefaultConverter } from "@ddd-ts/store-firestore";
 import {
   Filter,
   Firestore,
   QueryDocumentSnapshot,
 } from "firebase-admin/firestore";
-
-export class StreamSource extends Shape({
-  aggregateType: String,
-  shardKey: String,
-  events: [String],
-}) {}
-
-export class LakeSource extends Shape({
-  shardType: String,
-  shardKey: String,
-  events: [String],
-}) {}
-
-export class ProjectedStream {
-  constructor(public readonly sources: (StreamSource | LakeSource)[]) {}
-}
 
 export class FirestoreLakeSourceFilter {
   filter(shard: string, lakeSource: LakeSource) {
@@ -48,7 +35,9 @@ export class FirestoreStreamSourceFilter {
   }
 }
 
-export class FirestoreSerializedProjectedStreamReader {
+export class FirestoreProjectedStreamStorageLayer
+  implements ProjectedStreamStorageLayer
+{
   constructor(
     private readonly firestore: Firestore,
     public readonly converter = new DefaultConverter(),
@@ -61,6 +50,7 @@ export class FirestoreSerializedProjectedStreamReader {
     endAt?: EventReference,
   ) {
     let query = this.firestore
+
       .collectionGroup("events")
       .orderBy("occurredAt")
       .orderBy("revision");
@@ -102,6 +92,7 @@ export class FirestoreSerializedProjectedStreamReader {
       const data = this.converter.fromFirestore(doc);
       yield {
         id: data.eventId,
+        ref: doc.ref.path,
         revision: data.revision,
         name: data.name,
         $name: data.name,
@@ -109,28 +100,6 @@ export class FirestoreSerializedProjectedStreamReader {
         occurredAt: data.occurredAt,
         version: data.version ?? 1,
       };
-    }
-  }
-}
-
-export class FirestoreProjectedStreamReader<
-  Events extends (IEsEvent & INamed)[],
-> {
-  constructor(
-    private readonly reader: FirestoreSerializedProjectedStreamReader,
-    private readonly registry: SerializerRegistry.For<Events>,
-  ) {}
-
-  async *read(
-    projectedStream: ProjectedStream,
-    shard: string,
-    startAfter?: EventReference,
-    endAt?: EventReference,
-  ) {
-    const stream = this.reader.read(projectedStream, shard, startAfter, endAt);
-
-    for await (const fact of stream) {
-      yield this.registry.deserialize<IFact<Events[number]>>(fact);
     }
   }
 }
