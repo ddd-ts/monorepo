@@ -9,6 +9,7 @@ import {
   type IEventBus,
   type Identifiable,
   type IIdentifiable,
+  EventsOf,
 } from "@ddd-ts/core";
 import type { Constructor } from "@ddd-ts/types";
 import type { HasTrait } from "@ddd-ts/traits";
@@ -100,7 +101,7 @@ export function BankSuite(
   >(
     AGGREGATE: A,
     serializer: ISerializer<InstanceType<A>>,
-    eventSerializers: SerializerRegistry.For<InstanceType<A>["changes"]>,
+    eventSerializers: SerializerRegistry.For<EventsOf<A>>,
   ) => IEsAggregateStore<InstanceType<A>>,
 ) {
   // const cashflowStore = createStore(new CashflowSerializer(), "cashflow");

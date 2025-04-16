@@ -7,9 +7,9 @@ import {
 } from "@ddd-ts/core";
 import type { InMemoryTransaction } from "@ddd-ts/store-inmemory";
 import { Stream } from "./stream";
-import { IEventStreamStore } from "@ddd-ts/core";
+import { ISerializedEventStreamStore } from "@ddd-ts/core";
 
-export class InMemoryEventStreamStore implements IEventStreamStore {
+export class InMemoryEventStreamStore implements ISerializedEventStreamStore {
   private streams = new Map<string, Stream>();
 
   async close() {
@@ -26,7 +26,6 @@ export class InMemoryEventStreamStore implements IEventStreamStore {
     expectedRevision: number,
     trx: InMemoryTransaction,
   ) {
-
     if (!this.streams.has(streamId.serialize())) {
       const stream = new Stream(streamId);
       this.streams.set(streamId.serialize(), stream);

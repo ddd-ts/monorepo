@@ -124,7 +124,7 @@ export class SerializerRegistry<
     : never;
   deserialize<const I extends Instances>(
     serialized: unknown,
-  ): PromiseOr<NoInfer<I>>;
+  ): PromiseOr<I>;
   // deserialize(serialized: unknown): unknown;
   deserialize(serialized: unknown): PromiseOr<unknown> {
     const name =

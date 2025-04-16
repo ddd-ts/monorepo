@@ -2,13 +2,13 @@ import { HasTrait } from "@ddd-ts/traits";
 import {
   StreamId,
   ConcurrencyError,
-  EventOf,
   EventsOf,
   EventSourced,
   type Identifiable,
   type IEsAggregateStore,
   type IEventBus,
-  type SerializerRegistry,
+  IChange,
+  IFact,
 } from "@ddd-ts/core";
 import type {
   FirestoreTransaction,
@@ -24,7 +24,7 @@ export const MakeFirestoreEsAggregateStore = <
   AGGREGATE: A,
 ) => {
   return class $FirestoreEsAggregateStore extends FirestoreEsAggregateStore<A> {
-    loadFirst(event: EventOf<A>): InstanceType<A> {
+    loadFirst(event: EventsOf<A>[number]): InstanceType<A> {
       return AGGREGATE.loadFirst(event);
     }
 
@@ -39,14 +39,13 @@ export abstract class FirestoreEsAggregateStore<
 > implements IEsAggregateStore<InstanceType<A>>
 {
   constructor(
-    public readonly streamStore: FirestoreEventStreamStore,
+    public readonly streamStore: FirestoreEventStreamStore<EventsOf<A>>,
     public readonly transaction: FirestoreTransactionPerformer,
-    public readonly eventsSerializer: SerializerRegistry.For<EventsOf<A>>,
     public readonly snapshotter: FirestoreSnapshotter<InstanceType<A>>,
   ) {}
 
   abstract getStreamId(id: InstanceType<A>["id"]): StreamId;
-  abstract loadFirst(event: EventOf<A>): InstanceType<A>;
+  abstract loadFirst(event: IFact<EventsOf<A>[number]>): InstanceType<A>;
 
   _publishEventsTo?: IEventBus;
   publishEventsTo(eventBus: IEventBus) {
@@ -55,16 +54,11 @@ export abstract class FirestoreEsAggregateStore<
 
   async loadFromSnapshot(snapshot: InstanceType<A>) {
     const streamId = this.getStreamId(snapshot.id);
+    const from = snapshot.acknowledgedRevision + 1;
+    const stream = this.streamStore.read(streamId, from);
 
-    const stream = this.streamStore.read(
-      streamId,
-      snapshot.acknowledgedRevision + 1,
-    );
-
-    for await (const serialized of stream) {
-      const event =
-        await this.eventsSerializer.deserialize<EventOf<A>>(serialized);
-      snapshot.load(event);
+    for await (const fact of stream) {
+      snapshot.load(fact);
     }
 
     return snapshot;
@@ -74,14 +68,11 @@ export abstract class FirestoreEsAggregateStore<
     const streamId = this.getStreamId(id);
 
     let instance: InstanceType<A> | undefined = undefined;
-    for await (const serialized of this.streamStore.read(streamId)) {
-      const event =
-        await this.eventsSerializer.deserialize<EventOf<A>>(serialized);
-
+    for await (const fact of this.streamStore.read(streamId)) {
       if (!instance) {
-        instance = this.loadFirst(event);
+        instance = this.loadFirst(fact);
       } else {
-        instance.load(event);
+        instance.load(fact);
       }
     }
 
@@ -143,12 +134,7 @@ export abstract class FirestoreEsAggregateStore<
         .map(async (aggregate) => ({
           aggregate: aggregate,
           streamId: this.getStreamId(aggregate.id),
-          changes: [...aggregate.changes],
-          serialized: await Promise.all(
-            aggregate.changes.map((event) =>
-              this.eventsSerializer.serialize(event),
-            ),
-          ),
+          changes: [...aggregate.changes] as IChange<EventsOf<A>[number]>[],
           acknowledgedRevision: aggregate.acknowledgedRevision,
         })),
     );
@@ -159,9 +145,13 @@ export abstract class FirestoreEsAggregateStore<
 
     try {
       await this.performTransaction(parentTrx, async (trx) => {
-
-        for(const save of toSave) {
-          await this.streamStore.append(save.streamId, save.serialized as any, save.acknowledgedRevision, trx);
+        for (const save of toSave) {
+          await this.streamStore.append(
+            save.streamId,
+            save.changes,
+            save.acknowledgedRevision,
+            trx,
+          );
         }
 
         for (const save of toSave) {
@@ -219,7 +209,7 @@ export abstract class FirestoreEsAggregateStore<
           isDDDTSConcurrencyError,
           isFirestoreConcurrencyError,
           hasAttempts,
-          events: toSave.map(({ serialized }) => serialized),
+          events: toSave.map(({ changes }) => changes),
         }),
       );
 

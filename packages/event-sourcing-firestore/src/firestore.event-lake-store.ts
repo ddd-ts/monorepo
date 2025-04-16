@@ -4,6 +4,10 @@ import {
   type ISerializedChange,
   type ISerializedFact,
   EventReference,
+  IEsEvent,
+  INamed,
+  SerializerRegistry,
+  IChange,
 } from "@ddd-ts/core";
 
 import {
@@ -14,30 +18,32 @@ import * as fb from "firebase-admin";
 
 export const serverTimestamp = fb.firestore.FieldValue.serverTimestamp;
 
-export class FirestoreEventLakeStore {
+export class FirestoreSerializedEventLakeStore {
   constructor(
     public readonly firestore: fb.firestore.Firestore,
     public readonly converter = new DefaultConverter(),
   ) {}
 
-
   getCollection(lakeId: LakeId) {
     return this.firestore
       .collection("event-store")
-      .doc('Lakes')
+      .doc("Lakes")
       .collection(lakeId.shardType)
       .doc(lakeId.shardId)
       .collection("events");
   }
 
-  async append(lakeId: LakeId, changes: ISerializedChange[], trx: FirestoreTransaction) {
+  async append(
+    lakeId: LakeId,
+    changes: ISerializedChange[],
+    trx: FirestoreTransaction,
+  ) {
     const collection = this.getCollection(lakeId);
 
     const refs: EventReference[] = [];
 
     let revision = 0;
     for (const change of changes) {
-
       const storageChange = {
         eventId: change.id,
         name: change.name,
@@ -45,19 +51,23 @@ export class FirestoreEventLakeStore {
         occurredAt: serverTimestamp(),
         version: change.version,
         revision: revision,
-      }
+      };
 
       const ref = collection.doc(change.id);
       refs.push(new EventReference(ref.path));
       trx.transaction.create(ref, this.converter.toFirestore(storageChange));
-      
+
       revision++;
     }
 
     return refs;
   }
 
-  async *read(lakeId: LakeId, startAfter?: EventId, endAt?: EventId): AsyncIterable<ISerializedFact> {
+  async *read(
+    lakeId: LakeId,
+    startAfter?: EventId,
+    endAt?: EventId,
+  ): AsyncIterable<ISerializedFact> {
     const collection = this.getCollection(lakeId);
 
     const [start, end] = await Promise.all([
@@ -77,11 +87,11 @@ export class FirestoreEventLakeStore {
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc");
 
-    if(start){
+    if (start) {
       query = query.startAfter(start);
     }
-    
-    if(endAt){
+
+    if (endAt) {
       query = query.endAt(end);
     }
 
@@ -98,6 +108,35 @@ export class FirestoreEventLakeStore {
         occurredAt: data.occurredAt,
         version: data.version ?? 1,
       };
+    }
+  }
+}
+
+export class FirestoreEventLakeStore<Events extends (IEsEvent & INamed)[]> {
+  constructor(
+    public readonly lakeStore: FirestoreSerializedEventLakeStore,
+    public readonly serializer: SerializerRegistry.For<Events>,
+  ) {}
+
+  async append(
+    lakeId: LakeId,
+    changes: IChange<Events[number]>[],
+    trx: FirestoreTransaction,
+  ) {
+    const serialized = await Promise.all(
+      changes.map((change) => this.serializer.serialize(change)),
+    );
+    return this.lakeStore.append(lakeId, serialized as any, trx);
+  }
+
+  async *read(
+    lakeId: LakeId,
+    startAfter?: EventReference,
+    endAt?: EventReference,
+  ) {
+    const lake = this.lakeStore.read(lakeId, startAfter, endAt);
+    for await (const serialized of lake) {
+      yield this.serializer.deserialize(serialized);
     }
   }
 }
