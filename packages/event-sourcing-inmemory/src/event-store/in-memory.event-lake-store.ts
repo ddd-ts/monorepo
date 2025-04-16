@@ -23,7 +23,7 @@ export class InMemoryEventLakeStore {
     trx: InMemoryTransaction,
   ) {
     if (!this.streams.has(lakeId.serialize())) {
-      const stream = new Stream();
+      const stream = new Stream(lakeId);
       this.streams.set(lakeId.serialize(), stream);
     }
 

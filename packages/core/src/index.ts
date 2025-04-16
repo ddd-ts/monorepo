@@ -1,7 +1,7 @@
 export { StreamId, LakeId } from "./components/stream-id";
 export { AutoSerializable, AutoSerializer } from "./components/auto-serializer";
 export { EventBusProjectionProcessor } from "./components/event-bus.projection-processor";
-export { EventId } from "./components/event-id";
+export { EventId, EventReference } from "./components/event-id";
 export { SerializerRegistry } from "./components/serializer-registry";
 export { DetachedEventBus } from "./components/detached.event-bus";
 export { ConcurrencyError } from "./components/concurrency-error";

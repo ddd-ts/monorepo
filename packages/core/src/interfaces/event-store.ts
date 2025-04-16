@@ -1,3 +1,4 @@
+import { EventReference } from "../components/event-id";
 import type { StreamId } from "../components/stream-id";
 import { Transaction } from "../components/transaction";
 import type { ISerializedChange, ISerializedFact } from "./es-event";
@@ -8,6 +9,6 @@ export interface IEventStreamStore {
     changes: ISerializedChange[],
     expectedRevision: number,
     trx: Transaction
-  ): Promise<void>;
+  ): Promise<EventReference[]>;
   read(streamId: StreamId, from?: number): AsyncIterable<ISerializedFact>;
 }
