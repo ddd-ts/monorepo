@@ -1,5 +1,5 @@
-import { getPnpmWorkspaces } from "workspace-tools";
-import { config } from "./jest.config";
+const { getPnpmWorkspaces } = require("workspace-tools");
+const { config } = require("./jest.config");
 
 const workspaces = getPnpmWorkspaces(process.cwd());
 const ignore = ["@ddd-ts/tools"];

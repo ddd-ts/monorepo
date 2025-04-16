@@ -18,7 +18,7 @@
 		"@ddd-ts/store-firestore": "workspace:*",
 		"@ddd-ts/store-inmemory": "workspace:*",
 		"@ddd-ts/traits": "workspace:*",
-		"firebase-admin": "^11.11.1",
+		"firebase-admin": "^13.2.0",
 		"uuid": "^8.3.2"
 	},
 	"devDependencies": {
