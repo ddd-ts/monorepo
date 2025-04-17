@@ -6,6 +6,7 @@ import {
   AutoSerializer,
   EsAggregate,
   EsEvent,
+  EventStreamStore,
   On,
   SerializerRegistry,
   type EventSourced,
@@ -21,11 +22,12 @@ import {
 import { InMemorySnapshotter } from "./in-memory.snapshotter";
 import { MakeInMemoryEsAggregateStore } from "./in-memory.es-aggregate-store";
 import { InMemoryEventStreamStore } from "./event-store/in-memory.event-stream.store";
+import { InMemoryEventStreamStorageLayer } from "./event-store/in-memory.event-stream.storage-layer";
 
 describe("InMemoryEsAggregateStore", () => {
   const database = new InMemoryDatabase();
   const transaction = new InMemoryTransactionPerformer(database);
-  const streamStore = new InMemoryEventStreamStore();
+  const storageLayer = new InMemoryEventStreamStorageLayer(database);
   function makeAggregateStore<
     T extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
   >(
@@ -41,7 +43,11 @@ describe("InMemoryEsAggregateStore", () => {
 
     const Store = MakeInMemoryEsAggregateStore(AGGREGATE);
 
-    return new Store(streamStore, transaction, eventSerializer, snapshotter);
+    return new Store(
+      new EventStreamStore(storageLayer, eventSerializer),
+      transaction,
+      snapshotter,
+    );
   }
   EsAggregateStoreSuite(makeAggregateStore);
 
@@ -131,10 +137,13 @@ describe("InMemoryEsAggregateStore", () => {
       .add(AccountOpened, new (AutoSerializer(AccountOpened, 1))())
       .add(Account, new (AutoSerializer(Account, 1))());
 
+    const accountStreamStore = new InMemoryEventStreamStore<
+      EventsOf<typeof Account>
+    >(database, serializerRegistry);
+
     const accountStore = new (MakeInMemoryEsAggregateStore(Account))(
-      streamStore,
+      accountStreamStore,
       transaction,
-      serializerRegistry,
       new InMemorySnapshotter(
         Account.name,
         database,

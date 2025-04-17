@@ -1,3 +1,4 @@
+import { ConcurrencyError } from "@ddd-ts/core";
 import { InMemoryTransaction } from "..";
 import { Storage } from "./in-memory.storage";
 
@@ -10,6 +11,12 @@ export class CannotReadAfterWrites extends Error {
 export class TransactionCollision extends Error {
   constructor() {
     super("Transaction has collided with other extern writes");
+  }
+}
+
+export class DocumentAlreadyExists extends ConcurrencyError {
+  constructor() {
+    super("Document already exists");
   }
 }
 
@@ -33,6 +40,13 @@ type WriteOperation = {
   data: any;
 };
 
+type CreateOperation = {
+  type: "create";
+  collectionName: string;
+  id: string;
+  data: any;
+};
+
 type DeleteOperation = {
   type: "delete";
   collectionName: string;
@@ -40,7 +54,11 @@ type DeleteOperation = {
   savedAt: number | undefined;
 };
 
-type TransactionOperation = ReadOperation | WriteOperation | DeleteOperation;
+type TransactionOperation =
+  | ReadOperation
+  | WriteOperation
+  | DeleteOperation
+  | CreateOperation;
 
 export class InMemoryUnderlyingTransaction {
   public readonly operations: TransactionOperation[] = [];
@@ -51,7 +69,9 @@ export class InMemoryUnderlyingTransaction {
     if (
       this.operations.some(
         (operation) =>
-          operation.type === "write" || operation.type === "delete",
+          operation.type === "write" ||
+          operation.type === "create" ||
+          operation.type === "delete",
       )
     ) {
       throw new CannotReadAfterWrites();
@@ -71,6 +91,10 @@ export class InMemoryUnderlyingTransaction {
     this.operations.push({ type: "write", collectionName, id, data });
   }
 
+  public markCreated(collectionName: string, id: any, data: any) {
+    this.operations.push({ type: "create", collectionName, id, data });
+  }
+
   public markDeleted(
     collectionName: string,
     id: any,
@@ -81,18 +105,27 @@ export class InMemoryUnderlyingTransaction {
 
   public checkConsistency(storage: Storage) {
     for (const operation of this.operations) {
-      if (operation.type !== "read") {
-        continue;
+      if (operation.type === "read") {
+        const collection = storage.getCollection(operation.collectionName);
+
+        if (!collection) {
+          return false;
+        }
+
+        if (operation.savedAt !== collection.getRaw(operation.id)?.savedAt) {
+          return false;
+        }
       }
 
-      const collection = storage.getCollection(operation.collectionName);
+      if (operation.type === "create") {
+        const collection = storage.getCollection(operation.collectionName);
 
-      if (!collection) {
-        return false;
-      }
-
-      if (operation.savedAt !== collection.getRaw(operation.id)?.savedAt) {
-        return false;
+        if (
+          collection &&
+          collection.getRaw(operation.id)?.savedAt !== undefined
+        ) {
+          throw new DocumentAlreadyExists();
+        }
       }
     }
     return true;
@@ -100,7 +133,7 @@ export class InMemoryUnderlyingTransaction {
 }
 
 export class InMemoryDatabase {
-  private storage = new Storage();
+  public storage = new Storage();
 
   clear(collectionName: string) {
     this.storage.getCollection(collectionName).clear();
@@ -158,6 +191,22 @@ export class InMemoryDatabase {
     }
   }
 
+  create(
+    collectionName: string,
+    id: string,
+    data: any,
+    trx?: InMemoryUnderlyingTransaction,
+  ): void {
+    if (trx) {
+      trx.markCreated(collectionName, id, data);
+    } else {
+      if (this.storage.getCollection(collectionName).get(id)) {
+        throw new Error(`Document with id ${id} already exists`);
+      }
+      this.storage.getCollection(collectionName).save(id, data);
+    }
+  }
+
   private static transactionTries = 5;
 
   async transactionally(fn: (trx: InMemoryTransaction) => any) {
@@ -201,6 +250,9 @@ export class InMemoryDatabase {
       }
       if (operation.type === "delete") {
         this.delete(operation.collectionName, operation.id);
+      }
+      if (operation.type === "create") {
+        this.create(operation.collectionName, operation.id, operation.data);
       }
     }
   }

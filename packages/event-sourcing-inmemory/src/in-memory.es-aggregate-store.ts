@@ -6,10 +6,7 @@ import {
   type IEsAggregateStore,
   type IEventBus,
   type Identifiable,
-  type SerializerRegistry,
-  type EventOf,
   type EventsOf,
-  ISerializedChange,
 } from "@ddd-ts/core";
 
 import type { InMemoryEventStreamStore } from "./event-store/in-memory.event-stream.store";
@@ -40,14 +37,13 @@ export abstract class InMemoryEsAggregateStore<
 > implements IEsAggregateStore<InstanceType<A>>
 {
   constructor(
-    public readonly streamStore: InMemoryEventStreamStore,
+    public readonly streamStore: InMemoryEventStreamStore<EventsOf<A>>,
     public readonly transaction: InMemoryTransactionPerformer,
-    public readonly eventSerializer: SerializerRegistry.For<EventsOf<A>>,
     public readonly snapshotter?: InMemorySnapshotter<InstanceType<A>>,
   ) {}
 
   abstract getStreamId(id: InstanceType<A>["id"]): StreamId;
-  abstract loadFirst(event: EventOf<A>): InstanceType<A>;
+  abstract loadFirst(fact: EventsOf<A>[number]): InstanceType<A>;
 
   _publishEventsTo?: IEventBus;
   publishEventsTo(eventBus: IEventBus) {
@@ -65,23 +61,19 @@ export abstract class InMemoryEsAggregateStore<
         snapshot.acknowledgedRevision + 1,
       );
 
-      for await (const serialized of stream) {
-        const event =
-          await this.eventSerializer.deserialize<EventOf<A>>(serialized);
-        snapshot.load(event);
+      for await (const fact of stream) {
+        snapshot.load(fact);
       }
 
       return snapshot;
     }
 
     let instance: InstanceType<A> | undefined = undefined;
-    for await (const serialized of this.streamStore.read(streamId)) {
-      const event =
-        await this.eventSerializer.deserialize<EventOf<A>>(serialized);
+    for await (const fact of this.streamStore.read(streamId)) {
       if (!instance) {
-        instance = this.loadFirst(event);
+        instance = this.loadFirst(fact);
       } else {
-        instance.load(event);
+        instance.load(fact);
       }
     }
 
@@ -98,33 +90,43 @@ export abstract class InMemoryEsAggregateStore<
     }
   }
 
+  performTransaction(
+    trx: InMemoryTransaction | undefined,
+    callback: (trx: InMemoryTransaction) => Promise<void>,
+  ) {
+    return trx ? callback(trx) : this.transaction.perform(callback);
+  }
+
   async save(
     aggregate: InstanceType<A>,
-    trx?: InMemoryTransaction,
+    parentTrx?: InMemoryTransaction,
     attempts = 10,
   ): Promise<void> {
-    if (!trx) {
-      return await this.transaction.perform(async (trx) => {
-        return await this.save(aggregate, trx, attempts);
-      });
-    }
     const streamId = this.getStreamId(aggregate.id);
     const changes = [...aggregate.changes];
 
-    const serialized = await Promise.all(
-      changes.map((event) => this.eventSerializer.serialize(event)),
-    );
-
     try {
-      await this.streamStore.append(
-        streamId,
-        serialized as ISerializedChange[],
-        aggregate.acknowledgedRevision,
-        trx,
-      );
+      await this.performTransaction(parentTrx, async (trx) => {
+        await this.streamStore.append(
+          streamId,
+          changes,
+          aggregate.acknowledgedRevision,
+          trx,
+        );
 
-      aggregate.acknowledgeChanges();
-      await this.snapshotter?.save(aggregate);
+        aggregate.acknowledgeChanges();
+        await this.snapshotter?.save(aggregate, trx);
+
+        if (!parentTrx) {
+          trx.onCommit(async () => {
+            if (this._publishEventsTo) {
+              for (const event of changes) {
+                await this._publishEventsTo.publish(event);
+              }
+            }
+          });
+        }
+      });
     } catch (error) {
       if (error instanceof ConcurrencyError && attempts > 0) {
         const pristine = await this.load(aggregate.id);
@@ -137,13 +139,16 @@ export abstract class InMemoryEsAggregateStore<
           pristine.apply(change);
         }
 
-        return await this.save(pristine, trx, attempts - 1);
+        return await this.save(pristine, parentTrx, attempts - 1);
       }
 
       throw error;
     }
-    for (const event of changes) {
-      await this._publishEventsTo?.publish(event);
+
+    if (parentTrx) {
+      for (const event of changes) {
+        await this._publishEventsTo?.publish(event);
+      }
     }
   }
 }

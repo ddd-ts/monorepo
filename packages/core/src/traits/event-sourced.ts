@@ -1,7 +1,7 @@
 import { HasTrait, Trait } from "@ddd-ts/traits";
 import type { Constructor } from "@ddd-ts/types";
 
-import type { IEsEvent } from "../interfaces/es-event";
+import type { IChange, IEsEvent } from "../interfaces/es-event";
 import type { IEventSourced } from "../interfaces/event-sourced";
 import { getHandler } from "../decorators/handlers";
 import { INamed } from "../interfaces/named";
@@ -13,7 +13,7 @@ export const EventSourced = <C extends Config>(config: C) =>
     type Event = InstanceType<C[number]> & INamed;
     abstract class $EventSourced extends base implements IEventSourced<Event> {
       acknowledgedRevision = -1;
-      changes: Event[] = [];
+      changes: IChange<Event>[] = [];
       static events = config;
 
       load(fact: Event) {
@@ -35,7 +35,7 @@ export const EventSourced = <C extends Config>(config: C) =>
         this.acknowledgedRevision = fact.revision;
       }
 
-      apply(change: Event) {
+      apply(change: IChange<Event>) {
         this.play(change);
         this.changes.push(change);
       }
