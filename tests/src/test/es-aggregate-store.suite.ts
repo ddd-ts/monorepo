@@ -1,5 +1,6 @@
 import {
   AutoSerializer,
+  EventsOf,
   SerializerRegistry,
   type EventSourced,
   type Identifiable,
@@ -26,7 +27,7 @@ export function EsAggregateStoreSuite(
     T extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
   >(
     AGGREGATE: T,
-    eventSerializer: SerializerRegistry.For<InstanceType<T>["changes"]>,
+    eventSerializer: SerializerRegistry.For<EventsOf<T>>,
     serializer: ISerializer<InstanceType<T>>,
   ) => IEsAggregateStore<InstanceType<T>>,
 ) {
@@ -82,7 +83,7 @@ export function EsAggregateStoreSuite(
         );
 
         const errors = result.filter((r) => r.status === "rejected");
-        expect(errors.map((i) => i.reason)).toEqual([]);
+        expect(errors).toEqual([]);
 
         expect(result.filter((r) => r.status === "rejected").length).toBe(0);
 

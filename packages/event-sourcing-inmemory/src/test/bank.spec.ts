@@ -10,7 +10,6 @@ import { InMemorySnapshotter } from "../in-memory.snapshotter";
 import { MakeInMemoryEsAggregateStore } from "../in-memory.es-aggregate-store";
 
 describe("EventSourcingInMemory", () => {
-  const es = new InMemoryEventStreamStore();
   const database = new InMemoryDatabase();
   const transaction = new InMemoryTransactionPerformer(database);
   const eventBus = new DetachedEventBus();
@@ -27,9 +26,10 @@ describe("EventSourcingInMemory", () => {
         database,
         serializer,
       );
+      const es = new InMemoryEventStreamStore(database, eventSerializer);
       const Store = MakeInMemoryEsAggregateStore(AGGREGATE);
 
-      const store = new Store(es, transaction, eventSerializer, snapshotter);
+      const store = new Store(es, transaction, snapshotter);
       store.publishEventsTo(eventBus);
       return store;
     },

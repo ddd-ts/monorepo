@@ -38,17 +38,20 @@ export function ProjectedStreamReaderSuite(config: {
   }
 
   class Added extends EsEvent("Added", {
-    id: AccountId,
+    accountId: AccountId,
+    bankId: BankId,
     amount: Number,
   }) {}
 
   class Removed extends EsEvent("Removed", {
-    id: AccountId,
+    accountId: AccountId,
+    bankId: BankId,
     amount: Number,
   }) {}
 
   class Multiplied extends EsEvent("Multiplied", {
-    id: AccountId,
+    accountId: AccountId,
+    bankId: BankId,
     factor: Number,
   }) {}
 
@@ -80,46 +83,48 @@ export function ProjectedStreamReaderSuite(config: {
   }
 
   it("should read events in order", async () => {
-    const lakeId = LakeId.from("Bank", BankId.generate().serialize());
-
+    const bankId = BankId.generate();
     const accountId = AccountId.generate();
 
+    const lakeId = LakeId.from("Bank", bankId.serialize());
     const streamId = StreamId.from("Account", accountId.serialize());
 
     await appendToStream(streamId, -1, [
-      Added.new({ id: accountId, amount: 20 }),
-      Added.new({ id: accountId, amount: 30 }),
+      Added.new({ accountId, bankId, amount: 20 }),
+      Added.new({ accountId, bankId, amount: 30 }),
     ]);
 
     await appendToLake(lakeId, [
-      Removed.new({ id: accountId, amount: 10 }),
-      Removed.new({ id: accountId, amount: 20 }),
+      Removed.new({ accountId, bankId, amount: 10 }),
+      Removed.new({ accountId, bankId, amount: 20 }),
     ]);
 
-    await appendToLake(lakeId, [Multiplied.new({ id: accountId, factor: 2 })]);
+    await appendToLake(lakeId, [
+      Multiplied.new({ accountId, bankId, factor: 2 }),
+    ]);
 
     await appendToStream(streamId, 1, [
-      Added.new({ id: accountId, amount: 50 }),
-      Multiplied.new({ id: accountId, factor: 3 }),
+      Added.new({ accountId, bankId, amount: 50 }),
+      Multiplied.new({ accountId, bankId, factor: 3 }),
     ]);
 
     const projectedStream = new ProjectedStream({
       sources: [
         new StreamSource({
           aggregateType: "Account",
-          shardKey: "id",
+          shardKey: "bankId",
           events: [Added.name, Removed.name, Multiplied.name],
         }),
         new LakeSource({
           shardType: "Bank",
-          shardKey: "id",
+          shardKey: "bankId",
           events: [Added.name, Removed.name, Multiplied.name],
         }),
       ],
     });
 
     const result = await buffer(
-      reader.read(projectedStream, accountId.serialize()),
+      reader.read(projectedStream, bankId.serialize()),
     );
 
     expect(
@@ -139,44 +144,48 @@ export function ProjectedStreamReaderSuite(config: {
   });
 
   it("should read events in order with startAfter and endAt", async () => {
+    const bankId = BankId.generate();
     const accountId = AccountId.generate();
-    const lakeId = LakeId.from("Bank", BankId.generate().serialize());
+
+    const lakeId = LakeId.from("Bank", bankId.serialize());
     const streamId = StreamId.from("Account", accountId.serialize());
 
     const [start] = await appendToStream(streamId, -1, [
-      Added.new({ id: accountId, amount: 20 }),
-      Added.new({ id: accountId, amount: 30 }),
+      Added.new({ accountId, bankId, amount: 20 }),
+      Added.new({ accountId, bankId, amount: 30 }),
     ]);
 
     await appendToLake(lakeId, [
-      Removed.new({ id: accountId, amount: 10 }),
-      Removed.new({ id: accountId, amount: 20 }),
+      Removed.new({ accountId, bankId, amount: 10 }),
+      Removed.new({ accountId, bankId, amount: 20 }),
     ]);
 
-    await appendToLake(lakeId, [Multiplied.new({ id: accountId, factor: 2 })]);
+    await appendToLake(lakeId, [
+      Multiplied.new({ accountId, bankId, factor: 2 }),
+    ]);
 
     const [end] = await appendToStream(streamId, 1, [
-      Added.new({ id: accountId, amount: 50 }),
-      Multiplied.new({ id: accountId, factor: 3 }),
+      Added.new({ accountId, bankId, amount: 50 }),
+      Multiplied.new({ accountId, bankId, factor: 3 }),
     ]);
 
     const projectedStream = new ProjectedStream({
       sources: [
         new StreamSource({
           aggregateType: "Account",
-          shardKey: "id",
+          shardKey: "bankId",
           events: [Added.name, Removed.name, Multiplied.name],
         }),
         new LakeSource({
           shardType: "Bank",
-          shardKey: "id",
+          shardKey: "bankId",
           events: [Added.name, Removed.name, Multiplied.name],
         }),
       ],
     });
 
     const result = await buffer(
-      reader.read(projectedStream, accountId.serialize(), start, end),
+      reader.read(projectedStream, bankId.serialize(), start, end),
     );
 
     expect(

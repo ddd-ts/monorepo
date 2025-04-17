@@ -1,7 +1,7 @@
 import { Collection } from "./in-memory.collection";
 
 export class Storage {
-  constructor(private collections: Map<string, Collection> = new Map()) {}
+  constructor(public collections: Map<string, Collection> = new Map()) {}
 
   clone() {
     const clone = new Map<string, Collection>();
@@ -17,7 +17,7 @@ export class Storage {
     for (const [collectionName, collection] of other.collections) {
       collections.set(
         collectionName,
-        this.getCollection(collectionName).merge(collection)
+        this.getCollection(collectionName).merge(collection),
       );
     }
     return new Storage(collections);
@@ -32,10 +32,9 @@ export class Storage {
   toPretty() {
     return [...this.collections.entries()]
       .map(([collectionName, collection]) => {
-        return [
-          'Collection: "' + collectionName + '"',
-          collection.toPretty(),
-        ].join("\n");
+        return [`Collection: "${collectionName}"`, collection.toPretty()].join(
+          "\n",
+        );
       })
       .join("\n");
   }

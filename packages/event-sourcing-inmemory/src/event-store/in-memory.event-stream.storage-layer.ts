@@ -4,7 +4,6 @@ import {
   type ISerializedFact,
   EventReference,
   EventStreamStorageLayer,
-  EventId,
   ConcurrencyError,
 } from "@ddd-ts/core";
 import { InMemoryDatabase, InMemoryTransaction } from "@ddd-ts/store-inmemory";
@@ -22,49 +21,10 @@ export class InMemoryEventStreamStorageLayer
   ) {
     const refs: EventReference[] = [];
 
-    if (expectedRevision === -1) {
-      const undesired = this.database.load(
-        streamId.serialize(),
-        `${expectedRevision}`,
-        trx.transaction,
-      );
-      if (undesired) {
-        throw new ConcurrencyError(
-          `Expected revision ${expectedRevision} already exists for stream ${streamId.serialize()}`,
-        );
-      }
-    } else {
-      const expected = this.database.load(
-        streamId.serialize(),
-        `${expectedRevision}`,
-        trx.transaction,
-      );
-
-      if (!expected) {
-        throw new Error(
-          `Expected revision ${expectedRevision} not found for stream ${streamId.serialize()}`,
-        );
-      }
-
-      const next = this.database.load(
-        streamId.serialize(),
-        `${expectedRevision + 1}`,
-        trx.transaction,
-      );
-
-      if (next) {
-        throw new ConcurrencyError(
-          `Expected revision ${expectedRevision + 1} already exists for stream ${streamId.serialize()}`,
-        );
-      }
-    }
-
     let revision = expectedRevision + 1;
 
     for (const change of changes) {
-      const ref = new EventReference(
-        `${streamId.serialize()}/${change.revision}`,
-      );
+      const ref = new EventReference(`${streamId.serialize()}/${revision}`);
 
       const stored = {
         ...change,
@@ -72,7 +32,7 @@ export class InMemoryEventStreamStorageLayer
         revision: revision,
       };
 
-      this.database.save(
+      this.database.create(
         streamId.serialize(),
         `${revision}`,
         stored,
