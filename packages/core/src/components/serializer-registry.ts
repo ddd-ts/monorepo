@@ -1,5 +1,4 @@
 import { HasTrait } from "@ddd-ts/traits";
-import { IEventSourced } from "../interfaces/event-sourced";
 import type { INamed, INamedContructor } from "../interfaces/named";
 import {
   ISerializer,
@@ -7,11 +6,7 @@ import {
   type Serialized,
 } from "../interfaces/serializer";
 import { AutoSerializable, AutoSerializer } from "./auto-serializer";
-import {
-  EventsOf,
-  EventSourced,
-  EventSourcedConfig,
-} from "../traits/event-sourced";
+import { EventsOf, EventSourced } from "../traits/event-sourced";
 import { Named } from "../traits/named";
 
 type IsStringLiteral<T> = [string] extends [T] ? false : true;
@@ -125,16 +120,15 @@ export class SerializerRegistry<
   }
 
   deserialize<
-    const TH extends SerializerRegistry<any, any>,
-    const S extends INamed,
+    const I extends Instances,
+    const S extends INamed<I["$name"]> | unknown = I,
   >(
-    this: TH,
-    serialized: IsStringLiteral<S["$name"]> extends true ? S : never,
-  ): TH extends SerializerRegistry<infer RRR, any>
-    ? PromiseOr<Extract<RRR[number], [INamed<S["$name"]>, any]>[0]>
-    : never;
-  deserialize<const I extends Instances>(serialized: unknown): PromiseOr<I>;
-  // deserialize(serialized: unknown): unknown;
+    serialized: IsStringLiteral<Instances> extends true ? S : unknown,
+  ): [R] extends [[]]
+    ? false
+    : [unknown] extends [S]
+      ? PromiseOr<I>
+      : PromiseOr<Extract<R[number], [S, any]>[0]>;
   deserialize(serialized: unknown): PromiseOr<unknown> {
     const name =
       typeof serialized === "object" &&
