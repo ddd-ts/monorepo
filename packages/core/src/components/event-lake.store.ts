@@ -1,13 +1,11 @@
 import {
   IChange,
   IEsEvent,
-  IFact,
   ISerializedChange,
   ISerializedFact,
 } from "../interfaces/es-event";
-import { INamed } from "../interfaces/named";
+import { ISerializer } from "../interfaces/serializer";
 import { EventReference } from "./event-id";
-import { SerializerRegistry } from "./serializer-registry";
 import { LakeId } from "./stream-id";
 import { Transaction } from "./transaction";
 
@@ -25,17 +23,13 @@ export interface EventLakeStorageLayer {
   ): AsyncIterable<ISerializedFact>;
 }
 
-export class EventLakeStore<Events extends (IEsEvent & INamed)[]> {
+export class EventLakeStore<Event extends IEsEvent> {
   constructor(
     public readonly storageLayer: EventLakeStorageLayer,
-    public readonly serializer: SerializerRegistry.For<Events>,
+    public readonly serializer: ISerializer<Event>,
   ) {}
 
-  async append(
-    lakeId: LakeId,
-    changes: IChange<Events[number]>[],
-    trx: Transaction,
-  ) {
+  async append(lakeId: LakeId, changes: IChange<Event>[], trx: Transaction) {
     const serialized = await Promise.all(
       changes.map((change) => this.serializer.serialize(change)),
     );
@@ -49,7 +43,7 @@ export class EventLakeStore<Events extends (IEsEvent & INamed)[]> {
   ) {
     const lake = this.storageLayer.read(lakeId, startAfter, endAt);
     for await (const serialized of lake) {
-      yield this.serializer.deserialize<IFact<Events[number]>>(serialized);
+      yield this.serializer.deserialize(serialized);
     }
   }
 }

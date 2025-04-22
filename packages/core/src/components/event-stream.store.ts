@@ -5,7 +5,6 @@ import {
   ISerializedChange,
   ISerializedFact,
 } from "../interfaces/es-event";
-import { INamed } from "../interfaces/named";
 import { ISerializer } from "../interfaces/serializer";
 import { EventReference } from "./event-id";
 import { StreamId } from "./stream-id";
@@ -24,10 +23,10 @@ export interface EventStreamStorageLayer {
   read(streamId: StreamId, from?: number): AsyncIterable<ISerializedFact>;
 }
 
-export class EventStreamStore<Events extends (IEsEvent & INamed)[]> {
+export class EventStreamStore<Event extends IEsEvent> {
   constructor(
     public readonly storageLayer: EventStreamStorageLayer,
-    public readonly serializer: ISerializer<Events[number]>,
+    public readonly serializer: ISerializer<Event>,
   ) {}
 
   isLocalRevisionOutdatedError(error: unknown): boolean {
@@ -36,7 +35,7 @@ export class EventStreamStore<Events extends (IEsEvent & INamed)[]> {
 
   async append(
     streamId: StreamId,
-    changes: IChange<Events[number]>[],
+    changes: IChange<Event>[],
     expectedRevision: number,
     trx: Transaction,
   ) {
@@ -53,9 +52,7 @@ export class EventStreamStore<Events extends (IEsEvent & INamed)[]> {
 
   async *read(streamId: StreamId, from?: number) {
     for await (const serialized of this.storageLayer.read(streamId, from)) {
-      yield (await this.serializer.deserialize(serialized)) as IFact<
-        Events[number]
-      >;
+      yield (await this.serializer.deserialize(serialized)) as IFact<Event>;
     }
   }
 }

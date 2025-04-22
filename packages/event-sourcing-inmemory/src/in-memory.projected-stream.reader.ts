@@ -1,6 +1,7 @@
 import {
   IEsEvent,
   INamed,
+  ISerializer,
   ProjectedStreamReader,
   SerializerRegistry,
 } from "@ddd-ts/core";
@@ -8,12 +9,9 @@ import { InMemoryDatabase } from "@ddd-ts/store-inmemory";
 import { InMemoryProjectedStreamStorageLayer } from "./in-memory.projected-stream.storage-layer";
 
 export class InMemoryProjectedStreamReader<
-  Events extends (IEsEvent & INamed)[],
+  Events extends IEsEvent,
 > extends ProjectedStreamReader<Events> {
-  constructor(
-    database: InMemoryDatabase,
-    serializer: SerializerRegistry.For<Events>,
-  ) {
+  constructor(database: InMemoryDatabase, serializer: ISerializer<Events>) {
     super(new InMemoryProjectedStreamStorageLayer(database), serializer);
   }
 }

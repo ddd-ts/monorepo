@@ -1,8 +1,7 @@
 import { Either, Multiple, Shape } from "@ddd-ts/shape";
-import { IEsEvent, IFact, ISerializedFact } from "../interfaces/es-event";
-import { INamed } from "../interfaces/named";
+import { IEsEvent, ISerializedFact } from "../interfaces/es-event";
 import { EventReference } from "./event-id";
-import { SerializerRegistry } from "./serializer-registry";
+import { ISerializer } from "../interfaces/serializer";
 
 export class StreamSource extends Shape({
   aggregateType: String,
@@ -34,10 +33,10 @@ export interface ProjectedStreamStorageLayer {
   ): AsyncIterable<ISerializedFact>;
 }
 
-export class ProjectedStreamReader<Events extends (IEsEvent & INamed)[]> {
+export class ProjectedStreamReader<Event extends IEsEvent> {
   constructor(
     private readonly reader: ProjectedStreamStorageLayer,
-    private readonly registry: SerializerRegistry.For<Events>,
+    private readonly registry: ISerializer<Event>,
   ) {}
 
   async *read(
@@ -49,7 +48,7 @@ export class ProjectedStreamReader<Events extends (IEsEvent & INamed)[]> {
     const stream = this.reader.read(projectedStream, shard, startAfter, endAt);
 
     for await (const fact of stream) {
-      yield this.registry.deserialize<IFact<Events[number]>>(fact);
+      yield this.registry.deserialize(fact);
     }
   }
 }

@@ -1,19 +1,11 @@
-import {
-  EventLakeStore,
-  IEsEvent,
-  INamed,
-  SerializerRegistry,
-} from "@ddd-ts/core";
+import { EventLakeStore, IEsEvent, INamed, ISerializer } from "@ddd-ts/core";
 import { FirestoreEventLakeStorageLayer } from "./firestore.event-lake.storage-layer";
 import { Firestore } from "firebase-admin/firestore";
 
 export class FirestoreEventLakeStore<
-  Events extends (IEsEvent & INamed)[],
-> extends EventLakeStore<Events> {
-  constructor(
-    firestore: Firestore,
-    serializer: SerializerRegistry.For<Events>,
-  ) {
+  Event extends IEsEvent,
+> extends EventLakeStore<Event> {
+  constructor(firestore: Firestore, serializer: ISerializer<Event>) {
     super(new FirestoreEventLakeStorageLayer(firestore), serializer);
   }
 }

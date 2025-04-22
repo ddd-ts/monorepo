@@ -158,10 +158,9 @@ export function EventStreamAggregateStoreSuite(config: {
 
   class AccountStore extends MakeEventStreamAggregateStore(Account) {}
 
-  const accountEventStream = new EventStreamStore<EventsOf<typeof Account>>(
-    config.streamStorageLayer,
-    registry,
-  );
+  const accountEventStream = new EventStreamStore<
+    EventsOf<typeof Account>[number]
+  >(config.streamStorageLayer, registry);
 
   const accountStore = new AccountStore(
     accountEventStream,

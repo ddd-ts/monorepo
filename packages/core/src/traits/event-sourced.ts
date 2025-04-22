@@ -114,8 +114,6 @@ export type EventsOf<E> = E extends HasTrait<
     }
   : never;
 
-export type EventOf<E> = E extends HasTrait<
-  typeof EventSourced<infer C extends EventSourcedConfig>
->
-  ? InstanceType<C[number]>
+export type EventOf<E> = E extends IEventSourced<infer C extends IEsEvent>
+  ? C
   : never;
