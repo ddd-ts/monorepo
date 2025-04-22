@@ -20,6 +20,8 @@ export {
   ProjectedStreamReader,
 } from "./components/projected-stream";
 export { ProjectedStreamReaderSuite } from "./components/projected-stream.reader.suite";
+export { EventStreamAggregateStore } from "./components/event-stream.aggregate-store";
+export { EventStreamAggregateStoreSuite } from "./components/event-stream.aggregate-store.suite";
 export { SerializerRegistry } from "./components/serializer-registry";
 export { DetachedEventBus } from "./components/detached.event-bus";
 export { ConcurrencyError } from "./components/concurrency-error";

@@ -1,3 +1,5 @@
+import { HasTrait } from "@ddd-ts/traits";
+import { IEventSourced } from "../interfaces/event-sourced";
 import type { INamed, INamedContructor } from "../interfaces/named";
 import {
   ISerializer,
@@ -5,6 +7,12 @@ import {
   type Serialized,
 } from "../interfaces/serializer";
 import { AutoSerializable, AutoSerializer } from "./auto-serializer";
+import {
+  EventsOf,
+  EventSourced,
+  EventSourcedConfig,
+} from "../traits/event-sourced";
+import { Named } from "../traits/named";
 
 type IsStringLiteral<T> = [string] extends [T] ? false : true;
 
@@ -12,11 +20,17 @@ type Pretty<T> = {
   [K in keyof T]: T[K];
 } & {};
 
-type Merge<LEFT, RIGHT> = LEFT extends SerializerRegistry<infer LEFT_R, infer LEFT_I>
+type Merge<LEFT, RIGHT> = LEFT extends SerializerRegistry<
+  infer LEFT_R,
+  infer LEFT_I
+>
   ? RIGHT extends SerializerRegistry<infer RIGHT_R, infer RIGHT_I>
-  ? SerializerRegistry<[...LEFT_R, ...RIGHT_R], [...LEFT_R, ...RIGHT_R][number][0]>
-  : never
-  : never
+    ? SerializerRegistry<
+        [...LEFT_R, ...RIGHT_R],
+        [...LEFT_R, ...RIGHT_R][number][0]
+      >
+    : never
+  : never;
 
 export class SerializerRegistry<
   R extends [INamed, ISerializer<INamed, INamed>][] = [],
@@ -58,7 +72,7 @@ export class SerializerRegistry<
   merge<
     TH extends SerializerRegistry<any, never>,
     OTHER extends SerializerRegistry<any, any>,
-  >(this: TH, other: OTHER): Merge<TH, OTHER>
+  >(this: TH, other: OTHER): Merge<TH, OTHER>;
   merge<
     TH extends SerializerRegistry<any, any>,
     OTHER extends SerializerRegistry<any, any>,
@@ -69,10 +83,7 @@ export class SerializerRegistry<
   static merge<
     LEFT extends SerializerRegistry<any, any>,
     RIGHT extends SerializerRegistry<any, any>,
-  >(
-    left: LEFT,
-    right: RIGHT,
-  ): Merge<LEFT, RIGHT> {
+  >(left: LEFT, right: RIGHT): Merge<LEFT, RIGHT> {
     const merged = new SerializerRegistry();
     for (const [key, value] of left.store) {
       merged.store.set(key, value);
@@ -94,8 +105,8 @@ export class SerializerRegistry<
     instance: IsStringLiteral<I["$name"]> extends true ? I : never,
   ): TH extends SerializerRegistry<infer RRR, any>
     ? PromiseOr<
-      Pretty<ReturnType<Extract<RRR[number], [I, any]>[1]["serialize"]>>
-    >
+        Pretty<ReturnType<Extract<RRR[number], [I, any]>[1]["serialize"]>>
+      >
     : never;
   serialize<
     const I extends INamed,
@@ -122,9 +133,7 @@ export class SerializerRegistry<
   ): TH extends SerializerRegistry<infer RRR, any>
     ? PromiseOr<Extract<RRR[number], [INamed<S["$name"]>, any]>[0]>
     : never;
-  deserialize<const I extends Instances>(
-    serialized: unknown,
-  ): PromiseOr<I>;
+  deserialize<const I extends Instances>(serialized: unknown): PromiseOr<I>;
   // deserialize(serialized: unknown): unknown;
   deserialize(serialized: unknown): PromiseOr<unknown> {
     const name =
@@ -151,4 +160,9 @@ export namespace SerializerRegistry {
   export type For<T extends INamed[]> = SerializerRegistry<{
     [K in keyof T]: [T[K], ISerializer<T[K], INamed<T[K]["$name"]>>];
   }>;
+
+  export type EventSourced<
+    T extends HasTrait<typeof Named> & HasTrait<typeof EventSourced>,
+  > = SerializerRegistry.For<[InstanceType<T>]> &
+    SerializerRegistry.For<EventsOf<T>>;
 }

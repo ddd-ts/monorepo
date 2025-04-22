@@ -17,6 +17,7 @@
   "devDependencies": {
     "@ddd-ts/tools": "workspace:*",
     "@types/uuid": "^8.3.4",
-    "@types/jest": "^29.5.1"
+    "@types/jest": "^29.5.1",
+    "@types/node": "^22.14.1"
   }
 }

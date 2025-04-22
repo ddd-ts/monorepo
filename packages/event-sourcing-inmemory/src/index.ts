@@ -1,7 +1,19 @@
-export { InMemorySnapshotter } from "./in-memory.snapshotter";
+export { InMemoryEventLakeStorageLayer } from "./in-memory.event-lake.storage-layer";
+export { InMemoryEventLakeStore } from "./in-memory.event-lake.store";
+export { InMemoryEventStreamStorageLayer } from "./in-memory.event-stream.storage-layer";
+export { InMemoryEventStreamStore } from "./in-memory.event-stream.store";
+
 export {
-  InMemoryEsAggregateStore,
-  MakeInMemoryEsAggregateStore,
-} from "./in-memory.es-aggregate-store";
-export { InMemoryEventStreamStore } from "./event-store/in-memory.event-stream.store";
-// export { InMemoryCheckpoint } from "./in-memory.checkpoint";
+  InMemoryEventStreamAggregateStore,
+  MakeInMemoryEventStreamAggregateStore,
+} from "./in-memory.event-stream.aggregate-store";
+
+export {
+  InMemoryProjectedStreamStorageLayer,
+  InMemoryLakeSourceFilter,
+  InMemoryStreamSourceFilter,
+} from "./in-memory.projected-stream.storage-layer";
+
+export { InMemoryProjectedStreamReader } from "./in-memory.projected-stream.reader";
+
+export { InMemorySnapshotter } from "./in-memory.snapshotter";

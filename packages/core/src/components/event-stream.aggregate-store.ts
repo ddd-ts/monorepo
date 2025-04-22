@@ -1,29 +1,20 @@
 import { HasTrait } from "@ddd-ts/traits";
-import {
-  StreamId,
-  ConcurrencyError,
-  EventsOf,
-  EventSourced,
-  type Identifiable,
-  type IEsAggregateStore,
-  type IEventBus,
-  IChange,
-  IFact,
-  EventStreamStore,
-} from "@ddd-ts/core";
-import type {
-  FirestoreTransaction,
-  FirestoreTransactionPerformer,
-} from "@ddd-ts/store-firestore";
+import { IEsAggregateStore } from "../interfaces/es-aggregate-store";
+import { IFact } from "../interfaces/es-event";
+import { IEventBus } from "../interfaces/event-bus";
+import { Store } from "../interfaces/store";
+import { EventSourced, EventsOf } from "../traits/event-sourced";
+import { Identifiable } from "../traits/identifiable";
+import { EventStreamStore } from "./event-stream.store";
+import { StreamId } from "./stream-id";
+import { TransactionPerformer, Transaction } from "./transaction";
 
-import type { FirestoreSnapshotter } from "./firestore.snapshotter";
-
-export const MakeFirestoreEsAggregateStore = <
+export const MakeEventStreamAggregateStore = <
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
 >(
   AGGREGATE: A,
 ) => {
-  return class $FirestoreEsAggregateStore extends FirestoreEsAggregateStore<A> {
+  return class $EsAggregateStore extends EventStreamAggregateStore<A> {
     loadFirst(event: EventsOf<A>[number]): InstanceType<A> {
       return AGGREGATE.loadFirst(event);
     }
@@ -34,14 +25,14 @@ export const MakeFirestoreEsAggregateStore = <
   };
 };
 
-export abstract class FirestoreEsAggregateStore<
+export abstract class EventStreamAggregateStore<
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
 > implements IEsAggregateStore<InstanceType<A>>
 {
   constructor(
     public readonly streamStore: EventStreamStore<EventsOf<A>>,
-    public readonly transaction: FirestoreTransactionPerformer,
-    public readonly snapshotter: FirestoreSnapshotter<InstanceType<A>>,
+    public readonly transaction: TransactionPerformer,
+    public readonly snapshotter: Store<InstanceType<A>>,
   ) {}
 
   abstract getStreamId(id: InstanceType<A>["id"]): StreamId;
@@ -90,12 +81,6 @@ export abstract class FirestoreEsAggregateStore<
   }
 
   async load(id: InstanceType<A>["id"]) {
-    // const lastEvent = await this.eventStore.getLastEvent(streamId);
-
-    // if(snapshot && lastEvent && snapshot.acknowledgedRevision < lastEvent.revision) {
-    //   return this.loadFromSnapshot(snapshot)
-    // }
-
     /**
      * For now, we can just return the snapshot if it exists
      * because the the snapshot is kept up to date with the event store transactionally.
@@ -104,8 +89,8 @@ export abstract class FirestoreEsAggregateStore<
      *
      * In the future, when snapshot will be lagging behind the stream we could:
      * - Keep a transactionnal revision mutex for each stream, to know if the snapshot is up to date without having to snapshot the whole model
-     * - Use a stale snapshot and let the model catch up with the stream on the next save ?
-     * - Use a snapshot that is always up to date with the stream, but that is not transactionnal, and catch up with the stream on the next save ?
+     * - Use a stale snapshot and let the model catch up with the stream on the next save
+     * - Use a snapshot that is always up to date with the stream, but that is not transactionnal, and catch up with the stream on the next save
      */
     const snapshot = await this.snapshotter?.load(id);
 
@@ -116,16 +101,9 @@ export abstract class FirestoreEsAggregateStore<
     return this.loadFromScratch(id);
   }
 
-  performTransaction(
-    trx: FirestoreTransaction | undefined,
-    callback: (trx: FirestoreTransaction) => Promise<void>,
-  ) {
-    return trx ? callback(trx) : this.transaction.perform(callback);
-  }
-
   async saveAll(
     aggregates: InstanceType<A>[],
-    parentTrx?: FirestoreTransaction,
+    parentTrx?: Transaction,
     attempts = 10,
   ): Promise<void> {
     const toSave = await Promise.all(
@@ -134,7 +112,7 @@ export abstract class FirestoreEsAggregateStore<
         .map(async (aggregate) => ({
           aggregate: aggregate,
           streamId: this.getStreamId(aggregate.id),
-          changes: [...aggregate.changes] as IChange<EventsOf<A>[number]>[],
+          changes: [...aggregate.changes],
           acknowledgedRevision: aggregate.acknowledgedRevision,
         })),
     );
@@ -144,7 +122,7 @@ export abstract class FirestoreEsAggregateStore<
     }
 
     try {
-      await this.performTransaction(parentTrx, async (trx) => {
+      await this.transaction.performWith(parentTrx, async (trx) => {
         for (const save of toSave) {
           await this.streamStore.append(
             save.streamId,
@@ -175,13 +153,11 @@ export abstract class FirestoreEsAggregateStore<
           trx,
         );
       });
-    } catch (error: any) {
-      const isDDDTSConcurrencyError = error instanceof ConcurrencyError;
-      const isFirestoreConcurrencyError = "code" in error && error.code === 6;
+    } catch (error: unknown) {
+      const isOutdated = this.streamStore.isLocalRevisionOutdatedError(error);
       const hasAttempts = attempts > 0;
 
-      const shouldRetry =
-        (isFirestoreConcurrencyError || isDDDTSConcurrencyError) && hasAttempts;
+      const shouldRetry = isOutdated && hasAttempts;
 
       if (shouldRetry) {
         const pristines = await Promise.all(
@@ -202,17 +178,6 @@ export abstract class FirestoreEsAggregateStore<
         return await this.saveAll(pristines, parentTrx, attempts - 1);
       }
 
-      console.error(
-        JSON.stringify({
-          message: error.message,
-          stack: error.stack,
-          isDDDTSConcurrencyError,
-          isFirestoreConcurrencyError,
-          hasAttempts,
-          events: toSave.map(({ changes }) => changes),
-        }),
-      );
-
       throw error;
     }
 
@@ -231,7 +196,7 @@ export abstract class FirestoreEsAggregateStore<
 
   async save(
     aggregate: InstanceType<A>,
-    trx?: FirestoreTransaction,
+    trx?: Transaction,
     attempts = 30,
   ): Promise<void> {
     return this.saveAll([aggregate], trx, attempts);
