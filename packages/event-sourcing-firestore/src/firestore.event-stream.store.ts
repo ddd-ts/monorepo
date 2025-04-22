@@ -1,19 +1,11 @@
-import {
-  EventStreamStore,
-  IEsEvent,
-  INamed,
-  SerializerRegistry,
-} from "@ddd-ts/core";
+import { EventStreamStore, IEsEvent, INamed, ISerializer } from "@ddd-ts/core";
 import { FirestoreEventStreamStorageLayer } from "./firestore.event-stream.storage-layer";
 import { Firestore } from "firebase-admin/firestore";
 
 export class FirestoreEventStreamStore<
-  Events extends (IEsEvent & INamed)[],
-> extends EventStreamStore<Events> {
-  constructor(
-    firestore: Firestore,
-    serializer: SerializerRegistry.For<Events>,
-  ) {
+  Event extends IEsEvent,
+> extends EventStreamStore<Event> {
+  constructor(firestore: Firestore, serializer: ISerializer<Event>) {
     super(new FirestoreEventStreamStorageLayer(firestore), serializer);
   }
 }

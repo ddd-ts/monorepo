@@ -7,8 +7,11 @@ import {
   type IEventBus,
   EventStreamStore,
   EventStreamAggregateStore,
-  SerializerRegistry,
   Named,
+  EventOf,
+  ISerializer,
+  IEventSourced,
+  IIdentifiable,
 } from "@ddd-ts/core";
 import {
   InMemoryDatabase,
@@ -24,10 +27,13 @@ export const MakeInMemoryEventStreamAggregateStore = <
 >(
   AGGREGATE: A,
 ) => {
-  return class $InMemoryEventStreamAggregateStore extends InMemoryEventStreamAggregateStore<A> {
+  return class $InMemoryEventStreamAggregateStore extends InMemoryEventStreamAggregateStore<
+    InstanceType<A>
+  > {
     constructor(
       database: InMemoryDatabase,
-      serializer: SerializerRegistry.EventSourced<A>,
+      serializer: ISerializer<InstanceType<A>> &
+        ISerializer<EventOf<InstanceType<A>>>,
     ) {
       const snapshotter = new InMemorySnapshotter<InstanceType<A>>(
         AGGREGATE.name,
@@ -48,18 +54,16 @@ export const MakeInMemoryEventStreamAggregateStore = <
 };
 
 export abstract class InMemoryEventStreamAggregateStore<
-  A extends HasTrait<typeof Named> &
-    HasTrait<typeof EventSourced> &
-    HasTrait<typeof Identifiable>,
+  A extends IEventSourced & IIdentifiable,
 > extends EventStreamAggregateStore<A> {
   constructor(
     public readonly database: InMemoryDatabase,
-    public readonly serializer: SerializerRegistry.EventSourced<A>,
-    public readonly snapshotter: InMemorySnapshotter<InstanceType<A>>,
+    public readonly serializer: ISerializer<EventOf<A>>,
+    public readonly snapshotter: InMemorySnapshotter<A>,
   ) {
     const storageLayer = new InMemoryEventStreamStorageLayer(database);
     const transaction = new InMemoryTransactionPerformer(database);
-    const streamStore = new EventStreamStore<EventsOf<A>>(
+    const streamStore = new EventStreamStore<EventOf<A>>(
       storageLayer,
       serializer,
     );

@@ -7,9 +7,11 @@ import {
   type IEventBus,
   EventStreamStore,
   EventStreamAggregateStore,
-  SerializerRegistry,
   Named,
   ISerializer,
+  IEventSourced,
+  IIdentifiable,
+  EventOf,
 } from "@ddd-ts/core";
 import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
 
@@ -24,10 +26,13 @@ export const MakeFirestoreEventStreamAggregateStore = <
 >(
   AGGREGATE: A,
 ) => {
-  return class $FirestoreEventStreamAggregateStore extends FirestoreEventStreamAggregateStore<A> {
+  return class $FirestoreEventStreamAggregateStore extends FirestoreEventStreamAggregateStore<
+    InstanceType<A>
+  > {
     constructor(
       firestore: Firestore,
-      serializer: SerializerRegistry.EventSourced<A>,
+      serializer: ISerializer<InstanceType<A>> &
+        ISerializer<EventOf<InstanceType<A>>>,
     ) {
       const snapshotter = new FirestoreSnapshotter<InstanceType<A>>(
         AGGREGATE.name,
@@ -48,18 +53,16 @@ export const MakeFirestoreEventStreamAggregateStore = <
 };
 
 export abstract class FirestoreEventStreamAggregateStore<
-  A extends HasTrait<typeof Named> &
-    HasTrait<typeof EventSourced> &
-    HasTrait<typeof Identifiable>,
+  A extends IEventSourced & IIdentifiable,
 > extends EventStreamAggregateStore<A> {
   constructor(
     public readonly firestore: Firestore,
-    public readonly serializer: SerializerRegistry.EventSourced<A>,
-    public readonly snapshotter: FirestoreSnapshotter<InstanceType<A>>,
+    public readonly serializer: ISerializer<EventOf<A>>,
+    public readonly snapshotter: FirestoreSnapshotter<A>,
   ) {
     const storageLayer = new FirestoreEventStreamStorageLayer(firestore);
     const transaction = new FirestoreTransactionPerformer(firestore);
-    const streamStore = new EventStreamStore<EventsOf<A>>(
+    const streamStore = new EventStreamStore<EventOf<A>>(
       storageLayer,
       serializer,
     );

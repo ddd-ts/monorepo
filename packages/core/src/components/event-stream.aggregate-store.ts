@@ -1,20 +1,24 @@
 import { HasTrait } from "@ddd-ts/traits";
 import { IEsAggregateStore } from "../interfaces/es-aggregate-store";
-import { IFact } from "../interfaces/es-event";
+import { IChange, IFact } from "../interfaces/es-event";
 import { IEventBus } from "../interfaces/event-bus";
 import { Store } from "../interfaces/store";
-import { EventSourced, EventsOf } from "../traits/event-sourced";
+import { EventOf, EventSourced, EventsOf } from "../traits/event-sourced";
 import { Identifiable } from "../traits/identifiable";
 import { EventStreamStore } from "./event-stream.store";
 import { StreamId } from "./stream-id";
 import { TransactionPerformer, Transaction } from "./transaction";
+import { IEventSourced } from "../interfaces/event-sourced";
+import { IIdentifiable } from "../interfaces/identifiable";
 
 export const MakeEventStreamAggregateStore = <
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
 >(
   AGGREGATE: A,
 ) => {
-  return class $EsAggregateStore extends EventStreamAggregateStore<A> {
+  return class $EsAggregateStore extends EventStreamAggregateStore<
+    InstanceType<A>
+  > {
     loadFirst(event: EventsOf<A>[number]): InstanceType<A> {
       return AGGREGATE.loadFirst(event);
     }
@@ -26,24 +30,24 @@ export const MakeEventStreamAggregateStore = <
 };
 
 export abstract class EventStreamAggregateStore<
-  A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
-> implements IEsAggregateStore<InstanceType<A>>
+  A extends IEventSourced & IIdentifiable,
+> implements IEsAggregateStore<A>
 {
   constructor(
-    public readonly streamStore: EventStreamStore<EventsOf<A>>,
+    public readonly streamStore: EventStreamStore<EventOf<A>>,
     public readonly transaction: TransactionPerformer,
-    public readonly snapshotter: Store<InstanceType<A>>,
+    public readonly snapshotter: Store<A>,
   ) {}
 
-  abstract getStreamId(id: InstanceType<A>["id"]): StreamId;
-  abstract loadFirst(event: IFact<EventsOf<A>[number]>): InstanceType<A>;
+  abstract getStreamId(id: A["id"]): StreamId;
+  abstract loadFirst(event: IFact<EventOf<A>>): A;
 
   _publishEventsTo?: IEventBus;
   publishEventsTo(eventBus: IEventBus) {
     this._publishEventsTo = eventBus;
   }
 
-  async loadFromSnapshot(snapshot: InstanceType<A>) {
+  async loadFromSnapshot(snapshot: A) {
     const streamId = this.getStreamId(snapshot.id);
     const from = snapshot.acknowledgedRevision + 1;
     const stream = this.streamStore.read(streamId, from);
@@ -55,10 +59,10 @@ export abstract class EventStreamAggregateStore<
     return snapshot;
   }
 
-  async loadFromScratch(id: InstanceType<A>["id"]) {
+  async loadFromScratch(id: A["id"]) {
     const streamId = this.getStreamId(id);
 
-    let instance: InstanceType<A> | undefined = undefined;
+    let instance: A | undefined = undefined;
     for await (const fact of this.streamStore.read(streamId)) {
       if (!instance) {
         instance = this.loadFirst(fact);
@@ -70,7 +74,7 @@ export abstract class EventStreamAggregateStore<
     return instance;
   }
 
-  async loadForce(id: InstanceType<A>["id"]) {
+  async loadForce(id: A["id"]) {
     const snapshot = await this.snapshotter?.load(id);
 
     if (snapshot) {
@@ -80,7 +84,7 @@ export abstract class EventStreamAggregateStore<
     return this.loadFromScratch(id);
   }
 
-  async load(id: InstanceType<A>["id"]) {
+  async load(id: A["id"]) {
     /**
      * For now, we can just return the snapshot if it exists
      * because the the snapshot is kept up to date with the event store transactionally.
@@ -102,7 +106,7 @@ export abstract class EventStreamAggregateStore<
   }
 
   async saveAll(
-    aggregates: InstanceType<A>[],
+    aggregates: A[],
     parentTrx?: Transaction,
     attempts = 10,
   ): Promise<void> {
@@ -112,7 +116,7 @@ export abstract class EventStreamAggregateStore<
         .map(async (aggregate) => ({
           aggregate: aggregate,
           streamId: this.getStreamId(aggregate.id),
-          changes: [...aggregate.changes],
+          changes: [...aggregate.changes] as IChange<EventOf<A>>[],
           acknowledgedRevision: aggregate.acknowledgedRevision,
         })),
     );
@@ -194,11 +198,7 @@ export abstract class EventStreamAggregateStore<
     }
   }
 
-  async save(
-    aggregate: InstanceType<A>,
-    trx?: Transaction,
-    attempts = 30,
-  ): Promise<void> {
+  async save(aggregate: A, trx?: Transaction, attempts = 30): Promise<void> {
     return this.saveAll([aggregate], trx, attempts);
   }
 }
