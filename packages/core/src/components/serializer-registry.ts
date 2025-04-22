@@ -121,14 +121,19 @@ export class SerializerRegistry<
 
   deserialize<
     const I extends Instances,
-    const S extends INamed<I["$name"]> | unknown = I,
+    const S extends INamed<I["$name"]> | unknown = unknown,
   >(
     serialized: IsStringLiteral<Instances> extends true ? S : unknown,
   ): [R] extends [[]]
     ? false
     : [unknown] extends [S]
       ? PromiseOr<I>
-      : PromiseOr<Extract<R[number], [S, any]>[0]>;
+      : PromiseOr<
+          Extract<
+            R[number],
+            [S extends INamed ? INamed<S["$name"]> : unknown, any]
+          >[0]
+        >;
   deserialize(serialized: unknown): PromiseOr<unknown> {
     const name =
       typeof serialized === "object" &&
