@@ -1,30 +1,35 @@
 import {
   CollectionReference,
-  Firestore,
-  FirestoreDataConverter,
   DocumentData,
   QueryDocumentSnapshot,
   DocumentSnapshot,
 } from "firebase-admin/firestore";
 
-import { Store, ISerializer, type IIdentifiable } from "@ddd-ts/core";
+import {
+  Store,
+  ISerializer,
+  type IIdentifiable,
+  Serialized,
+} from "@ddd-ts/core";
 
 import { FirestoreTransaction } from "./firestore.transaction";
 import { batch } from "./asyncTools";
 import { DefaultConverter } from "./converter";
 
 export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
-  collection: CollectionReference;
-
+  protected defaultConverter = new DefaultConverter();
   constructor(
-    public readonly collectionName: string,
-    public readonly firestore: Firestore,
+    protected readonly _collection: CollectionReference,
     public readonly serializer: ISerializer<M>,
-    public readonly converter: FirestoreDataConverter<DocumentData> = new DefaultConverter(),
-  ) {
-    this.collection = this.firestore
-      .collection(collectionName)
-      .withConverter(this.converter);
+  ) {}
+
+  get collection() {
+    return this._collection.withConverter(
+      this.defaultConverter,
+    ) as CollectionReference<
+      Serialized<ISerializer<M>>,
+      Serialized<ISerializer<M>>
+    >;
   }
 
   async executeQuery(
@@ -34,7 +39,7 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
     const result = trx ? await trx.transaction.get(query) : await query.get();
 
     return Promise.all(
-      result.docs.map((doc: any) =>
+      result.docs.map((doc) =>
         this.serializer.deserialize({ id: doc.id, ...doc.data() }),
       ),
     );
@@ -95,7 +100,9 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
 
     const ref = this.collection.doc(model.id.serialize());
 
-    trx ? trx.transaction.set(ref, serialized) : await ref.set(serialized);
+    trx
+      ? trx.transaction.set(ref, serialized)
+      : await ref.set(serialized as any);
   }
 
   async saveAll(models: M[], trx?: FirestoreTransaction): Promise<void> {
@@ -113,7 +120,7 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
 
     return this.serializer.deserialize({
       id: id.serialize(),
-      ...(snapshot.data() as any),
+      ...snapshot.data(),
     });
   }
 
@@ -127,7 +134,7 @@ export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
     }
     return Promise.all(
       docs.map((doc) =>
-        this.serializer.deserialize({ id: doc.id, ...(doc.data() as any) }),
+        this.serializer.deserialize({ id: doc.id, ...doc.data() }),
       ),
     );
   }

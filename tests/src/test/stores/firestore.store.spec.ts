@@ -7,7 +7,12 @@ import {
   FirestoreTransactionPerformer,
 } from "@ddd-ts/store-firestore";
 import { Firestore } from "firebase-admin/firestore";
-import { StoreSuite, MyElementSerializer, MyElement, MyElementId } from "../store.suite";
+import {
+  StoreSuite,
+  MyElementSerializer,
+  MyElement,
+  MyElementId,
+} from "../store.suite";
 import type { Store } from "@ddd-ts/core";
 
 class MyElementStore
@@ -15,7 +20,7 @@ class MyElementStore
   implements Store<MyElement>
 {
   constructor(database: Firestore) {
-    super("my_collection", database, new MyElementSerializer());
+    super(database.collection("my_collection"), new MyElementSerializer());
   }
 
   loadEven() {

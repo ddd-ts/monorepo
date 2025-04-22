@@ -13,6 +13,10 @@ export class InMemoryEventStreamStorageLayer
 {
   constructor(public readonly database: InMemoryDatabase) {}
 
+  isLocalRevisionOutdatedError(error: unknown): boolean {
+    return error instanceof ConcurrencyError;
+  }
+
   async append(
     streamId: StreamId,
     changes: ISerializedChange[],

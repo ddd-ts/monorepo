@@ -14,7 +14,6 @@ export class InMemoryStreamSourceFilter {
     const cols = [...this.database.storage.collections.keys()];
     const streams = cols.filter((it) => it.startsWith(source.aggregateType));
     for (const stream of streams) {
-      console.log(`Loading all events from ${stream}`);
       yield* this.database
         .loadAll(stream)
         .filter((event) => {

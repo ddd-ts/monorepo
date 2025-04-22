@@ -6,9 +6,9 @@ import type { IEventSourced } from "../interfaces/event-sourced";
 import { getHandler } from "../decorators/handlers";
 import { INamed } from "../interfaces/named";
 
-type Config = (INamed & Constructor<IEsEvent & INamed>)[];
+export type EventSourcedConfig = (INamed & Constructor<IEsEvent & INamed>)[];
 
-export const EventSourced = <C extends Config>(config: C) =>
+export const EventSourced = <C extends EventSourcedConfig>(config: C) =>
   Trait((base) => {
     type Event = InstanceType<C[number]> & INamed;
     abstract class $EventSourced extends base implements IEventSourced<Event> {
@@ -107,7 +107,7 @@ export const EventSourced = <C extends Config>(config: C) =>
   });
 
 export type EventsOf<E> = E extends HasTrait<
-  typeof EventSourced<infer C extends Config>
+  typeof EventSourced<infer C extends EventSourcedConfig>
 >
   ? {
       [K in keyof C]: InstanceType<C[K]>;
@@ -115,7 +115,7 @@ export type EventsOf<E> = E extends HasTrait<
   : never;
 
 export type EventOf<E> = E extends HasTrait<
-  typeof EventSourced<infer C extends Config>
+  typeof EventSourced<infer C extends EventSourcedConfig>
 >
   ? InstanceType<C[number]>
   : never;

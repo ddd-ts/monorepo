@@ -27,6 +27,13 @@ export abstract class TransactionPerformer<
     return result;
   }
 
+  async performWith(trx: T | undefined, effect: TransactionEffect<void, T>) {
+    if (trx) {
+      return effect(trx);
+    }
+    return this.perform(effect);
+  }
+
   /** @deprecated use .perform instead */
   transactionnally = this.perform.bind(this);
 }

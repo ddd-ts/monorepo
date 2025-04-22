@@ -3,6 +3,7 @@ import type { IIdentifiable } from "./identifiable";
 
 export interface Store<Model extends IIdentifiable> {
   save(model: Model, transaction?: Transaction): Promise<void>;
+  saveAll(models: Model[], transaction?: Transaction): Promise<void>;
   load(id: Model["id"], transaction?: Transaction): Promise<Model | undefined>;
   loadMany(ids: Model["id"][], transaction?: Transaction): Promise<Model[]>;
   loadAll(transaction?: Transaction): Promise<Model[]>;

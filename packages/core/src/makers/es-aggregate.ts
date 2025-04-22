@@ -25,7 +25,7 @@ export const BasicEsAggregate = <
     Named(name),
     EventSourced(config.events as Config["events"]),
   );
-  abstract class $EsAggregate extends base { }
+  abstract class $EsAggregate extends base {}
 
   return $EsAggregate;
 };
@@ -43,7 +43,7 @@ export const SnapshottableEsAggregate = <
   return Shape(
     config.state as Config["state"],
     Derive(
-      Identifiable<Serialized<InstanceType<Config['state']['id']>>>(),
+      Identifiable<Serialized<InstanceType<Config["state"]["id"]>>>(),
       Named(name),
       EventSourced(config.events as Config["events"]),
     ),

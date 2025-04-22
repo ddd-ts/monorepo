@@ -22,6 +22,15 @@ export class FirestoreEventStreamStorageLayer
     public readonly converter = new DefaultConverter(),
   ) {}
 
+  isLocalRevisionOutdatedError(error: unknown): boolean {
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === 6
+    );
+  }
+
   getCollection(streamId: StreamId) {
     return this.firestore
       .collection("event-store")
