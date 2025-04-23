@@ -17,9 +17,9 @@ import { batch } from "./asyncTools";
 import { DefaultConverter } from "./converter";
 
 export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
-  protected defaultConverter = new DefaultConverter();
+  public defaultConverter = new DefaultConverter();
   constructor(
-    protected readonly _collection: CollectionReference,
+    public readonly _collection: CollectionReference,
     public readonly serializer: ISerializer<M>,
   ) {}
 

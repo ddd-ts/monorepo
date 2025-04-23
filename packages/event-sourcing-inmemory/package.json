@@ -5,7 +5,7 @@
   "types": "dist/index.d.ts",
   "license": "MIT",
   "scripts": {
-    "test": "jest --config node_modules/@ddd-ts/tools/jest.config.ts",
+    "test": "jest --config node_modules/@ddd-ts/tools/jest.config.js",
     "build": "tsc"
   },
   "dependencies": {

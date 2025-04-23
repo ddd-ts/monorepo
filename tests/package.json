@@ -9,7 +9,7 @@
 		"pretest": "docker compose -f docker/docker-compose.yml up -d",
 		"wait": "sh -c 'until curl --silent localhost:8080; do sleep 1; done;'",
 		"test": "pnpm pretest; pnpm wait; pnpm testrun; e=$?; pnpm posttest; exit $e",
-		"testrun": "jest --config node_modules/@ddd-ts/tools/jest.config.ts",
+		"testrun": "jest --config node_modules/@ddd-ts/tools/jest.config.js",
 		"posttest": "docker compose -f docker/docker-compose.yml down"
 	},
 	"dependencies": {
