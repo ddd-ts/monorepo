@@ -21,9 +21,7 @@ import { InMemorySnapshotter } from "./in-memory.snapshotter";
 import { InMemoryEventStreamStorageLayer } from "./in-memory.event-stream.storage-layer";
 
 export const MakeInMemoryEventStreamAggregateStore = <
-  A extends HasTrait<typeof Named> &
-    HasTrait<typeof EventSourced> &
-    HasTrait<typeof Identifiable>,
+  A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
 >(
   AGGREGATE: A,
 ) => {
@@ -34,13 +32,14 @@ export const MakeInMemoryEventStreamAggregateStore = <
       database: InMemoryDatabase,
       serializer: ISerializer<InstanceType<A>> &
         ISerializer<EventOf<InstanceType<A>>>,
+      eventBus?: IEventBus,
     ) {
       const snapshotter = new InMemorySnapshotter<InstanceType<A>>(
         AGGREGATE.name,
         database,
         serializer,
       );
-      super(database, serializer, snapshotter);
+      super(database, serializer, snapshotter, eventBus);
     }
 
     loadFirst(event: EventsOf<A>[number]): InstanceType<A> {
@@ -60,12 +59,14 @@ export abstract class InMemoryEventStreamAggregateStore<
     public readonly database: InMemoryDatabase,
     public readonly serializer: ISerializer<EventOf<A>>,
     public readonly snapshotter: InMemorySnapshotter<A>,
+    public readonly eventBus?: IEventBus,
   ) {
     const storageLayer = new InMemoryEventStreamStorageLayer(database);
     const transaction = new InMemoryTransactionPerformer(database);
     const streamStore = new EventStreamStore<EventOf<A>>(
       storageLayer,
       serializer,
+      eventBus,
     );
     super(streamStore, transaction, snapshotter);
   }

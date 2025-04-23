@@ -7,7 +7,6 @@ import {
   type IEventBus,
   EventStreamStore,
   EventStreamAggregateStore,
-  Named,
   ISerializer,
   IEventSourced,
   IIdentifiable,
@@ -20,9 +19,7 @@ import { FirestoreEventStreamStorageLayer } from "./firestore.event-stream.stora
 import { Firestore } from "firebase-admin/firestore";
 
 export const MakeFirestoreEventStreamAggregateStore = <
-  A extends HasTrait<typeof Named> &
-    HasTrait<typeof EventSourced> &
-    HasTrait<typeof Identifiable>,
+  A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
 >(
   AGGREGATE: A,
 ) => {
@@ -33,13 +30,14 @@ export const MakeFirestoreEventStreamAggregateStore = <
       firestore: Firestore,
       serializer: ISerializer<InstanceType<A>> &
         ISerializer<EventOf<InstanceType<A>>>,
+      eventBus?: IEventBus,
     ) {
       const snapshotter = new FirestoreSnapshotter<InstanceType<A>>(
         AGGREGATE.name,
         firestore,
         serializer,
       );
-      super(firestore, serializer, snapshotter);
+      super(firestore, serializer, snapshotter, eventBus);
     }
 
     loadFirst(event: EventsOf<A>[number]): InstanceType<A> {
@@ -59,12 +57,14 @@ export abstract class FirestoreEventStreamAggregateStore<
     public readonly firestore: Firestore,
     public readonly serializer: ISerializer<EventOf<A>>,
     public readonly snapshotter: FirestoreSnapshotter<A>,
+    public readonly eventBus?: IEventBus,
   ) {
     const storageLayer = new FirestoreEventStreamStorageLayer(firestore);
     const transaction = new FirestoreTransactionPerformer(firestore);
     const streamStore = new EventStreamStore<EventOf<A>>(
       storageLayer,
       serializer,
+      eventBus,
     );
     super(streamStore, transaction, snapshotter);
   }

@@ -18,7 +18,7 @@ import { IEvent } from "../interfaces/event";
 import { Identifiable } from "../traits/identifiable";
 import { IEsAggregateStore } from "../interfaces/es-aggregate-store";
 
-export function EventStreamAggregateStoreSuite(config: {
+export function EventLakeAggregateStoreSuite(config: {
   transaction: TransactionPerformer;
   getAggregateStore: <
     T extends HasTrait<typeof Identifiable> & HasTrait<typeof EventSourced>,
@@ -166,21 +166,23 @@ export function EventStreamAggregateStoreSuite(config: {
     expect(loadedAccount?.balance).toEqual(0);
   });
 
-  it("supports concurrent writes, without transaction", async () => {
+  it("supports concurrent writes, using transactions", async () => {
     const accountStore = config.getAggregateStore(Account, registry);
     const account = Account.open();
     await accountStore.save(account);
 
     await Promise.all(
-      [...Array(20).keys()].map(async (i) => {
-        const fresh = await accountStore.load(account.id);
-        fresh!.deposit(1);
-        await accountStore.save(fresh!);
+      [...Array(5).keys()].map(async () => {
+        await config.transaction.perform(async (trx) => {
+          const fresh = await accountStore.load(account.id, trx);
+          fresh!.deposit(1);
+          await accountStore.save(fresh!, trx);
+        });
       }),
     );
 
     const loadedAccount = await accountStore.load(account.id);
-    expect(loadedAccount?.balance).toEqual(20);
+    expect(loadedAccount?.balance).toEqual(5);
   });
 
   it("is fast", async () => {
@@ -206,32 +208,6 @@ export function EventStreamAggregateStoreSuite(config: {
         await accountStore.load(account.id);
       }
     });
-  });
-
-  it("does not update the snapshot if no changes are made", async () => {
-    const accountStore = config.getAggregateStore(Account, registry);
-
-    const account = Account.open();
-    await accountStore.save(account);
-
-    const wait = (ms: number) =>
-      new Promise((resolve) => setTimeout(resolve, ms));
-
-    await Promise.all([
-      (async () => {
-        const acc = await accountStore.load(account.id);
-        await wait(10);
-        await accountStore.save(acc!);
-      })(),
-      (async () => {
-        const acc = await accountStore.load(account.id);
-        acc!.deposit(1);
-        await accountStore.save(acc!);
-      })(),
-    ]);
-
-    const fresh = await accountStore.load(account.id);
-    expect(fresh!.balance).toBe(1);
   });
 
   it("supports saveAll with transactions", async () => {

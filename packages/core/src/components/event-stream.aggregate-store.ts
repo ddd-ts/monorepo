@@ -1,7 +1,6 @@
 import { HasTrait } from "@ddd-ts/traits";
 import { IEsAggregateStore } from "../interfaces/es-aggregate-store";
 import { IChange, IFact } from "../interfaces/es-event";
-import { IEventBus } from "../interfaces/event-bus";
 import { Store } from "../interfaces/store";
 import { EventOf, EventSourced, EventsOf } from "../traits/event-sourced";
 import { Identifiable } from "../traits/identifiable";
@@ -41,11 +40,6 @@ export abstract class EventStreamAggregateStore<
 
   abstract getStreamId(id: A["id"]): StreamId;
   abstract loadFirst(event: IFact<EventOf<A>>): A;
-
-  _publishEventsTo?: IEventBus;
-  publishEventsTo(eventBus: IEventBus) {
-    this._publishEventsTo = eventBus;
-  }
 
   async loadFromSnapshot(snapshot: A) {
     const streamId = this.getStreamId(snapshot.id);
@@ -140,18 +134,6 @@ export abstract class EventStreamAggregateStore<
           save.aggregate.acknowledgeChanges();
         }
 
-        if (!parentTrx) {
-          trx.onCommit(async () => {
-            if (this._publishEventsTo) {
-              for (const { changes } of toSave) {
-                for (const event of changes) {
-                  await this._publishEventsTo.publish(event);
-                }
-              }
-            }
-          });
-        }
-
         await this.snapshotter.saveAll(
           toSave.map((save) => save.aggregate),
           trx,
@@ -183,18 +165,6 @@ export abstract class EventStreamAggregateStore<
       }
 
       throw error;
-    }
-
-    if (parentTrx) {
-      parentTrx.onCommit(async () => {
-        if (this._publishEventsTo) {
-          for (const { changes } of toSave) {
-            for (const event of changes) {
-              await this._publishEventsTo.publish(event);
-            }
-          }
-        }
-      });
     }
   }
 
