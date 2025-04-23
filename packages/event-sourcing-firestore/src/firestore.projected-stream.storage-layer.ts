@@ -1,12 +1,8 @@
 import {
   EventReference,
-  IEsEvent,
-  IFact,
-  INamed,
   LakeSource,
   ProjectedStream,
   ProjectedStreamStorageLayer,
-  SerializerRegistry,
   StreamSource,
 } from "@ddd-ts/core";
 import { DefaultConverter } from "@ddd-ts/store-firestore";
@@ -50,7 +46,6 @@ export class FirestoreProjectedStreamStorageLayer
     endAt?: EventReference,
   ) {
     let query = this.firestore
-
       .collectionGroup("events")
       .orderBy("occurredAt")
       .orderBy("revision");
