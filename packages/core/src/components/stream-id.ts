@@ -1,29 +1,67 @@
 import { Primitive } from "@ddd-ts/shape";
+import { Constructor } from "@ddd-ts/types";
 
-export class LakeId extends Primitive(String) {
-  get shardType() {
-    return this.value.split("-")[0];
+export class PairId extends Primitive(String) {
+  static separator = "@" as const;
+  get separator() {
+    return (this.constructor as any).separator;
   }
 
-  get shardId() {
-    return this.value.split("-")[1];
+  get left() {
+    return this.value.split(this.separator)[0];
   }
 
-  static from(shardType: string, shardId: string) {
-    return new LakeId(`${shardType}-${shardId}`);
+  get right() {
+    return this.value.split(this.separator)[1];
+  }
+
+  static from<T extends Constructor<PairId> & { separator: string }>(
+    this: T,
+    left: string,
+    right: string,
+  ) {
+    const result = new this(`${left}${this.separator}${right}`);
+    result.ensureValidity();
+    return result as InstanceType<T>;
+  }
+
+  static parse<T extends Constructor<PairId> & { separator: string }>(
+    this: T,
+    value: string,
+  ) {
+    const [left, right] = value.split(this.separator);
+    const result = new this(`${left}${this.separator}${right}`);
+    result.ensureValidity();
+    return result as InstanceType<T>;
+  }
+
+  ensureValidity() {
+    const [left, right] = this.value.split(this.separator);
+    if (!left || !right) {
+      throw new Error(`Invalid Id: ${this.value}`);
+    }
+    if (left.includes(this.separator) || right.includes(this.separator)) {
+      throw new Error(`Invalid Id: ${this.value}`);
+    }
   }
 }
 
-export class StreamId extends Primitive(String) {
+export class LakeId extends PairId {
+  get shardType() {
+    return this.left;
+  }
+
+  get shardId() {
+    return this.right;
+  }
+}
+
+export class StreamId extends PairId {
   get aggregateType() {
-    return this.value.split("-")[0];
+    return this.left;
   }
 
   get aggregateId() {
-    return this.value.split("-")[1];
-  }
-
-  static from(aggregateType: string, aggregateId: string) {
-    return new StreamId(`${aggregateType}-${aggregateId}`);
+    return this.right;
   }
 }

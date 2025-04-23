@@ -1,9 +1,4 @@
-import {
-  IEsEvent,
-  INamed,
-  ISerializer,
-  ProjectedStreamReader,
-} from "@ddd-ts/core";
+import { IEsEvent, ISerializer, ProjectedStreamReader } from "@ddd-ts/core";
 import { Firestore } from "firebase-admin/firestore";
 import { FirestoreProjectedStreamStorageLayer } from "./firestore.projected-stream.storage-layer";
 

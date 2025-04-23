@@ -46,10 +46,6 @@ export type {
 } from "./interfaces/es-event";
 export type { IEventBus } from "./interfaces/event-bus";
 export type { IEventSourced } from "./interfaces/event-sourced";
-export type {
-  ISerializedEventStreamStore,
-  IEventStreamStore,
-} from "./interfaces/event-store";
 export type { IEvent } from "./interfaces/event";
 export type {
   IIdentifiable,

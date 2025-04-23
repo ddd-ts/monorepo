@@ -1,5 +1,6 @@
 import {
   EventReference,
+  LakeId,
   LakeSource,
   ProjectedStream,
   ProjectedStreamStorageLayer,
@@ -31,8 +32,9 @@ export class InMemoryLakeSourceFilter {
   constructor(private readonly database: InMemoryDatabase) {}
 
   *all(source: LakeSource, shard: string) {
+    const lakeId = LakeId.from(source.shardType, shard);
     yield* this.database
-      .loadAll(`${source.shardType}-${shard}`)
+      .loadAll(lakeId.serialize())
       .filter((event) => {
         if (!source.events.includes(event.data.data.name)) return false;
         const payload = event.data.data.payload;

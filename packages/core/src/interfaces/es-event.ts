@@ -1,5 +1,4 @@
 import type { IEvent } from "./event";
-import { INamed } from "./named";
 
 export type IFact<T extends IEsEvent = IEsEvent> = T & {
   ref: string;
