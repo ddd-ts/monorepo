@@ -100,7 +100,11 @@ export class SerializerRegistry<
     instance: IsStringLiteral<I["$name"]> extends true ? I : never,
   ): TH extends SerializerRegistry<infer RRR, any>
     ? PromiseOr<
-        Pretty<ReturnType<Extract<RRR[number], [I, any]>[1]["serialize"]>>
+        Pretty<
+          ReturnType<
+            Extract<RRR[number], [INamed<I["$name"]>, any]>[1]["serialize"]
+          >
+        >
       >
     : never;
   serialize<
