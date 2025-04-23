@@ -1,3 +1,5 @@
+process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
+
 import * as fb from "firebase-admin";
 import { Primitive, Shape } from "../../shape/dist";
 import { FirestoreStore } from "./firestore.store";

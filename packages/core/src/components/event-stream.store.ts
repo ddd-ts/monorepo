@@ -5,6 +5,7 @@ import {
   ISerializedChange,
   ISerializedFact,
 } from "../interfaces/es-event";
+import { IEventBus } from "../interfaces/event-bus";
 import { ISerializer } from "../interfaces/serializer";
 import { EventReference } from "./event-id";
 import { StreamId } from "./stream-id";
@@ -27,6 +28,7 @@ export class EventStreamStore<Event extends IEsEvent> {
   constructor(
     public readonly storageLayer: EventStreamStorageLayer,
     public readonly serializer: ISerializer<Event>,
+    public readonly eventBus?: IEventBus,
   ) {}
 
   isLocalRevisionOutdatedError(error: unknown): boolean {
@@ -42,6 +44,9 @@ export class EventStreamStore<Event extends IEsEvent> {
     const serialized = await Promise.all(
       changes.map((change) => this.serializer.serialize(change)),
     );
+    trx.onCommit(() => {
+      for (const change of changes) this.eventBus?.publish(change);
+    });
     return this.storageLayer.append(
       streamId,
       serialized as any,
