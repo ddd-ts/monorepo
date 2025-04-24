@@ -16,20 +16,25 @@ import { FirestoreTransaction } from "./firestore.transaction";
 import { batch } from "./asyncTools";
 import { DefaultConverter } from "./converter";
 
-export class FirestoreStore<M extends IIdentifiable> implements Store<M> {
+export class FirestoreStore<
+  M extends IIdentifiable,
+  S extends ISerializer<M> = ISerializer<M>,
+> implements Store<M>
+{
   public defaultConverter = new DefaultConverter();
   constructor(
     public readonly _collection: CollectionReference,
-    public readonly serializer: ISerializer<M>,
+    public readonly serializer: S,
   ) {}
+
+  get firestore() {
+    return this._collection.firestore;
+  }
 
   get collection() {
     return this._collection.withConverter(
       this.defaultConverter,
-    ) as CollectionReference<
-      Serialized<ISerializer<M>>,
-      Serialized<ISerializer<M>>
-    >;
+    ) as CollectionReference<Serialized<S>, Serialized<S>>;
   }
 
   async executeQuery(
