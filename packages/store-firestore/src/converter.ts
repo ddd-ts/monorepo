@@ -65,6 +65,9 @@ export function decodeFirebaseTimestamps(
   if (obj?.toDate) {
     return obj.toDate();
   }
+  if (obj?.constructor?.name === "VectorValue") {
+    return obj;
+  }
   if (Array.isArray(obj)) {
     return obj.map(decodeFirebaseTimestamps);
   }
