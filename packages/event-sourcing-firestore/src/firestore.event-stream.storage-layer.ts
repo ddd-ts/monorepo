@@ -89,7 +89,6 @@ export class FirestoreEventStreamStorageLayer
       const data = this.converter.fromFirestore(e);
       yield {
         id: data.eventId,
-        ref: e.ref.path,
         revision: data.revision,
         name: data.name,
         $name: data.name,
