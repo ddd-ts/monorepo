@@ -13,7 +13,7 @@ export const EventSourced = <C extends EventSourcedConfig>(config: C) =>
     type Event = InstanceType<C[number]> & INamed;
     abstract class $EventSourced extends base implements IEventSourced<Event> {
       acknowledgedRevision = -1;
-      changes: IChange<Event>[] = [];
+      changes: Event[] = [];
       static events = config;
 
       load(fact: Event) {
@@ -35,7 +35,7 @@ export const EventSourced = <C extends EventSourcedConfig>(config: C) =>
         this.acknowledgedRevision = fact.revision;
       }
 
-      apply(change: IChange<Event>) {
+      apply(change: Event) {
         this.play(change);
         this.changes.push(change);
       }

@@ -37,7 +37,7 @@ export class EventStreamStore<Event extends IEsEvent> {
 
   async append(
     streamId: StreamId,
-    changes: IChange<Event>[],
+    changes: Event[],
     expectedRevision: number,
     trx: Transaction,
   ) {

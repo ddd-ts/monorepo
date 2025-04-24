@@ -30,19 +30,7 @@ export const EsEvent = <
         name,
         id: EventId.generate(),
         payload,
-      }) as IChange<InstanceType<TH>>;
-    }
-
-    serializeChange<T extends { serialize: () => any }>(
-      this: T,
-    ): ReturnType<T["serialize"]> & ISerializedChange {
-      return this.serialize();
-    }
-
-    serializeFact<T extends { serialize: () => any }>(
-      this: T,
-    ): ReturnType<T["serialize"]> & ISerializedFact {
-      return this.serialize();
+      }) as InstanceType<TH>;
     }
   }
 
@@ -53,7 +41,6 @@ export const EsEvent = <
       payload,
       revision: Optional(Number),
       occurredAt: Optional(Date),
-      ref: Optional(String),
     },
     WithDerivations($EsEvent, Named(name)),
   );

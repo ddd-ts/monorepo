@@ -31,7 +31,7 @@ export class EventLakeStore<Event extends IEsEvent> {
     public readonly eventBus?: IEventBus,
   ) {}
 
-  async append(lakeId: LakeId, changes: IChange<Event>[], trx: Transaction) {
+  async append(lakeId: LakeId, changes: Event[], trx: Transaction) {
     const serialized = await Promise.all(
       changes.map((change) => this.serializer.serialize(change)),
     );

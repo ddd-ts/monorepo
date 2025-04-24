@@ -67,7 +67,6 @@ describe("EsAggregate", () => {
       account.load(
         new Deposited({
           id: EventId.generate(),
-          ref: "",
           revision: 1,
           name: "Deposited",
           occurredAt: new Date(),
@@ -97,7 +96,6 @@ describe("EsAggregate", () => {
       account.load(
         new Deposited({
           id: EventId.generate(),
-          ref: "",
           name: "Deposited",
           occurredAt: new Date(),
           revision: 1,
@@ -120,7 +118,6 @@ describe("EsAggregate", () => {
       account.load(
         new Deposited({
           id: EventId.generate(),
-          ref: "",
           name: "Deposited",
           occurredAt: new Date(),
           revision: 1,
@@ -143,7 +140,6 @@ describe("EsAggregate", () => {
         account.load(
           new Deposited({
             id: EventId.generate(),
-            ref: "",
             name: "Deposited",
             occurredAt: new Date(),
             revision: 2,
@@ -163,7 +159,6 @@ describe("EsAggregate", () => {
       account.load(
         new Deposited({
           id: EventId.generate(),
-          ref: "",
           name: "Deposited",
           occurredAt: new Date(),
           revision: 1,
@@ -179,7 +174,6 @@ describe("EsAggregate", () => {
         account.load(
           new Deposited({
             id: EventId.generate(),
-            ref: "",
             name: "Deposited",
             occurredAt: new Date(),
             revision: 1,
@@ -202,7 +196,6 @@ describe("EsAggregate", () => {
         account.load(
           new Deposited({
             id: EventId.generate(),
-            ref: "",
             name: "Deposited",
             occurredAt: new Date(),
             revision: 2,
