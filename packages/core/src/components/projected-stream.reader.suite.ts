@@ -67,7 +67,7 @@ export function ProjectedStreamReaderSuite(config: {
 
   function appendToLake(
     lakeId: LakeId,
-    events: (IChange<Added> | IChange<Removed> | IChange<Multiplied>)[],
+    events: (Added | Removed | Multiplied)[],
   ) {
     return transaction.perform((trx) => lakeStore.append(lakeId, events, trx));
   }
@@ -75,7 +75,7 @@ export function ProjectedStreamReaderSuite(config: {
   function appendToStream(
     streamId: StreamId,
     expectedRevision: number,
-    events: (IChange<Added> | IChange<Removed> | IChange<Multiplied>)[],
+    events: (Added | Removed | Multiplied)[],
   ) {
     return transaction.perform((trx) =>
       streamStore.append(streamId, events, expectedRevision, trx),
