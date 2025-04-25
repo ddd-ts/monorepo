@@ -210,7 +210,7 @@ export function EventLakeAggregateStoreSuite(config: {
     });
   });
 
-  it("supports saveAll with transactions", async () => {
+  it("supports saveAll", async () => {
     const accountStore = config.getAggregateStore(Account, registry);
 
     const accounts = [...Array(10).keys()].map(() => Account.open());
