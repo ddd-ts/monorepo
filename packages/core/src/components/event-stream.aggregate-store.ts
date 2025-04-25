@@ -107,7 +107,7 @@ export abstract class EventStreamAggregateStore<
     const toSave = await Promise.all(
       aggregates
         .filter((a) => a.changes.length)
-        .map(async (aggregate) => ({
+        .map((aggregate) => ({
           aggregate: aggregate,
           streamId: this.getStreamId(aggregate.id),
           changes: [...aggregate.changes] as IChange<EventOf<A>>[],
