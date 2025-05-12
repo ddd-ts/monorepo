@@ -20,6 +20,9 @@ export class PairId extends Primitive(String) {
     left: string,
     right: string,
   ) {
+    if (left.includes(this.separator) || right.includes(this.separator)) {
+      throw new Error(`Invalid Id: ${left}${this.separator}${right}`);
+    }
     const result = new this(`${left}${this.separator}${right}`);
     result.ensureValidity();
     return result as InstanceType<T>;
@@ -29,7 +32,11 @@ export class PairId extends Primitive(String) {
     this: T,
     value: string,
   ) {
-    const [left, right] = value.split(this.separator);
+    const parts = value.split(this.separator);
+    if (parts.length !== 2) {
+      throw new Error(`Invalid Id: ${value}`);
+    }
+    const [left, right] = parts;
     const result = new this(`${left}${this.separator}${right}`);
     result.ensureValidity();
     return result as InstanceType<T>;
