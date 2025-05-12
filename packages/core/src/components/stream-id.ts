@@ -2,7 +2,7 @@ import { Primitive } from "@ddd-ts/shape";
 import { Constructor } from "@ddd-ts/types";
 
 export class PairId extends Primitive(String) {
-  static separator = "@" as const;
+  static separator = "@@" as const;
   get separator() {
     return (this.constructor as any).separator;
   }
