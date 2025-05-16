@@ -1,5 +1,6 @@
 import type { Constructor } from "@ddd-ts/types";
 import type { ISerializer } from "../interfaces/serializer";
+import { INamed } from "../interfaces/named";
 
 export type AutoSerializable = Constructor<{ serialize(): any }> & {
   deserialize(value: any): any;
@@ -35,8 +36,23 @@ export const AutoSerializer = <
   };
 };
 
+export type AutoSerializerV1<Class extends Constructor & INamed> = {
+  serialize(value: InstanceType<Class>): {
+    version: 1;
+  } & ReturnType<InstanceType<Class>["serialize"]>;
+
+  deserialize(
+    serialized: {
+      version: 1;
+    } & ReturnType<InstanceType<Class>["serialize"]>,
+  ): InstanceType<Class>;
+};
+
 AutoSerializer.First = <T extends AutoSerializable>(of: T) =>
   class FirstSerializer extends AutoSerializer(of, 1) {};
 
-AutoSerializer.first = <T extends AutoSerializable>(of: T) =>
-  new (class FirstSerializer extends AutoSerializer(of, 1) {})();
+AutoSerializer.first = <T extends AutoSerializable & INamed>(of: T) =>
+  new (class FirstSerializer extends AutoSerializer(
+    of,
+    1,
+  ) {})() as AutoSerializerV1<T>;
