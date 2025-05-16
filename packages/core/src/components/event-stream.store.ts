@@ -1,5 +1,4 @@
 import {
-  IChange,
   IEsEvent,
   IFact,
   ISerializedChange,

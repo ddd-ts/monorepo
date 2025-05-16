@@ -16,7 +16,6 @@ import {
 } from "./event-stream.store";
 import { EventLakeStorageLayer, EventLakeStore } from "./event-lake.store";
 import { LakeId, StreamId } from "./stream-id";
-import { IChange } from "../interfaces/es-event";
 import { buffer } from "../tools/iterator";
 
 export function ProjectedStreamReaderSuite(config: {
