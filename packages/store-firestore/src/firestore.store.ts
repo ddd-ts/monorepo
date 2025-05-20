@@ -25,6 +25,7 @@ export class FirestoreStore<
   constructor(
     public readonly _collection: CollectionReference,
     public readonly serializer: S,
+    public readonly $name?: string,
   ) {}
 
   get firestore() {
@@ -45,7 +46,11 @@ export class FirestoreStore<
 
     return Promise.all(
       result.docs.map((doc) =>
-        this.serializer.deserialize({ id: doc.id, ...doc.data() }),
+        this.serializer.deserialize({
+          ...(this.$name ? { $name: this.$name } : {}),
+          id: doc.id,
+          ...doc.data(),
+        }),
       ),
     );
   }
@@ -120,6 +125,7 @@ export class FirestoreStore<
     }
 
     return this.serializer.deserialize({
+      ...(this.$name ? { $name: this.$name } : {}),
       id: id.serialize(),
       ...snapshot.data(),
     });
@@ -135,7 +141,11 @@ export class FirestoreStore<
     }
     return Promise.all(
       docs.map((doc) =>
-        this.serializer.deserialize({ id: doc.id, ...doc.data() }),
+        this.serializer.deserialize({
+          ...(this.$name ? { $name: this.$name } : {}),
+          id: doc.id,
+          ...doc.data(),
+        }),
       ),
     );
   }

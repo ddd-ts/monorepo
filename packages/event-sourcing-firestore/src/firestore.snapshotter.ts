@@ -6,19 +6,26 @@ import {
 import { FirestoreStore } from "@ddd-ts/store-firestore";
 
 class SnapshotSerializer<A extends IEventSourced & IIdentifiable> {
-  constructor(private readonly serializer: ISerializer<A>) {}
+  constructor(
+    private readonly serializer: ISerializer<A>,
+    private readonly aggregateType: string,
+  ) {}
 
   async serialize(instance: A) {
     const serialized = await this.serializer.serialize(instance);
     return {
       ...serialized,
+      $name: this.aggregateType,
       revision: instance.acknowledgedRevision,
     };
   }
 
   async deserialize(serialized: any) {
     const { revision, ...content } = serialized;
-    const instance = await this.serializer.deserialize(content);
+    const instance = await this.serializer.deserialize({
+      $name: this.aggregateType,
+      ...content,
+    });
     instance.acknowledgedRevision = Number(revision);
     return instance;
   }
@@ -36,6 +43,10 @@ export class FirestoreSnapshotter<
       .collection("event-store")
       .doc(aggregateType)
       .collection("streams");
-    super(collection, new SnapshotSerializer(serializer));
+    super(
+      collection,
+      new SnapshotSerializer(serializer, aggregateType),
+      aggregateType,
+    );
   }
 }
