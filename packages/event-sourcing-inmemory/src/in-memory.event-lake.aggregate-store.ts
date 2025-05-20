@@ -7,6 +7,8 @@ import {
   IEventSourced,
   IIdentifiable,
   IChange,
+  EventSourced,
+  Identifiable,
 } from "@ddd-ts/core";
 import {
   InMemoryDatabase,
@@ -15,6 +17,31 @@ import {
   InMemoryTransactionPerformer,
 } from "@ddd-ts/store-inmemory";
 import { InMemoryEventLakeStorageLayer } from "./in-memory.event-lake.storage-layer";
+import { HasTrait } from "@ddd-ts/traits";
+
+export const MakeInMemoryEventLakeAggregateStore = <
+  A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
+>(
+  AGGREGATE: A,
+) => {
+  abstract class $InMemoryEventLakeAggregateStore extends InMemoryEventLakeAggregateStore<
+    InstanceType<A>
+  > {
+    constructor(
+      public readonly database: InMemoryDatabase,
+      public readonly collection: string,
+      serializer: ISerializer<InstanceType<A>> &
+        ISerializer<EventOf<InstanceType<A>>>,
+      eventBus?: IEventBus,
+    ) {
+      super(database, collection, serializer, eventBus, AGGREGATE.name);
+    }
+
+    abstract getLakeId(instance: InstanceType<A>): LakeId;
+  }
+
+  return $InMemoryEventLakeAggregateStore;
+};
 
 export abstract class InMemoryEventLakeAggregateStore<
   A extends IEventSourced & IIdentifiable,
@@ -26,9 +53,10 @@ export abstract class InMemoryEventLakeAggregateStore<
     public readonly collection: string,
     public readonly serializer: ISerializer<EventOf<A>> & ISerializer<A>,
     public readonly eventBus?: IEventBus,
+    public readonly $name?: string,
   ) {
     const storageLayer = new InMemoryEventLakeStorageLayer(database);
-    super(collection, database, serializer);
+    super(collection, database, serializer, $name);
     this.lakeStore = new EventLakeStore<EventOf<A>>(
       storageLayer,
       serializer,

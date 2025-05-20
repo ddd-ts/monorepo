@@ -10,6 +10,7 @@ export class InMemoryStore<M extends IIdentifiable> implements Store<M> {
     public readonly collection: string,
     public readonly database: InMemoryDatabase,
     public readonly serializer: ISerializer<M>,
+    public readonly $name?: string,
   ) {}
 
   async filter(
@@ -18,7 +19,10 @@ export class InMemoryStore<M extends IIdentifiable> implements Store<M> {
   ): Promise<M[]> {
     const filtered = await Promise.all(
       this.database.loadAll(this.collection).map(async (e) => {
-        const deserialized = await this.serializer.deserialize(e.data.data);
+        const deserialized = await this.serializer.deserialize({
+          ...(this.$name ? { $name: this.$name } : {}),
+          ...e.data.data,
+        });
         if (!predicate(deserialized)) {
           return undefined;
         }
@@ -34,10 +38,11 @@ export class InMemoryStore<M extends IIdentifiable> implements Store<M> {
   }
 
   async save(model: M, trx?: InMemoryTransaction): Promise<void> {
+    const serialized = await this.serializer.serialize(model);
     await this.database.save(
       this.collection,
       model.id.serialize(),
-      await this.serializer.serialize(model),
+      { ...(this.$name ? { $name: this.$name } : {}), ...serialized },
       trx?.transaction,
     );
   }
@@ -57,7 +62,10 @@ export class InMemoryStore<M extends IIdentifiable> implements Store<M> {
       return undefined;
     }
 
-    return this.serializer.deserialize(serialized);
+    return this.serializer.deserialize({
+      ...(this.$name ? { $name: this.$name } : {}),
+      ...serialized,
+    });
   }
 
   loadAll(trx?: InMemoryTransaction): Promise<M[]> {
@@ -66,7 +74,10 @@ export class InMemoryStore<M extends IIdentifiable> implements Store<M> {
     return Promise.all(
       serialized.map(async (s) => {
         trx?.transaction.markRead(this.collection, s.id, s.data.savedAt);
-        return this.serializer.deserialize(s.data.data);
+        return this.serializer.deserialize({
+          ...(this.$name ? { $name: this.$name } : {}),
+          ...s.data.data,
+        });
       }),
     );
   }

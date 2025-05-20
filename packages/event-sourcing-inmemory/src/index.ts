@@ -8,7 +8,10 @@ export {
   MakeInMemoryEventStreamAggregateStore,
 } from "./in-memory.event-stream.aggregate-store";
 
-export { InMemoryEventLakeAggregateStore } from "./in-memory.event-lake.aggregate-store";
+export {
+  InMemoryEventLakeAggregateStore,
+  MakeInMemoryEventLakeAggregateStore,
+} from "./in-memory.event-lake.aggregate-store";
 
 export {
   InMemoryProjectedStreamStorageLayer,
