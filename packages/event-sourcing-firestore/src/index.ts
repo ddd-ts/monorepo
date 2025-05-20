@@ -8,7 +8,10 @@ export {
   MakeFirestoreEventStreamAggregateStore,
 } from "./firestore.event-stream.aggregate-store";
 
-export { FirestoreEventLakeAggregateStore } from "./firestore.event-lake.aggregate-store";
+export {
+  FirestoreEventLakeAggregateStore,
+  MakeFirestoreEventLakeAggregateStore,
+} from "./firestore.event-lake.aggregate-store";
 
 export {
   FirestoreProjectedStreamStorageLayer,

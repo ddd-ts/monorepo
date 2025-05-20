@@ -7,6 +7,8 @@ import {
   LakeId,
   IChange,
   IEventBus,
+  EventSourced,
+  Identifiable,
 } from "@ddd-ts/core";
 import {
   FirestoreStore,
@@ -16,6 +18,30 @@ import {
 
 import { CollectionReference } from "firebase-admin/firestore";
 import { FirestoreEventLakeStorageLayer } from "./firestore.event-lake.storage-layer";
+import { HasTrait } from "@ddd-ts/traits";
+
+export const MakeFirestoreEventLakeAggregateStore = <
+  A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
+>(
+  AGGREGATE: A,
+) => {
+  abstract class $FirestoreEventLakeAggregateStore extends FirestoreEventLakeAggregateStore<
+    InstanceType<A>
+  > {
+    constructor(
+      collection: CollectionReference,
+      serializer: ISerializer<InstanceType<A>> &
+        ISerializer<EventOf<InstanceType<A>>>,
+      eventBus?: IEventBus,
+    ) {
+      super(collection, serializer, eventBus, AGGREGATE.name);
+    }
+
+    abstract getLakeId(instance: InstanceType<A>): LakeId;
+  }
+
+  return $FirestoreEventLakeAggregateStore;
+};
 
 export abstract class FirestoreEventLakeAggregateStore<
   A extends IEventSourced & IIdentifiable,
@@ -26,8 +52,9 @@ export abstract class FirestoreEventLakeAggregateStore<
     collection: CollectionReference,
     serializer: ISerializer<EventOf<A>> & ISerializer<A>,
     eventBus?: IEventBus,
+    $name?: string,
   ) {
-    super(collection, serializer);
+    super(collection, serializer, $name);
     const storageLayer = new FirestoreEventLakeStorageLayer(
       collection.firestore,
     );
