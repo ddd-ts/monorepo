@@ -5,14 +5,9 @@ import {
   type DictShorthand,
 } from "@ddd-ts/shape";
 import { type Constructor } from "@ddd-ts/types";
-import { EventId } from "../components/event-id";
+import { EventId, EventReference } from "../components/event-id";
 import { WithDerivations } from "@ddd-ts/traits";
 import { Named } from "../traits/named";
-import {
-  IChange,
-  ISerializedChange,
-  ISerializedFact,
-} from "../interfaces/es-event";
 
 export const EsEvent = <
   const Name extends string,
@@ -41,6 +36,7 @@ export const EsEvent = <
       payload,
       revision: Optional(Number),
       occurredAt: Optional(Date),
+      ref: Optional(EventReference),
     },
     WithDerivations($EsEvent, Named(name)),
   );

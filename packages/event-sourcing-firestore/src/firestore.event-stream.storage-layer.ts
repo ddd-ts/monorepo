@@ -4,6 +4,7 @@ import {
   type ISerializedFact,
   EventReference,
   EventStreamStorageLayer,
+  EventCommitResult,
 } from "@ddd-ts/core";
 
 import {
@@ -47,13 +48,13 @@ export class FirestoreEventStreamStorageLayer
     trx: FirestoreTransaction,
   ) {
     const collection = this.getCollection(streamId);
-    const refs: EventReference[] = [];
+    const result = new EventCommitResult();
 
     let revision = expectedRevision + 1;
     for (const change of changes) {
       const ref = collection.doc(`${revision}`);
 
-      refs.push(new EventReference(ref.path));
+      result.set(change.id, new EventReference(ref.path), revision);
 
       trx.transaction.create(
         ref,
@@ -71,7 +72,7 @@ export class FirestoreEventStreamStorageLayer
       revision++;
     }
 
-    return refs;
+    return result;
   }
 
   async *read(
@@ -89,6 +90,7 @@ export class FirestoreEventStreamStorageLayer
       const data = this.converter.fromFirestore(e);
       yield {
         id: data.eventId,
+        ref: e.ref.path,
         revision: data.revision,
         name: data.name,
         $name: data.name,

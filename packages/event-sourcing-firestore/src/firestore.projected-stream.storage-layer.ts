@@ -1,5 +1,6 @@
 import {
   EventReference,
+  ISerializedFact,
   LakeSource,
   ProjectedStream,
   ProjectedStreamStorageLayer,
@@ -38,6 +39,24 @@ export class FirestoreProjectedStreamStorageLayer
     private readonly firestore: Firestore,
     public readonly converter = new DefaultConverter(),
   ) {}
+
+  async get(reference: EventReference): Promise<ISerializedFact> {
+    const doc = await this.firestore.doc(reference.serialize()).get();
+    if (!doc.exists) {
+      throw new Error(`Event not found: ${reference}`);
+    }
+    const data = this.converter.fromFirestoreSnapshot(doc) as any;
+    return {
+      id: data.eventId,
+      ref: doc.ref.path,
+      revision: data.revision,
+      name: data.name,
+      $name: data.name,
+      payload: data.payload,
+      occurredAt: data.occurredAt,
+      version: data.version ?? 1,
+    };
+  }
 
   async *read(
     projectedStream: ProjectedStream,

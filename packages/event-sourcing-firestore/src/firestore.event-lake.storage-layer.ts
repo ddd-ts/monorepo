@@ -5,6 +5,7 @@ import {
   type ISerializedFact,
   EventReference,
   EventLakeStorageLayer,
+  EventCommitResult,
 } from "@ddd-ts/core";
 
 import {
@@ -37,7 +38,7 @@ export class FirestoreEventLakeStorageLayer implements EventLakeStorageLayer {
   ) {
     const collection = this.getCollection(lakeId);
 
-    const refs: EventReference[] = [];
+    const result = new EventCommitResult();
 
     let revision = 0;
     for (const change of changes) {
@@ -51,13 +52,13 @@ export class FirestoreEventLakeStorageLayer implements EventLakeStorageLayer {
       };
 
       const ref = collection.doc(change.id);
-      refs.push(new EventReference(ref.path));
+      result.set(change.id, new EventReference(ref.path), revision);
       trx.transaction.create(ref, this.converter.toFirestore(storageChange));
 
       revision++;
     }
 
-    return refs;
+    return result;
   }
 
   async *read(
