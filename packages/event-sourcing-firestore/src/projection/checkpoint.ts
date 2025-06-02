@@ -5,6 +5,8 @@ import { Cursor, EventStatus, Thread } from "./thread";
 import { Lock } from "./lock";
 import { IdMap } from "../idmap";
 import { FirestoreStore, FirestoreTransaction } from "@ddd-ts/store-firestore";
+import { StableEventId } from "./write";
+import { WriteBatch } from "firebase-admin/firestore";
 
 export class ProjectionCheckpoint extends Shape({
   id: ProjectionCheckpointId,
@@ -16,14 +18,6 @@ export class ProjectionCheckpoint extends Shape({
 
   enqueue(event: IEsEvent, lock: Lock, previous?: EventId) {
     this.thread.enqueue(Cursor.from(event), lock, previous);
-  }
-
-  process(eventId: EventId) {
-    this.thread.process(eventId);
-  }
-
-  processed(eventId: EventId) {
-    this.thread.processed(eventId);
   }
 
   static initial(id: ProjectionCheckpointId) {
@@ -78,7 +72,13 @@ export class ProjectionCheckpointStore extends FirestoreStore<ProjectionCheckpoi
     if (!existing) {
       throw new Error(`Projection state not found: ${id}`);
     }
+    existing.thread.clean();
     return existing;
+  }
+
+  async string(id: ProjectionCheckpointId) {
+    const existing = await this.expected(id);
+    return existing?.toString().replaceAll(StableEventId.seed, "seed");
   }
 
   async processed(
@@ -94,6 +94,34 @@ export class ProjectionCheckpointStore extends FirestoreStore<ProjectionCheckpoi
 
     await this.collection.doc(id.serialize()).update({
       [`thread.statuses.${eventId.serialize()}`]: "done",
+    });
+
+    return;
+  }
+
+  async processedBatch(
+    id: ProjectionCheckpointId,
+    eventId: EventId,
+    batchWriter: WriteBatch,
+  ) {
+    return batchWriter.update(this.collection.doc(id.serialize()), {
+      [`thread.statuses.${eventId.serialize()}`]: "done",
+    });
+  }
+
+  async failed(
+    id: ProjectionCheckpointId,
+    eventId: EventId,
+    trx?: FirestoreTransaction,
+  ) {
+    if (trx) {
+      return trx.transaction.update(this.collection.doc(id.serialize()), {
+        [`thread.statuses.${eventId.serialize()}`]: "failed",
+      });
+    }
+
+    await this.collection.doc(id.serialize()).update({
+      [`thread.statuses.${eventId.serialize()}`]: "failed",
     });
 
     return;

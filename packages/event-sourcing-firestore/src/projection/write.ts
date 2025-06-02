@@ -1,15 +1,26 @@
 import { EsAggregate, EsEvent, EventId, On } from "@ddd-ts/core";
 import { Primitive } from "../../../shape/dist";
 
+export class StableEventId extends Primitive(String) {
+  static seed = Math.random().toString(36).substring(2, 5);
+  static current = 0;
+
+  static generate() {
+    return new EventId(
+      String(`${this.seed}-${++this.current}`).padStart(5, "0"),
+    );
+  }
+}
+
 export class AccountId extends Primitive(String) {
   static generate() {
-    return new AccountId(`A${EventId.generate().serialize().slice(0, 8)}`);
+    return new AccountId(`A${StableEventId.generate().serialize()}`);
   }
 }
 
 export class BankId extends Primitive(String) {
   static generate() {
-    return new BankId(`B${EventId.generate().serialize().slice(0, 8)}`);
+    return new BankId(`B${StableEventId.generate().serialize()}`);
   }
 }
 
@@ -17,6 +28,8 @@ export class AccountOpened extends EsEvent("AccountOpened", {
   accountId: AccountId,
   bankId: BankId,
 }) {
+  // id = StableEventId.generate();
+
   toString() {
     return `Account<${this.payload.accountId.serialize()}>:Opened()`;
   }
@@ -27,6 +40,7 @@ export class Deposited extends EsEvent("Deposited", {
   accountId: AccountId,
   amount: Number,
 }) {
+  // id = StableEventId.generate();
   toString() {
     return `Account<${this.payload.accountId.serialize()}>:Deposited(${this.payload.amount})`;
   }
@@ -37,6 +51,7 @@ export class Withdrawn extends EsEvent("Withdrawn", {
   accountId: AccountId,
   amount: Number,
 }) {
+  // id = StableEventId.generate();
   toString() {
     return `Account<${this.payload.accountId.serialize()}>:Withdrawn(${this.payload.amount})`;
   }

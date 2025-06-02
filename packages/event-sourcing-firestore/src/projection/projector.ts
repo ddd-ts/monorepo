@@ -4,6 +4,7 @@ import { AccountCashflowProjection } from "./cashflow";
 import { ProjectionCheckpointStore } from "./checkpoint";
 import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
 import { Cursor } from "./thread";
+import { wait } from "./tools";
 
 export class Projector {
   constructor(
@@ -13,7 +14,7 @@ export class Projector {
     public readonly transaction: FirestoreTransactionPerformer,
   ) {}
 
-  async claim(e: IEsEvent): Promise<boolean> {
+  async enqueue(e: IEsEvent): Promise<boolean> {
     const checkpointId = this.projection.getShardCheckpointId(e as any);
 
     const accountId = e.payload.accountId.serialize();
@@ -34,15 +35,18 @@ export class Projector {
     const stream = this.reader.read(
       this.projection.source,
       accountId,
-      state.thread.tail?.ref,
+      state.thread.tail?.ref, // MAYBE HEAD ?
       until,
     );
 
     let previous = state.thread.tail?.eventId;
 
     for await (const event of stream) {
-      const lock = this.projection.handlers[event.name].locks(event as any);
+      const handler = this.projection.handlers[event.name];
 
+      const lock = handler.locks(event as any);
+
+      // TRY WITH A SINGLE TRANSACTION OR BATCH
       await this.transaction.perform(async (trx) => {
         const state = await this.store.expected(checkpointId, trx);
 
@@ -57,11 +61,11 @@ export class Projector {
   }
 
   async process(event: IEsEvent): Promise<any> {
+    console.log(`Projector: processing event ${event.toString()}`);
     const checkpointId = this.projection.getShardCheckpointId(event as any);
 
     const batch = await this.transaction.perform(async (trx) => {
       const state = await this.store.expected(checkpointId, trx);
-      state.thread.clean();
       if (state.isTailAfterOrEqual(Cursor.from(event))) {
         return false;
       }
@@ -81,20 +85,17 @@ export class Projector {
       batch.map((cursor) => this.reader.get(cursor.ref)),
     );
 
-    await Promise.all(
+    const processed = await Promise.all(
       events.map(async (event) => {
         const handler = this.projection.handlers[event.name];
-        if (!handler) {
-          throw new Error(`No handler for event ${event.name}`);
+        const result = await handler.process(checkpointId, event as any);
+        if (result) {
+          return event.id;
         }
-        await this.transaction.perform(async (trx) => {
-          await handler.handle(event as any);
-          await this.store.processed(checkpointId, event.id, trx);
-        });
       }),
     );
 
-    if (batch.some((b) => b.eventId.equals(event.id))) {
+    if (processed.some((id) => id?.equals(event.id))) {
       console.log(`Batch contained target event ${event}`);
       return true;
     }
@@ -102,12 +103,11 @@ export class Projector {
     console.log(`Batch did not contain target event ${event}`);
     await new Promise((resolve) => setTimeout(resolve, 100));
     return this.process(event);
-    // return false;
   }
 
   async handle(event: IEsEvent) {
     console.log(`Projector: handling event ${event.toString()}`);
-    await this.claim(event);
+    await this.enqueue(event);
     console.log(`Projector: claimed event ${event.toString()}`);
     await this.process(event);
     console.log(`Projector: processed event ${event.toString()}`);

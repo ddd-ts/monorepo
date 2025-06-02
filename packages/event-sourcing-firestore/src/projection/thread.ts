@@ -3,7 +3,7 @@ import { Choice, Multiple, Optional, Shape } from "../../../shape/dist";
 import { IdMap } from "../idmap";
 import { Lock } from "./lock";
 
-export class EventStatus extends Choice(["processing", "done"]) {}
+export class EventStatus extends Choice(["processing", "done", "failed"]) {}
 
 export class Cursor extends Shape({
   occurredAt: Date,
@@ -99,25 +99,6 @@ export class Thread extends Shape({
     this.tasks.push({ cursor, lock, previous });
     this.head = cursor;
   }
-
-  process(eventId: EventId) {
-    const claim = this.tasks.find((c) => c.cursor.eventId.equals(eventId));
-    if (!claim) {
-      throw new Error(`Event not found in thread: ${eventId}`);
-    }
-    this.statuses.set(eventId, EventStatus.processing());
-  }
-
-  processed(eventId: EventId) {
-    const claim = this.tasks.find((c) => c.cursor.eventId.equals(eventId));
-    if (!claim) {
-      throw new Error(`Event not found in thread: ${eventId}`);
-    }
-
-    this.statuses.set(eventId, EventStatus.done());
-    this.clean();
-  }
-
   clean() {
     for (const task of [...this.tasks]) {
       const status = this.statuses.get(task.cursor.eventId);
@@ -125,6 +106,7 @@ export class Thread extends Shape({
         return;
       }
       this.tail = this.tasks.shift()?.cursor;
+      this.statuses.delete(task.cursor.eventId);
     }
   }
 
@@ -134,12 +116,15 @@ export class Thread extends Shape({
 
     for (const task of this.tasks) {
       if (locks.some((lock) => lock.restrains(task.lock))) {
+        // TODO: ADD TEST FOR JUSTIFYING THIS
+        // locks.push(task.lock);
         continue;
       }
+
       locks.push(task.lock);
 
       const status = this.statuses.get(task.cursor.eventId);
-      if (status) continue;
+      if (status?.is("processing") || status?.is("done")) continue;
 
       batch.push(task.cursor);
       this.statuses.set(task.cursor.eventId, EventStatus.processing());
@@ -150,12 +135,14 @@ export class Thread extends Shape({
 
   toString() {
     return [
-      `\tHEAD: ${this.head}`,
+      "",
+      `HEAD: ${this.head}`,
       ...this.tasks.map(
         (task) =>
-          `\t\t${task.cursor.ref.serialize()} ${this.statuses.get(task.cursor.eventId)?.serialize()}`,
+          `\t${task.cursor.ref.serialize()} ${this.statuses.get(task.cursor.eventId)?.serialize()}`,
       ),
-      `\tTAIL: ${this.tail}`,
+      `TAIL: ${this.tail}`,
+      "",
     ].join("\n");
   }
 }
