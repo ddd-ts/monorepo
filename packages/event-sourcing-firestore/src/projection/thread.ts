@@ -1,5 +1,11 @@
 import { EventId, EventReference, IEsEvent } from "@ddd-ts/core";
-import { Choice, Multiple, Optional, Shape } from "../../../shape/dist";
+import {
+  Choice,
+  Multiple,
+  Optional,
+  Primitive,
+  Shape,
+} from "../../../shape/dist";
 import { IdMap } from "../idmap";
 import { Lock } from "./lock";
 
@@ -53,81 +59,89 @@ export class Cursor extends Shape({
   }
 }
 
+export class ProcessingStartedAt extends Primitive(Date) {
+  timedOut(timeout: number) {
+    return this.value.getTime() + timeout < Date.now();
+  }
+}
+
 export class Thread extends Shape({
-  tail: Optional(Cursor),
   head: Optional(Cursor),
   tasks: Multiple({
     cursor: Cursor,
     lock: Lock,
-    previous: Optional(EventId),
+    timeout: Optional(Number),
+    enqueuedAt: Date,
   }),
   statuses: IdMap(EventId, EventStatus),
+  processingStartedAt: IdMap(EventId, ProcessingStartedAt),
 }) {
-  enqueue(cursor: Cursor, lock: Lock, previous?: EventId) {
-    const head = this.head;
-
-    if (head?.isAfterOrEqual(cursor)) {
+  enqueue(cursor: Cursor, lock: Lock, timeout?: number) {
+    if (this.head?.isAfterOrEqual(cursor)) {
       return;
     }
-
-    if (!previous) {
-      if (head) {
-        // hitting this when processing an event that was already processed.
-        // Can this happen when used through a projector ?
-        return;
-      }
-
-      this.tasks.push({
-        cursor,
-        lock,
-        previous: undefined,
-      });
-      this.head = cursor;
-      return;
-    }
-
-    if (!head) {
-      throw new Error("Previous event is required when queue is not empty");
-    }
-
-    if (!head.eventId.equals(previous)) {
-      throw new Error(
-        `Previous event ${previous.serialize()} does not match last cursor ${head.eventId.serialize()}`,
-      );
-    }
-
-    this.tasks.push({ cursor, lock, previous });
+    this.tasks.push({ cursor, lock, timeout, enqueuedAt: new Date() });
     this.head = cursor;
   }
+
   clean() {
     for (const task of [...this.tasks]) {
       const status = this.statuses.get(task.cursor.eventId);
+      const processingStartedAt = this.processingStartedAt.get(
+        task.cursor.eventId,
+      );
+
+      if (processingStartedAt?.timedOut(task.timeout ?? 120_000)) {
+        this.tasks.shift();
+        this.statuses.delete(task.cursor.eventId);
+        this.processingStartedAt.delete(task.cursor.eventId);
+        console.log(
+          `Thread: Task for event ${task.cursor.eventId.serialize()} timed out and was removed.`,
+        );
+        continue;
+      }
+
       if (!status?.is("done")) {
         return;
       }
-      this.tail = this.tasks.shift()?.cursor;
+
+      this.tasks.shift();
       this.statuses.delete(task.cursor.eventId);
+      this.processingStartedAt.delete(task.cursor.eventId);
     }
   }
 
   startNextBatch() {
     const locks: Lock[] = [];
+    const batchLocks: Lock[] = [];
     const batch: Cursor[] = [];
 
-    for (const task of this.tasks) {
+    for (const task of [...this.tasks]) {
       if (locks.some((lock) => lock.restrains(task.lock))) {
         // TODO: ADD TEST FOR JUSTIFYING THIS
-        // locks.push(task.lock);
+        locks.push(task.lock);
         continue;
       }
 
-      locks.push(task.lock);
+      if (batchLocks.some((lock) => lock.restrains(task.lock, false))) {
+        locks.push(task.lock);
+        continue;
+      }
 
       const status = this.statuses.get(task.cursor.eventId);
-      if (status?.is("processing") || status?.is("done")) continue;
+      if (status?.is("processing") || status?.is("done")) {
+        locks.push(task.lock);
+        continue;
+      }
 
       batch.push(task.cursor);
+      batchLocks.push(task.lock);
+
       this.statuses.set(task.cursor.eventId, EventStatus.processing());
+      this.processingStartedAt.set(
+        task.cursor.eventId,
+        new ProcessingStartedAt(new Date()),
+      );
     }
 
     return batch;
@@ -141,7 +155,6 @@ export class Thread extends Shape({
         (task) =>
           `\t${task.cursor.ref.serialize()} ${this.statuses.get(task.cursor.eventId)?.serialize()}`,
       ),
-      `TAIL: ${this.tail}`,
       "",
     ].join("\n");
   }

@@ -25,37 +25,60 @@ export class Projector {
 
     const cursor = Cursor.from(e);
 
-    if (state.thread.tail && cursor.isAfterOrEqual(state.thread.tail)) {
+    if (!state.shouldEnqueue(cursor)) {
       console.log(
-        `Skipping event ${e.id.serialize()} as it is after the last cursor ${state.thread.tail.ref.serialize()}`,
+        `Skipping event ${e.id.serialize()} as it is after the last cursor ${state.thread.head.ref.serialize()}`,
       );
       return false;
     }
 
-    const stream = this.reader.read(
+    const events = await this.reader.slice(
       this.projection.source,
       accountId,
-      state.thread.tail?.ref, // MAYBE HEAD ?
+      state.thread.head?.ref, // MAYBE HEAD ?
       until,
     );
 
-    let previous = state.thread.tail?.eventId;
+    let i = 0;
+    await this.transaction.perform(async (trx) => {
+      console.log(
+        `ENQUEUE ${events[0]} ${events.at(-1)} ${events.length} ${i++}`,
+      );
+      const state = await this.store.expected(checkpointId, trx);
 
-    for await (const event of stream) {
-      const handler = this.projection.handlers[event.name];
+      console.log(`State head: ${state.thread.tasks.length}`);
 
-      const lock = handler.locks(event as any);
+      if (!state.shouldEnqueue(cursor)) {
+        console.log(`Skipping event ${e}`);
+        return;
+      }
+      for (const event of events) {
+        const lock = this.projection.handlers[event.name].locks(event as any);
+        state.enqueue(event, lock);
+      }
+      await this.store.save(state, trx);
+    });
 
-      // TRY WITH A SINGLE TRANSACTION OR BATCH
-      await this.transaction.perform(async (trx) => {
-        const state = await this.store.expected(checkpointId, trx);
+    // const stream = this.reader.read(
+    //   this.projection.source,
+    //   accountId,
+    //   state.thread.head?.ref, // MAYBE HEAD ?
+    //   until,
+    // );
 
-        state.enqueue(event, lock, previous);
-        await this.store.save(state, trx);
-      });
+    // for await (const event of stream) {
+    //   const handler = this.projection.handlers[event.name];
 
-      previous = event.id;
-    }
+    //   const lock = handler.locks(event as any);
+
+    //   // TRY WITH A SINGLE TRANSACTION OR BATCH
+    //   await this.transaction.perform(async (trx) => {
+    //     const state = await this.store.expected(checkpointId, trx);
+
+    //     state.enqueue(event, lock);
+    //     await this.store.save(state, trx);
+    //   });
+    // }
 
     return false;
   }
@@ -66,7 +89,7 @@ export class Projector {
 
     const batch = await this.transaction.perform(async (trx) => {
       const state = await this.store.expected(checkpointId, trx);
-      if (state.isTailAfterOrEqual(Cursor.from(event))) {
+      if (state.hasCompleted(Cursor.from(event))) {
         return false;
       }
       const batch = state.thread.startNextBatch();
@@ -85,15 +108,11 @@ export class Projector {
       batch.map((cursor) => this.reader.get(cursor.ref)),
     );
 
-    const processed = await Promise.all(
-      events.map(async (event) => {
-        const handler = this.projection.handlers[event.name];
-        const result = await handler.process(checkpointId, event as any);
-        if (result) {
-          return event.id;
-        }
-      }),
+    console.log(
+      `Projector: processing batch of ${events.length} events`,
+      events.map((e) => e.toString()),
     );
+    const processed = await this.projection.process(checkpointId, events);
 
     if (processed.some((id) => id?.equals(event.id))) {
       console.log(`Batch contained target event ${event}`);

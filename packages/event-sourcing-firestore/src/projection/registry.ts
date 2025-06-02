@@ -3,6 +3,7 @@ import {
   Account,
   AccountOpened,
   AccountRegistered,
+  AccountRenamed,
   AccountUnregistered,
   Bank,
   BankCreated,
@@ -16,6 +17,7 @@ export const registry = new SerializerRegistry()
   .auto(AccountOpened)
   .auto(Deposited)
   .auto(Withdrawn)
+  .auto(AccountRenamed)
   .auto(BankCreated)
   .auto(AccountRegistered)
   .auto(AccountUnregistered)

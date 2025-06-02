@@ -116,4 +116,65 @@ export class FirestoreProjectedStreamStorageLayer
       };
     }
   }
+
+  async slice(
+    projectedStream: ProjectedStream,
+    shard: string,
+    startAfter?: EventReference,
+    endAt?: EventReference,
+  ) {
+    let query = this.firestore
+      .collectionGroup("events")
+      .orderBy("occurredAt")
+      .orderBy("revision");
+
+    const [start, end] = await Promise.all([
+      startAfter ? this.firestore.doc(startAfter.serialize()).get() : null,
+      endAt ? this.firestore.doc(endAt.serialize()).get() : null,
+    ]);
+
+    if (startAfter && !start?.exists) {
+      throw new Error(`StartAfter event not found: ${startAfter}`);
+    }
+
+    if (endAt && !end?.exists) {
+      throw new Error(`EndAt event not found: ${endAt}`);
+    }
+
+    const filters = projectedStream.sources.map((source) => {
+      if (source instanceof LakeSource) {
+        return new FirestoreLakeSourceFilter().filter(shard, source);
+      }
+      if (source instanceof StreamSource) {
+        return new FirestoreStreamSourceFilter().filter(shard, source);
+      }
+      throw new Error("Unknown source type");
+    });
+
+    query = query.where(Filter.or(...filters));
+
+    if (start) {
+      query = query.startAfter(start);
+    }
+
+    if (end) {
+      query = query.endAt(end);
+    }
+
+    const result = await query.get();
+
+    return result.docs.map((doc) => {
+      const data = this.converter.fromFirestore(doc);
+      return {
+        id: data.eventId,
+        ref: doc.ref.path,
+        revision: data.revision,
+        name: data.name,
+        $name: data.name,
+        payload: data.payload,
+        occurredAt: data.occurredAt,
+        version: data.version ?? 1,
+      };
+    });
+  }
 }

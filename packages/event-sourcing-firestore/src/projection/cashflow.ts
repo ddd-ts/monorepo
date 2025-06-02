@@ -1,21 +1,29 @@
-import { IEsEvent, INamed, ProjectedStream, StreamSource } from "@ddd-ts/core";
+import {
+  AutoSerializer,
+  EventId,
+  IEsEvent,
+  ProjectedStream,
+  StreamSource,
+} from "@ddd-ts/core";
 import {
   Account,
   AccountId,
   AccountOpened,
+  AccountRenamed,
   Deposited,
   Withdrawn,
 } from "./write";
 import { ProjectionCheckpointId } from "./checkpoint-id";
 import { Lock } from "./lock";
 import {
+  FirestoreStore,
   FirestoreTransaction,
   FirestoreTransactionPerformer,
 } from "@ddd-ts/store-firestore";
 import { ProjectionCheckpointStore } from "./checkpoint";
-import { WriteBatch } from "firebase-admin/firestore";
 import { wait } from "./tools";
-import { Constructor } from "@ddd-ts/types";
+import { FieldValue } from "firebase-admin/firestore";
+import { Shape } from "../../../shape/dist";
 
 export class AccountCashflowProjectedStream extends ProjectedStream {
   constructor() {
@@ -24,9 +32,59 @@ export class AccountCashflowProjectedStream extends ProjectedStream {
         new StreamSource({
           aggregateType: Account.name,
           shardKey: "accountId",
-          events: [AccountOpened.name, Deposited.name, Withdrawn.name],
+          events: [
+            AccountOpened.name,
+            Deposited.name,
+            Withdrawn.name,
+            AccountRenamed.name,
+          ],
         }),
       ],
+    });
+  }
+}
+
+class Cashflow extends Shape({
+  id: AccountId,
+  name: String,
+  all_names: [String],
+  flow: Number,
+}) {}
+
+class CashflowSerializer extends AutoSerializer.First(Cashflow) {}
+
+class FirestoreCashflowStore extends FirestoreStore<Cashflow> {
+  constructor(db: FirebaseFirestore.Firestore) {
+    super(db.collection("Cashflow"), new CashflowSerializer(), "Cashflow");
+  }
+
+  async init_transaction(accountId: AccountId, trx: FirestoreTransaction) {
+    await trx.transaction.create(this.collection.doc(accountId.serialize()), {
+      id: accountId.serialize(),
+      flow: 0,
+      name: accountId.serialize(),
+      all_names: [],
+    });
+  }
+
+  async increment_transaction(
+    accountId: AccountId,
+    amount: number,
+    trx: FirestoreTransaction,
+  ) {
+    await trx.transaction.update(this.collection.doc(accountId.serialize()), {
+      flow: FieldValue.increment(amount),
+    });
+  }
+
+  async rename_transaction(
+    accountId: AccountId,
+    newName: string,
+    trx: FirestoreTransaction,
+  ) {
+    await trx.transaction.update(this.collection.doc(accountId.serialize()), {
+      name: newName,
+      all_names: FieldValue.arrayUnion(newName),
     });
   }
 }
@@ -35,6 +93,9 @@ export class AccountCashflowProjection {
   constructor(
     private readonly transaction: FirestoreTransactionPerformer,
     private readonly checkpointStore: ProjectionCheckpointStore,
+    public readonly cashflowStore: FirestoreCashflowStore = new FirestoreCashflowStore(
+      checkpointStore.firestore,
+    ),
   ) {}
   state: Record<string, number> = {};
 
@@ -54,6 +115,7 @@ export class AccountCashflowProjection {
     Set<{ resume: () => void; fail: (error: any) => void }>
   >();
   suspend(event: IEsEvent) {
+    return;
     const id = Math.random().toString(36).substring(2, 15);
     console.log(`Suspending event ${event.id.serialize()} with id ${id}`);
     return new Promise((resolve, reject) => {
@@ -113,36 +175,95 @@ export class AccountCashflowProjection {
   }
 
   handlers = {
-    [AccountOpened.name]:
-      FirestoreTransactionProjectionHandler.for<AccountOpened>({
-        handle: async (event: AccountOpened) => {
-          console.log("before suspend", event.toString());
-          await this.suspend(event);
-          console.log("after suspend", event.toString());
-          if (this.state[event.payload.accountId.serialize()] !== undefined) {
-            throw new Error("Account already opened");
-          }
-          this.state[event.payload.accountId.serialize()] = 0;
-        },
-        locks: (event: AccountOpened) => {
-          return new Lock({
-            accountId: event.payload.accountId.serialize(),
-          });
-        },
-        timeout: 4000,
-        transaction: this.transaction,
-        checkpointStore: this.checkpointStore,
-      }),
-    [Deposited.name]: FirestoreTransactionProjectionHandler.for<Deposited>({
-      handle: async (event: Deposited) => {
-        console.log("before suspend", event.toString());
-        await this.suspend(event);
-        console.log("after suspend", event.toString());
+    [AccountOpened.name]: {
+      handle: async (
+        checkpointId: ProjectionCheckpointId,
+        events: AccountOpened[],
+      ) => {
+        return Promise.all(
+          events.map(async (event) => {
+            try {
+              return await Promise.race([
+                wait(10_000_00).then(() => {
+                  console.log(`Timeout for event ${event.id.serialize()}`);
+                  throw new Error(`Timeout ${event.id.serialize()}`);
+                }),
+                this.transaction.perform(async (trx) => {
+                  await this.suspend(event);
 
-        if (this.state[event.payload.accountId.serialize()] === undefined) {
-          throw new Error("Account not opened");
-        }
-        this.state[event.payload.accountId.serialize()] += event.payload.amount;
+                  await this.cashflowStore.init_transaction(
+                    event.payload.accountId,
+                    trx,
+                  );
+
+                  await this.checkpointStore.processed(
+                    checkpointId,
+                    event.id,
+                    trx,
+                  );
+                  return event.id;
+                }),
+              ]);
+            } catch (error) {
+              console.error(
+                `Error processing event ${event.id.serialize()}: ${error}`,
+              );
+              await this.checkpointStore.failed(checkpointId, event.id);
+            }
+          }),
+        );
+      },
+      locks: (event: AccountOpened) => {
+        return new Lock({
+          accountId: event.payload.accountId.serialize(),
+        });
+      },
+      timeout: 10_000_00 * 4,
+    },
+    [Deposited.name]: {
+      handle: async (
+        checkpointId: ProjectionCheckpointId,
+        events: Deposited[],
+      ) => {
+        return Promise.all(
+          events.map(async (event) => {
+            try {
+              let timedOut = false;
+              const result = await Promise.race([
+                wait(10_000_00).then(() => {
+                  console.log(`Timeout for event ${event.id.serialize()}`);
+                  timedOut = true;
+                  throw new Error(`Timeout ${event.id.serialize()}`);
+                }),
+                this.transaction.perform(async (trx) => {
+                  await this.suspend(event);
+
+                  await this.cashflowStore.increment_transaction(
+                    event.payload.accountId,
+                    event.payload.amount,
+                    trx,
+                  );
+
+                  await this.checkpointStore.processed(
+                    checkpointId,
+                    event.id,
+                    trx,
+                  );
+
+                  if (timedOut) {
+                    console.log(`Event ${event.id.serialize()} timed out`);
+                    throw new Error(`Timeout ${event.id.serialize()}`);
+                  }
+
+                  return event.id;
+                }),
+              ]);
+              return result;
+            } catch (error) {
+              await this.checkpointStore.failed(checkpointId, event.id);
+            }
+          }),
+        );
       },
       locks: (event: Deposited) => {
         return new Lock({
@@ -150,19 +271,38 @@ export class AccountCashflowProjection {
           eventId: event.id.serialize(),
         });
       },
-      timeout: 4000,
-      transaction: this.transaction,
-      checkpointStore: this.checkpointStore,
-    }),
-    [Withdrawn.name]: FirestoreTransactionProjectionHandler.for<Withdrawn>({
-      handle: async (event: Withdrawn) => {
-        console.log("before suspend", event.toString());
-        await this.suspend(event);
-        console.log("after suspend", event.toString());
-        if (this.state[event.payload.accountId.serialize()] === undefined) {
-          throw new Error("Account not opened");
-        }
-        this.state[event.payload.accountId.serialize()] += event.payload.amount;
+      timeout: 10_000_00 * 4,
+    },
+    [Withdrawn.name]: {
+      handle: async (
+        checkpointId: ProjectionCheckpointId,
+        events: Withdrawn[],
+      ) => {
+        return Promise.all(
+          events.map(async (event) => {
+            try {
+              return await this.transaction.perform(async (trx) => {
+                await this.suspend(event);
+
+                await this.cashflowStore.increment_transaction(
+                  event.payload.accountId,
+                  event.payload.amount,
+                  trx,
+                );
+
+                await this.checkpointStore.processed(
+                  checkpointId,
+                  event.id,
+                  trx,
+                );
+
+                return event.id;
+              });
+            } catch (error) {
+              await this.checkpointStore.failed(checkpointId, event.id);
+            }
+          }),
+        );
       },
       locks: (event: Withdrawn) => {
         return new Lock({
@@ -171,147 +311,209 @@ export class AccountCashflowProjection {
         });
       },
       timeout: 4000,
-      transaction: this.transaction,
-      checkpointStore: this.checkpointStore,
-    }),
+    },
+    [AccountRenamed.name]: {
+      handle: async (
+        checkpointId: ProjectionCheckpointId,
+        events: AccountRenamed[],
+      ) => {
+        const last = events.at(-1);
+
+        if (!last) {
+          return [];
+        }
+
+        try {
+          await this.transaction.perform(async (trx) => {
+            console.log(`TRANSACTION STARTED FOR ${last}`);
+            await this.suspend(last);
+
+            await this.cashflowStore.rename_transaction(
+              last.payload.accountId,
+              last.payload.newName,
+              trx,
+            );
+
+            for (const event of events) {
+              await this.checkpointStore.processed(checkpointId, event.id, trx);
+            }
+          });
+          return events.map((e) => e.id);
+        } catch (error) {
+          await Promise.all(
+            events.map((e) => this.checkpointStore.failed(checkpointId, e.id)),
+          );
+          return [];
+        }
+      },
+      locks: (event: Withdrawn) => {
+        return new Lock({
+          accountId: event.payload.accountId.serialize(),
+          type: "rename",
+        });
+      },
+      timeout: 4000,
+    },
   };
 
-  onDeposited(event: Deposited) {
-    this.state[event.payload.accountId.serialize()] += event.payload.amount;
-  }
+  async process(checkpointId: ProjectionCheckpointId, events: IEsEvent[]) {
+    const byEvent = events.reduce(
+      (acc, event) => {
+        const name = event.name;
+        if (!acc[name]) {
+          acc[name] = [];
+        }
+        acc[name].push(event as IEsEvent);
+        return acc;
+      },
+      {} as Record<string, IEsEvent[]>,
+    );
 
-  onWithdrawn(event: Withdrawn) {
-    this.state[event.payload.accountId.serialize()] -= event.payload.amount;
-  }
-}
+    const promises = Object.entries(byEvent).map(async ([name, events]) => {
+      const handler = this.handlers[name];
 
-class CashflowOnAccountOpenedTransactionProjectionHandler {
-  constructor(
-    private readonly transaction: FirestoreTransactionPerformer,
-    private readonly checkpointStore: ProjectionCheckpointStore,
-  ) {}
-
-  timeout = 4000; // 4 seconds
-
-  locks(event: AccountOpened) {
-    return new Lock({
-      accountId: event.payload.accountId.serialize(),
-    });
-  }
-
-  async process(checkpointId: ProjectionCheckpointId, event: AccountOpened) {
-    try {
-      const operation = this.transaction.perform(async (trx) => {
-        await this.handle(event, trx);
-        await this.checkpointStore.processed(checkpointId, event.id, trx);
-      });
-      await Promise.race([
-        operation,
-        wait(this.timeout).then(() => {
-          throw new Error(`Timeout ${event.id.serialize()}`);
-        }),
-      ]);
-      return true;
-    } catch (error) {
-      await this.checkpointStore.failed(checkpointId, event.id);
-      return false;
-    }
-  }
-
-  async handle(event: AccountOpened, trx: FirestoreTransaction) {}
-}
-
-abstract class FirestoreTransactionProjectionHandler<Event extends IEsEvent> {
-  constructor(
-    readonly transaction: FirestoreTransactionPerformer,
-    readonly checkpointStore: ProjectionCheckpointStore,
-  ) {}
-  abstract timeout: number;
-  abstract locks(event: IEsEvent): Lock;
-  async process(checkpointId: ProjectionCheckpointId, event: Event) {
-    try {
-      await this.transaction.perform(async (trx) => {
-        await Promise.race([
-          this.handle(event, trx),
-          wait(this.timeout).then(() => {
-            throw new Error(`Timeout ${event.id.serialize()}`);
-          }),
-        ]);
-        await this.checkpointStore.processed(checkpointId, event.id, trx);
-      });
-      return true;
-    } catch (error) {
-      await this.checkpointStore.failed(checkpointId, event.id);
-      return false;
-    }
-  }
-
-  abstract handle(event: Event, trx: FirestoreTransaction): Promise<void>;
-
-  static for<E extends IEsEvent>({
-    handle,
-    locks,
-    timeout,
-    transaction,
-    checkpointStore,
-  }: {
-    handle: (event: E, trx: FirestoreTransaction) => Promise<void>;
-    locks: (event: E) => Lock;
-    timeout: number;
-    transaction: FirestoreTransactionPerformer;
-    checkpointStore: ProjectionCheckpointStore;
-  }) {
-    return new (class extends FirestoreTransactionProjectionHandler<E> {
-      timeout = timeout; // 4 seconds
-
-      locks(event: E) {
-        return locks(event);
+      if (!handler) {
+        throw new Error(`No handler for event ${name}`);
       }
 
-      async handle(event: E, trx: FirestoreTransaction) {
-        await handle(event, trx);
-      }
-    })(transaction, checkpointStore);
-  }
-}
+      const processed = await handler.handle(checkpointId, events as any);
 
-class CashflowOnAccountOpenedBatchedWriteProjectionHandler {
-  constructor(private readonly checkpointStore: ProjectionCheckpointStore) {}
-
-  locks(event: AccountOpened) {
-    return new Lock({
-      accountId: event.payload.accountId.serialize(),
+      return processed.filter((e) => !!e);
     });
-  }
 
-  async process(checkpointId: ProjectionCheckpointId, event: AccountOpened) {
-    const batch = this.checkpointStore.firestore.batch();
-    await this.handle(event, batch);
-    await this.checkpointStore.processedBatch(checkpointId, event.id, batch);
-    await batch.commit();
-  }
+    const all = await Promise.all(promises);
 
-  async handle(event: AccountOpened, batch: WriteBatch) {}
+    return all.flat();
+  }
 }
 
-class BatchedCashflowOnAccountOpenedBatchedWriteProjectionHandler {
-  constructor(private readonly checkpointStore: ProjectionCheckpointStore) {}
+// class CashflowOnAccountOpenedTransactionProjectionHandler {
+//   constructor(
+//     private readonly transaction: FirestoreTransactionPerformer,
+//     private readonly checkpointStore: ProjectionCheckpointStore,
+//   ) {}
 
-  locks(event: AccountOpened) {
-    return new Lock({
-      accountId: event.payload.accountId.serialize(),
-    });
-  }
+//   timeout = 4000; // 4 seconds
 
-  async process(checkpointId: ProjectionCheckpointId, event: AccountOpened) {
-    const batch = this.checkpointStore.firestore.batch();
-    await this.handle(event, batch);
-    await this.checkpointStore.processedBatch(checkpointId, event.id, batch);
-    await batch.commit();
-  }
+//   locks(event: AccountOpened) {
+//     return new Lock({
+//       accountId: event.payload.accountId.serialize(),
+//     });
+//   }
 
-  async handle(events: AccountOpened[], batch: WriteBatch) {}
-}
+//   async process(checkpointId: ProjectionCheckpointId, event: AccountOpened) {
+//     try {
+//       const operation = this.transaction.perform(async (trx) => {
+//         await this.handle(event, trx);
+//         await this.checkpointStore.processed(checkpointId, event.id, trx);
+//       });
+//       await Promise.race([
+//         operation,
+//         wait(this.timeout).then(() => {
+//           throw new Error(`Timeout ${event.id.serialize()}`);
+//         }),
+//       ]);
+//       return true;
+//     } catch (error) {
+//       await this.checkpointStore.failed(checkpointId, event.id);
+//       return false;
+//     }
+//   }
+
+//   async handle(event: AccountOpened, trx: FirestoreTransaction) {}
+// }
+
+// abstract class FirestoreTransactionProjectionHandler<Event extends IEsEvent> {
+//   constructor(
+//     readonly transaction: FirestoreTransactionPerformer,
+//     readonly checkpointStore: ProjectionCheckpointStore,
+//   ) {}
+//   abstract timeout: number;
+//   abstract locks(event: IEsEvent): Lock;
+//   async process(checkpointId: ProjectionCheckpointId, event: Event) {
+//     try {
+//       await this.transaction.perform(async (trx) => {
+//         await Promise.race([
+//           this.handle(event, trx),
+//           wait(this.timeout).then(() => {
+//             throw new Error(`Timeout ${event.id.serialize()}`);
+//           }),
+//         ]);
+//         await this.checkpointStore.processed(checkpointId, event.id, trx);
+//       });
+//       return true;
+//     } catch (error) {
+//       await this.checkpointStore.failed(checkpointId, event.id);
+//       return false;
+//     }
+//   }
+
+//   abstract handle(event: Event, trx: FirestoreTransaction): Promise<void>;
+
+//   static for<E extends IEsEvent>({
+//     handle,
+//     locks,
+//     timeout,
+//     transaction,
+//     checkpointStore,
+//   }: {
+//     handle: (event: E, trx: FirestoreTransaction) => Promise<void>;
+//     locks: (event: E) => Lock;
+//     timeout: number;
+//     transaction: FirestoreTransactionPerformer;
+//     checkpointStore: ProjectionCheckpointStore;
+//   }) {
+//     return new (class extends FirestoreTransactionProjectionHandler<E> {
+//       timeout = timeout; // 4 seconds
+
+//       locks(event: E) {
+//         return locks(event);
+//       }
+
+//       async handle(event: E, trx: FirestoreTransaction) {
+//         await handle(event, trx);
+//       }
+//     })(transaction, checkpointStore);
+//   }
+// }
+
+// class CashflowOnAccountOpenedBatchedWriteProjectionHandler {
+//   constructor(private readonly checkpointStore: ProjectionCheckpointStore) {}
+
+//   locks(event: AccountOpened) {
+//     return new Lock({
+//       accountId: event.payload.accountId.serialize(),
+//     });
+//   }
+
+//   async process(checkpointId: ProjectionCheckpointId, event: AccountOpened) {
+//     const batch = this.checkpointStore.firestore.batch();
+//     await this.handle(event, batch);
+//     await this.checkpointStore.processedBatch(checkpointId, event.id, batch);
+//     await batch.commit();
+//   }
+
+//   async handle(event: AccountOpened, batch: WriteBatch) {}
+// }
+
+// class BatchedCashflowOnAccountOpenedBatchedWriteProjectionHandler {
+//   constructor(private readonly checkpointStore: ProjectionCheckpointStore) {}
+
+//   locks(event: AccountOpened) {
+//     return new Lock({
+//       accountId: event.payload.accountId.serialize(),
+//     });
+//   }
+
+//   async process(checkpointId: ProjectionCheckpointId, event: AccountOpened) {
+//     const batch = this.checkpointStore.firestore.batch();
+//     await this.handle(event, batch);
+//     await this.checkpointStore.processedBatch(checkpointId, event.id, batch);
+//     await batch.commit();
+//   }
+
+//   async handle(events: AccountOpened[], batch: WriteBatch) {}
+// }
 
 // class DelayMiddleware<T> {
 //   async intercept<C extends {}>(message: T, context: C) {

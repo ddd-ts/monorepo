@@ -57,10 +57,22 @@ export class Withdrawn extends EsEvent("Withdrawn", {
   }
 }
 
+export class AccountRenamed extends EsEvent("AccountRenamed", {
+  accountId: AccountId,
+  bankId: BankId,
+  newName: String,
+}) {
+  // id = StableEventId.generate();
+  toString() {
+    return `Account<${this.payload.accountId.serialize()}>:Renamed(${this.payload.newName})`;
+  }
+}
+
 export class Account extends EsAggregate("Account", {
-  events: [AccountOpened, Deposited, Withdrawn],
+  events: [AccountOpened, Deposited, Withdrawn, AccountRenamed],
   state: {
     id: AccountId,
+    name: String,
     bankId: BankId,
     balance: Number,
   },
@@ -76,6 +88,7 @@ export class Account extends EsAggregate("Account", {
   static onOpened(event: AccountOpened) {
     return new Account({
       id: event.payload.accountId,
+      name: event.payload.accountId.serialize(),
       bankId: event.payload.bankId,
       balance: 0,
     });
@@ -109,6 +122,21 @@ export class Account extends EsAggregate("Account", {
   @On(Withdrawn)
   onWithdrawn(event: Withdrawn) {
     this.balance -= event.payload.amount;
+  }
+
+  rename(newName: string) {
+    const change = AccountRenamed.new({
+      accountId: this.id,
+      bankId: this.bankId,
+      newName,
+    });
+    this.apply(change);
+    return change;
+  }
+
+  @On(AccountRenamed)
+  onRenamed(event: AccountRenamed) {
+    this.name = event.payload.newName;
   }
 }
 

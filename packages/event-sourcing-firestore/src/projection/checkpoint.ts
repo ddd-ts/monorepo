@@ -1,7 +1,7 @@
 import { AutoSerializer, EventId, IEsEvent } from "@ddd-ts/core";
 import { Shape } from "../../../shape/dist";
 import { ProjectionCheckpointId } from "./checkpoint-id";
-import { Cursor, EventStatus, Thread } from "./thread";
+import { Cursor, EventStatus, ProcessingStartedAt, Thread } from "./thread";
 import { Lock } from "./lock";
 import { IdMap } from "../idmap";
 import { FirestoreStore, FirestoreTransaction } from "@ddd-ts/store-firestore";
@@ -12,22 +12,32 @@ export class ProjectionCheckpoint extends Shape({
   id: ProjectionCheckpointId,
   thread: Thread,
 }) {
-  isTailAfterOrEqual(cursor: Cursor) {
-    return this.thread.tail?.isAfterOrEqual(cursor) ?? false;
+  shouldEnqueue(cursor: Cursor) {
+    if (this.thread.head?.isAfterOrEqual(cursor)) {
+      return false;
+    }
+    return true;
   }
 
-  enqueue(event: IEsEvent, lock: Lock, previous?: EventId) {
-    this.thread.enqueue(Cursor.from(event), lock, previous);
+  hasCompleted(cursor: Cursor) {
+    if (this.thread.tasks.some((task) => task.cursor.is(cursor))) {
+      return this.thread.statuses.get(cursor.eventId)?.is("done");
+    }
+    return this.thread.head?.isAfterOrEqual(cursor) ?? false;
+  }
+
+  enqueue(event: IEsEvent, lock: Lock, timeout?: number) {
+    this.thread.enqueue(Cursor.from(event), lock, timeout);
   }
 
   static initial(id: ProjectionCheckpointId) {
     return new ProjectionCheckpoint({
       id,
       thread: new Thread({
-        tail: undefined,
         head: undefined,
         tasks: [],
         statuses: IdMap.for(EventId, EventStatus),
+        processingStartedAt: IdMap.for(EventId, ProcessingStartedAt),
       }),
     });
   }

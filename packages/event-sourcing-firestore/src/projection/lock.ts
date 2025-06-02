@@ -12,7 +12,7 @@ export class Lock extends Mapping([String, String]) {
     return this.value[k] !== undefined;
   }
 
-  restrains(other: Lock) {
+  restrains(other: Lock, strict = true): boolean {
     const { onlyLeft, onlyRight, both, bothHaveSameValues } = Lock.differences(
       this,
       other,
@@ -21,7 +21,7 @@ export class Lock extends Mapping([String, String]) {
     if (onlyLeft.length === 0) {
       if (onlyRight.length === 0) {
         if (bothHaveSameValues) {
-          return true;
+          return strict;
         }
       }
     }

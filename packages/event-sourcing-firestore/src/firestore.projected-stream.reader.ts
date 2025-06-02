@@ -2,6 +2,7 @@ import {
   EventReference,
   IEsEvent,
   ISerializer,
+  ProjectedStream,
   ProjectedStreamReader,
 } from "@ddd-ts/core";
 import { Firestore } from "firebase-admin/firestore";
@@ -22,5 +23,20 @@ export class FirestoreProjectedStreamReader<
   async get(reference: EventReference) {
     const serialized = await this.storage.get(reference);
     return this.serializer.deserialize(serialized);
+  }
+
+  async slice(
+    projectedStream: ProjectedStream,
+    shard: string,
+    startAfter?: EventReference,
+    endAt?: EventReference,
+  ) {
+    const serialized = await this.storage.slice(
+      projectedStream,
+      shard,
+      startAfter,
+      endAt,
+    );
+    return Promise.all(serialized.map((s) => this.serializer.deserialize(s)));
   }
 }
