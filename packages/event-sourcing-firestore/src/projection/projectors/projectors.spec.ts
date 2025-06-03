@@ -14,6 +14,7 @@ import { AccountStore, registry } from "../registry";
 import { AccountCashflowProjection } from "../cashflow";
 import { ProjectorSuite } from "./projection.suite";
 import { Albert } from "./albert";
+import { Ben } from "./ben";
 
 describe("Projectors", () => {
   const app = fb.initializeApp({ projectId: "demo-es" });
@@ -55,6 +56,32 @@ describe("Projectors", () => {
 
   describe("Albert", () => {
     const prepare = makePrepare(Albert.Projector, Albert.CheckpointStore);
+
+    const suite = ProjectorSuite(prepare);
+
+    it("SingleEvent", () => suite.SingleEvent());
+
+    it("SimpleLocking", () => suite.SimpleLocking());
+
+    it("SimpleConcurrency", () => suite.SimpleConcurrency());
+
+    it("SimpleBatching", () => suite.SimpleBatching());
+
+    it("DuplicateHandling", () => suite.DuplicateHandling(), 30_000);
+
+    it("HeavyHandleConcurrency", () => suite.HeavyHandleConcurrency(), 40_000);
+
+    it("ExplicitFailureRetry", () => suite.ExplicitFailureRetry(), 40_000);
+
+    it.skip(
+      "ImplicitTimeoutFailureRetry",
+      () => suite.ImplicitTimeoutFailureRetry(),
+      40_000,
+    );
+  });
+
+  describe("Ben", () => {
+    const prepare = makePrepare(Ben.Projector, Ben.CheckpointStore);
 
     const suite = ProjectorSuite(prepare);
 

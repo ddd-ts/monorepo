@@ -1,17 +1,16 @@
 import { WriteBatch } from "firebase-admin/firestore";
 import { Multiple, Optional, Shape } from "@ddd-ts/shape";
 import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
-import { Cursor, EventStatus, ProcessingStartedAt } from "./shared";
-import { IdMap } from "../../idmap";
-import { AccountCashflowProjection } from "../cashflow";
-import { FirestoreProjectedStreamReader } from "../../firestore.projected-stream.reader";
-import { HeadMemoryProjectionCheckpointStore } from "./head-memory/head-memory.checkpoint-store";
 import { AutoSerializer } from "@ddd-ts/core";
 import { FirestoreStore, FirestoreTransaction } from "@ddd-ts/store-firestore";
 import { EventId, IEsEvent } from "@ddd-ts/core";
+import { IdMap } from "../../idmap";
+import { FirestoreProjectedStreamReader } from "../../firestore.projected-stream.reader";
+import { AccountCashflowProjection } from "../cashflow";
 import { CheckpointId } from "../checkpoint-id";
 import { Lock } from "../lock";
 import { StableEventId } from "../write";
+import { Cursor, EventStatus, ProcessingStartedAt } from "./shared";
 
 class Checkpoint extends Shape({
   id: CheckpointId,
@@ -112,7 +111,7 @@ class Projector {
   constructor(
     public readonly projection: AccountCashflowProjection,
     public readonly reader: FirestoreProjectedStreamReader<IEsEvent>,
-    public readonly store: HeadMemoryProjectionCheckpointStore,
+    public readonly store: CheckpointStore,
     public readonly transaction: FirestoreTransactionPerformer,
   ) {}
 

@@ -6,21 +6,16 @@ if (process.env.DEBUG) {
   jest.setTimeout(10_000);
 }
 
-import * as fb from "firebase-admin";
-import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
-import { FirestoreProjectedStreamReader } from "../../firestore.projected-stream.reader";
-import { Account, AccountOpened, BankId, Deposited, Withdrawn } from "../write";
-import { AccountStore, registry } from "../registry";
+import { Account, BankId } from "../write";
+import { AccountStore } from "../registry";
 import { AccountCashflowProjection } from "../cashflow";
-import { HeadMemoryProjector } from "./head-memory/head-memory.projector";
-import { HeadMemoryProjectionCheckpointStore } from "./head-memory/head-memory.checkpoint-store";
 
 export function ProjectorSuite(
   prepare: () => {
     accountStore: AccountStore;
     projection: AccountCashflowProjection;
-    checkpointStore: HeadMemoryProjectionCheckpointStore;
-    projector: HeadMemoryProjector;
+    checkpointStore: any;
+    projector: any;
   },
 ) {
   async function SingleEvent() {

@@ -1,16 +1,18 @@
 import { WriteBatch } from "firebase-admin/firestore";
+import { Multiple, Optional, Shape } from "@ddd-ts/shape";
+import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
 import { AutoSerializer } from "@ddd-ts/core";
 import { FirestoreStore, FirestoreTransaction } from "@ddd-ts/store-firestore";
-import { Multiple, Optional, Shape } from "@ddd-ts/shape";
 import { EventId, IEsEvent } from "@ddd-ts/core";
+import { IdMap } from "../../idmap";
+import { FirestoreProjectedStreamReader } from "../../firestore.projected-stream.reader";
+import { AccountCashflowProjection } from "../cashflow";
+import { CheckpointId } from "../checkpoint-id";
+import { Lock } from "../lock";
+import { StableEventId } from "../write";
+import { Cursor, EventStatus, ProcessingStartedAt } from "./shared";
 
-import { CheckpointId } from "../../checkpoint-id";
-import { IdMap } from "../../../idmap";
-import { Lock } from "../../lock";
-import { StableEventId } from "../../write";
-import { Cursor, EventStatus, ProcessingStartedAt } from "../shared";
-
-export class ProjectionCheckpoint extends Shape({
+class Checkpoint extends Shape({
   id: CheckpointId,
   head: Optional(Cursor),
   tasks: Multiple({
@@ -23,9 +25,8 @@ export class ProjectionCheckpoint extends Shape({
   processingStartedAt: IdMap(EventId, ProcessingStartedAt),
 }) {
   static initial(id: CheckpointId) {
-    return new ProjectionCheckpoint({
+    return new Checkpoint({
       id,
-
       head: undefined,
       tasks: [],
       statuses: IdMap.for(EventId, EventStatus),
@@ -104,29 +105,108 @@ export class ProjectionCheckpoint extends Shape({
 
     return batch;
   }
+}
 
-  toString() {
-    return [
-      "",
-      `HEAD: ${this.head}`,
-      ...this.tasks.map(
-        (task) =>
-          `\t${task.cursor.ref.serialize()} ${this.statuses.get(task.cursor.eventId)?.serialize()}`,
-      ),
-      "",
-    ]
-      .join("\n")
-      .replaceAll(StableEventId.seed, "seed");
+class Projector {
+  constructor(
+    public readonly projection: AccountCashflowProjection,
+    public readonly reader: FirestoreProjectedStreamReader<IEsEvent>,
+    public readonly store: CheckpointStore,
+    public readonly transaction: FirestoreTransactionPerformer,
+  ) {}
+
+  async enqueue(e: IEsEvent): Promise<boolean> {
+    const checkpointId = this.projection.getShardCheckpointId(e as any);
+
+    const accountId = e.payload.accountId.serialize();
+    const until = (e as any).ref;
+
+    await this.store.initialize(checkpointId);
+    const state = await this.store.expected(checkpointId);
+
+    const cursor = Cursor.from(e);
+
+    if (!state.shouldEnqueue(cursor)) {
+      console.log(
+        `Skipping event ${e.id.serialize()} as it is after the last cursor ${state.head?.ref.serialize()}`,
+      );
+      return false;
+    }
+
+    const events = await this.reader.slice(
+      this.projection.source,
+      accountId,
+      state.head?.ref, // MAYBE HEAD ?
+      until,
+    );
+
+    await this.transaction.perform(async (trx) => {
+      const state = await this.store.expected(checkpointId, trx);
+      for (const event of events) {
+        const lock = this.projection.handlers[event.name].locks(event as any);
+        state.enqueue(Cursor.from(event), lock);
+      }
+      await this.store.save(state, trx);
+    });
+
+    return false;
+  }
+
+  async process(event: IEsEvent): Promise<any> {
+    console.log(`Projector: processing event ${event.toString()}`);
+    const checkpointId = this.projection.getShardCheckpointId(event as any);
+
+    const batch = await this.transaction.perform(async (trx) => {
+      const state = await this.store.expected(checkpointId, trx);
+      if (state.hasCompleted(Cursor.from(event))) {
+        return false;
+      }
+      const batch = state.startNextBatch();
+      await this.store.save(state, trx);
+      return batch;
+    });
+
+    if (!batch) {
+      console.log(
+        `Skipping event ${event.id.serialize()} as it is after the last cursor`,
+      );
+      return;
+    }
+
+    const events = await Promise.all(
+      batch.map((cursor) => this.reader.get(cursor.ref)),
+    );
+
+    console.log(
+      `Projector: processing batch of ${events.length} events`,
+      events.map((e) => e.toString()),
+    );
+    const processed = await this.projection.process(checkpointId, events);
+
+    if (processed.some((id) => id?.equals(event.id))) {
+      console.log(`Batch contained target event ${event}`);
+      return true;
+    }
+
+    console.log(`Batch did not contain target event ${event}`);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    return this.process(event);
+  }
+
+  async handle(event: IEsEvent) {
+    console.log(`Projector: handling event ${event.toString()}`);
+    await this.enqueue(event);
+    console.log(`Projector: claimed event ${event.toString()}`);
+    await this.process(event);
+    console.log(`Projector: processed event ${event.toString()}`);
   }
 }
 
-class ProjectionCheckpointSerializer extends AutoSerializer.First(
-  ProjectionCheckpoint,
-) {}
+class CheckpointSerializer extends AutoSerializer.First(Checkpoint) {}
 
-export class ProjectionCheckpointStore extends FirestoreStore<ProjectionCheckpoint> {
+class CheckpointStore extends FirestoreStore<Checkpoint> {
   constructor(db: FirebaseFirestore.Firestore) {
-    super(db.collection("projection"), new ProjectionCheckpointSerializer());
+    super(db.collection("projection"), new CheckpointSerializer());
   }
 
   async initialize(id: CheckpointId) {
@@ -135,9 +215,7 @@ export class ProjectionCheckpointStore extends FirestoreStore<ProjectionCheckpoi
       return;
     }
 
-    const serialized = await this.serializer.serialize(
-      ProjectionCheckpoint.initial(id),
-    );
+    const serialized = await this.serializer.serialize(Checkpoint.initial(id));
 
     await this.collection
       .doc(id.serialize())
@@ -221,4 +299,22 @@ export class ProjectionCheckpointStore extends FirestoreStore<ProjectionCheckpoi
 
     return;
   }
+
+  async countProcessing(id: CheckpointId) {
+    const existing = await this.expected(id);
+    return existing.tasks.filter((task) =>
+      existing.statuses.get(task.cursor.eventId)?.is("processing"),
+    ).length;
+  }
+
+  async isFinished(id: CheckpointId) {
+    const existing = await this.expected(id);
+    return existing.tasks.length === 0;
+  }
 }
+
+export const Ben = {
+  Projector,
+  Checkpoint,
+  CheckpointStore,
+};
