@@ -1,16 +1,16 @@
 import { IEsEvent } from "@ddd-ts/core";
-import { FirestoreProjectedStreamReader } from "../firestore.projected-stream.reader";
-import { AccountCashflowProjection } from "./cashflow";
-import { ProjectionCheckpointStore } from "./checkpoint";
-import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
-import { Cursor } from "./thread";
-import { wait } from "./tools";
 
-export class Projector {
+import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
+import { AccountCashflowProjection } from "../../cashflow";
+import { FirestoreProjectedStreamReader } from "../../../firestore.projected-stream.reader";
+import { Cursor } from "../shared";
+import { HeadMemoryProjectionCheckpointStore } from "./head-memory.checkpoint-store";
+
+export class HeadMemoryProjector {
   constructor(
     public readonly projection: AccountCashflowProjection,
     public readonly reader: FirestoreProjectedStreamReader<IEsEvent>,
-    public readonly store: ProjectionCheckpointStore,
+    public readonly store: HeadMemoryProjectionCheckpointStore,
     public readonly transaction: FirestoreTransactionPerformer,
   ) {}
 
@@ -27,64 +27,31 @@ export class Projector {
 
     if (!state.shouldEnqueue(cursor)) {
       console.log(
-        `Skipping event ${e.id.serialize()} as it is after the last cursor ${state.thread.head.ref.serialize()}`,
+        `Skipping event ${e.id.serialize()} as it is after the last cursor ${state.head?.ref.serialize()}`,
       );
       return false;
     }
 
-    const events = await this.reader.slice(
+    const stream = this.reader.read(
       this.projection.source,
       accountId,
-      state.thread.head?.ref, // MAYBE HEAD ?
+      state.head?.ref, // MAYBE HEAD ?
       until,
     );
 
-    await this.transaction.perform(async (trx) => {
-      const state = await this.store.expected(checkpointId, trx);
+    for await (const event of stream) {
+      const handler = this.projection.handlers[event.name];
 
-      // if (!state.shouldEnqueue(cursor)) {
-      //   console.log(`Skipping event ${e}`);
-      //   return;
-      // }
-      let j = Object.values(state.thread.tasks).length;
-      for (const event of events) {
-        j++;
+      const lock = handler.locks(event as any);
 
-        if (!state.shouldEnqueue(Cursor.from(event))) {
-          continue;
-        }
+      // TRY WITH A SINGLE TRANSACTION OR BATCH
+      await this.transaction.perform(async (trx) => {
+        const state = await this.store.expected(checkpointId, trx);
 
-        const lock = this.projection.handlers[event.name].locks(event as any);
-        // state.enqueue(event, lock);
-        this.store.enqueue(checkpointId, event, j, lock, trx);
-      }
-      // await this.store.save(state, trx);
-    });
-
-    console.log(
-      `Projector: enqueued ${events.length} events for account ${accountId} until ${until.serialize()}`,
-    );
-
-    // const stream = this.reader.read(
-    //   this.projection.source,
-    //   accountId,
-    //   state.thread.head?.ref, // MAYBE HEAD ?
-    //   until,
-    // );
-
-    // for await (const event of stream) {
-    //   const handler = this.projection.handlers[event.name];
-
-    //   const lock = handler.locks(event as any);
-
-    //   // TRY WITH A SINGLE TRANSACTION OR BATCH
-    //   await this.transaction.perform(async (trx) => {
-    //     const state = await this.store.expected(checkpointId, trx);
-
-    //     state.enqueue(event, lock);
-    //     await this.store.save(state, trx);
-    //   });
-    // }
+        state.enqueue(Cursor.from(event), lock);
+        await this.store.save(state, trx);
+      });
+    }
 
     return false;
   }
@@ -98,7 +65,7 @@ export class Projector {
       if (state.hasCompleted(Cursor.from(event))) {
         return false;
       }
-      const batch = state.thread.startNextBatch();
+      const batch = state.startNextBatch();
       await this.store.save(state, trx);
       return batch;
     });

@@ -7,14 +7,19 @@ if (process.env.DEBUG) {
 }
 
 import * as fb from "firebase-admin";
-import { ProjectionCheckpointStore } from "./checkpoint";
 import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
-import { FirestoreProjectedStreamReader } from "../firestore.projected-stream.reader";
-import { Account, AccountOpened, BankId, Deposited, Withdrawn } from "./write";
-import { AccountStore, registry } from "./registry";
-import { AccountCashflowProjection } from "./cashflow";
-import { Projector } from "./projector";
-import { wait } from "./tools";
+import { FirestoreProjectedStreamReader } from "../../../firestore.projected-stream.reader";
+import {
+  Account,
+  AccountOpened,
+  BankId,
+  Deposited,
+  Withdrawn,
+} from "../../write";
+import { AccountStore, registry } from "../../registry";
+import { ProjectionCheckpointStore } from "./tail-material.checkpoint";
+import { AccountCashflowProjection } from "../../cashflow";
+import { TailMaterialProjector } from "./tail-material.projector";
 
 describe("Projection", () => {
   const app = fb.initializeApp({ projectId: "demo-es" });
@@ -29,13 +34,13 @@ describe("Projection", () => {
     const checkpointStore = new ProjectionCheckpointStore(firestore);
     const projection = new AccountCashflowProjection(
       transaction,
-      checkpointStore,
+      checkpointStore as any,
     );
 
-    const projector = new Projector(
+    const projector = new TailMaterialProjector(
       projection,
       reader,
-      checkpointStore,
+      checkpointStore as any,
       transaction,
     );
 
@@ -54,6 +59,8 @@ describe("Projection", () => {
   it("single event", async () => {
     const { accountStore, projection, checkpointStore, projector } = prepare();
 
+    projection.toggleSuspend(true);
+
     const bankId = BankId.generate();
 
     const [account, opened] = Account.open(bankId);
@@ -69,8 +76,8 @@ describe("Projection", () => {
     await operation;
 
     const stateAfter = await checkpointStore.expected(checkpointId);
-    expect(stateAfter.thread.tasks).toHaveLength(0);
-    expect(stateAfter.thread.head?.ref).toEqual(opened.ref);
+    expect(stateAfter.tasks).toHaveLength(0);
+    expect(stateAfter.head?.ref).toEqual(opened.ref);
 
     const cashflow = await projection.cashflowStore.load(account.id);
 
@@ -82,7 +89,7 @@ describe("Projection", () => {
 
   it("wait for AccountOpened to deposit", async () => {
     const { accountStore, projection, checkpointStore, projector } = prepare();
-
+    projection.toggleSuspend(true);
     const bankId = BankId.generate();
 
     const [account, opened] = Account.open(bankId);
@@ -114,9 +121,9 @@ describe("Projection", () => {
 
     const stateAfter = await checkpointStore.load(checkpointId);
 
-    stateAfter?.thread.clean();
-    expect(stateAfter?.thread.tasks).toHaveLength(0);
-    expect(stateAfter?.thread.head?.ref).toEqual(deposit.ref);
+    stateAfter?.clean();
+    expect(stateAfter?.tasks).toHaveLength(0);
+    expect(stateAfter?.head?.ref).toEqual(deposit.ref);
 
     const cashflow = await projection.cashflowStore.load(account.id);
 
@@ -128,7 +135,7 @@ describe("Projection", () => {
 
   it("allows concurrency on deposits and withdrawals", async () => {
     const { accountStore, projection, checkpointStore, projector } = prepare();
-
+    projection.toggleSuspend(true);
     const bankId = BankId.generate();
 
     const [account, opened] = Account.open(bankId);
@@ -164,9 +171,9 @@ describe("Projection", () => {
 
     const stateAfter = await checkpointStore.load(checkpointId);
 
-    stateAfter?.thread.clean();
-    expect(stateAfter?.thread.tasks).toHaveLength(0);
-    expect(stateAfter?.thread.head?.ref).toEqual(withdraw.ref);
+    stateAfter?.clean();
+    expect(stateAfter?.tasks).toHaveLength(0);
+    expect(stateAfter?.head?.ref).toEqual(withdraw.ref);
 
     const cashflow = await projection.cashflowStore.load(account.id);
     expect(cashflow).toMatchObject({
@@ -177,7 +184,7 @@ describe("Projection", () => {
 
   it("allows batching Renamed events", async () => {
     const { accountStore, projection, checkpointStore, projector } = prepare();
-
+    projection.toggleSuspend(true);
     const bankId = BankId.generate();
 
     const [account, opened] = Account.open(bankId);
@@ -208,7 +215,7 @@ describe("Projection", () => {
 
     const checkpointBefore = await checkpointStore.expected(checkpointId);
 
-    // expect(checkpointBefore.thread.tasks.map((t) => t.cursor.revision)).toEqual(
+    // expect(checkpointBefore.tasks.map((t) => t.cursor.revision)).toEqual(
     //   [1, 2, 3, 4],
     // );
 
@@ -223,7 +230,7 @@ describe("Projection", () => {
     await projection.awaitSuspend(renamed2);
 
     const checkpoint1 = await checkpointStore.expected(checkpointId);
-    // expect(checkpoint1.thread.tasks.map((t) => t.cursor.revision)).toEqual([
+    // expect(checkpoint1.tasks.map((t) => t.cursor.revision)).toEqual([
     //   5, 6, 7, 8,
     // ]);
 
@@ -239,8 +246,8 @@ describe("Projection", () => {
     await projection.tick();
 
     const checkpoint2 = await checkpointStore.expected(checkpointId);
-    expect(checkpoint2.thread.tasks).toHaveLength(0);
-    expect(checkpoint2.thread.head?.ref).toEqual(renamed2.ref);
+    expect(checkpoint2.tasks).toHaveLength(0);
+    expect(checkpoint2.head?.ref).toEqual(renamed2.ref);
 
     const cashflow2 = await projection.cashflowStore.load(account.id);
     expect(cashflow2).toEqual({
@@ -253,7 +260,7 @@ describe("Projection", () => {
 
   it("resists handling duplicate events", async () => {
     const { accountStore, projection, checkpointStore, projector } = prepare();
-
+    projection.toggleSuspend(true);
     const bankId = BankId.generate();
 
     const [account, opened] = Account.open(bankId);
@@ -289,9 +296,9 @@ describe("Projection", () => {
 
     const stateAfter = await checkpointStore.load(checkpointId);
 
-    stateAfter?.thread.clean();
-    expect(stateAfter?.thread.tasks).toHaveLength(0);
-    expect(stateAfter?.thread.head?.ref).toEqual(withdraw.ref);
+    stateAfter?.clean();
+    expect(stateAfter?.tasks).toHaveLength(0);
+    expect(stateAfter?.head?.ref).toEqual(withdraw.ref);
 
     const cashflow = await projection.cashflowStore.load(account.id);
 
@@ -309,7 +316,7 @@ describe("Projection", () => {
       projector,
       transaction,
     } = prepare();
-
+    projection.toggleSuspend(true);
     const [account, opened] = Account.open(BankId.generate());
 
     const checkpointId = projection.getShardCheckpointId(opened);
@@ -327,11 +334,11 @@ describe("Projection", () => {
           let index = 0;
           // const state = (await trx.transaction.get(doc)).data();
 
-          // let index = Object.keys(state.thread.tasks).length;
+          // let index = Object.keys(state.tasks).length;
 
           for (const deposit of section) {
             // if (
-            //   Object.values(state.thread.tasks).some(
+            //   Object.values(state.tasks).some(
             //     (task) => task === deposit.payload.amount,
             //   )
             // ) {
@@ -339,7 +346,7 @@ describe("Projection", () => {
             // }
 
             trx.transaction.update(doc, {
-              [`thread.tasks.${index}`]: deposit.payload.amount,
+              [`tasks.${index}`]: deposit.payload.amount,
             });
             index++;
           }
@@ -348,33 +355,37 @@ describe("Projection", () => {
     );
   });
 
-  // it("support hundreds of concurrent events", async () => {
-  //   const { accountStore, projection, checkpointStore, projector } = prepare();
+  it("support hundreds of concurrent events", async () => {
+    const { accountStore, projection, checkpointStore, projector } = prepare();
 
-  //   const bankId = BankId.generate();
+    projection.toggleSuspend(false);
 
-  //   const [account, opened] = Account.open(bankId);
+    const bankId = BankId.generate();
 
-  //   const deposits = [...Array(50).keys()].map((i) => account.deposit(i));
+    const [account, opened] = Account.open(bankId);
 
-  //   await accountStore.save(account);
+    const deposits = [...Array(50).keys()].map((i) => account.deposit(i));
 
-  //   await projector.handle(opened);
+    await accountStore.save(account);
 
-  //   const depositing = deposits.map((d) => projector.handle(d));
+    await projector.handle(opened);
 
-  //   await Promise.all(depositing);
+    const depositing = deposits.map((d) => projector.handle(d));
 
-  //   const cashflow = await projection.cashflowStore.load(account.id);
+    await Promise.all(depositing);
 
-  //   expect(cashflow).toMatchObject({
-  //     id: account.id,
-  //     flow: account.balance,
-  //   });
-  // }, 40_000);
+    const cashflow = await projection.cashflowStore.load(account.id);
+
+    expect(cashflow).toMatchObject({
+      id: account.id,
+      flow: account.balance,
+    });
+  }, 40_000);
 
   it("retries processing events that fail", async () => {
     const { accountStore, projection, checkpointStore, projector } = prepare();
+
+    projection.toggleSuspend(true);
 
     const bankId = BankId.generate();
 
@@ -395,9 +406,9 @@ describe("Projection", () => {
 
     const stateAfter = await checkpointStore.load(checkpointId);
 
-    stateAfter?.thread.clean();
-    expect(stateAfter?.thread.tasks).toHaveLength(0);
-    expect(stateAfter?.thread.head?.ref).toEqual(opened.ref);
+    stateAfter?.clean();
+    expect(stateAfter?.tasks).toHaveLength(0);
+    expect(stateAfter?.head?.ref).toEqual(opened.ref);
 
     const cashflow = await projection.cashflowStore.load(account.id);
     expect(cashflow).toMatchObject({
@@ -408,6 +419,8 @@ describe("Projection", () => {
 
   it.skip("add events failing too many times to a dead letter queue", async () => {
     const { accountStore, projection, checkpointStore, projector } = prepare();
+
+    projection.toggleSuspend(true);
 
     const bankId = BankId.generate();
 
@@ -433,6 +446,8 @@ describe("Projection", () => {
   it("considers a processing event as failed after the timeout", async () => {
     const { accountStore, projection, checkpointStore, projector } = prepare();
 
+    projection.toggleSuspend(true);
+
     const bankId = BankId.generate();
     const [account, opened] = Account.open(bankId);
     await accountStore.save(account);
@@ -449,8 +464,8 @@ describe("Projection", () => {
     await projection.tick();
 
     const stateAfter = await checkpointStore.expected(checkpointId);
-    expect(stateAfter.thread.tasks).toHaveLength(0);
-    expect(stateAfter.thread.head?.ref).toEqual(opened.ref);
+    expect(stateAfter.tasks).toHaveLength(0);
+    expect(stateAfter.head?.ref).toEqual(opened.ref);
 
     const cashflow = await projection.cashflowStore.load(account.id);
     expect(cashflow).toMatchObject({
@@ -461,6 +476,8 @@ describe("Projection", () => {
 
   it("considers a processing event as failed after the timeout, even if it is not flagged as failed explictly", async () => {
     const { accountStore, projection, checkpointStore, projector } = prepare();
+
+    projection.toggleSuspend(true);
 
     const bankId = BankId.generate();
     const [account, opened] = Account.open(bankId);
@@ -483,8 +500,8 @@ describe("Projection", () => {
     await projection.tick();
 
     const stateAfter = await checkpointStore.expected(checkpointId);
-    expect(stateAfter.thread.tasks).toHaveLength(0);
-    expect(stateAfter.thread.head?.ref).toEqual(deposited.ref);
+    expect(stateAfter.tasks).toHaveLength(0);
+    expect(stateAfter.head?.ref).toEqual(deposited.ref);
 
     const cashflow = await projection.cashflowStore.load(account.id);
     expect(cashflow).toMatchObject({

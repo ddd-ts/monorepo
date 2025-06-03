@@ -13,7 +13,7 @@ import {
   Deposited,
   Withdrawn,
 } from "./write";
-import { ProjectionCheckpointId } from "./checkpoint-id";
+import { CheckpointId } from "./checkpoint-id";
 import { Lock } from "./lock";
 import {
   FirestoreStore,
@@ -100,10 +100,7 @@ export class AccountCashflowProjection {
   state: Record<string, number> = {};
 
   getShardCheckpointId(event: AccountOpened | Deposited | Withdrawn) {
-    return ProjectionCheckpointId.from(
-      "AccountCashflow",
-      event.payload.accountId,
-    );
+    return CheckpointId.from("AccountCashflow", event.payload.accountId);
   }
 
   source = new AccountCashflowProjectedStream();
@@ -114,8 +111,17 @@ export class AccountCashflowProjection {
     string,
     Set<{ resume: () => void; fail: (error: any) => void }>
   >();
+
+  _suspend = false;
+  toggleSuspend(enable: boolean) {
+    this._suspend = enable;
+  }
+
   suspend(event: IEsEvent) {
-    return;
+    if (!this._suspend) {
+      console.log(`Event ${event.id.serialize()} is not suspended`);
+      return Promise.resolve(undefined);
+    }
     const id = Math.random().toString(36).substring(2, 15);
     console.log(`Suspending event ${event.id.serialize()} with id ${id}`);
     return new Promise((resolve, reject) => {
@@ -176,10 +182,7 @@ export class AccountCashflowProjection {
 
   handlers = {
     [AccountOpened.name]: {
-      handle: async (
-        checkpointId: ProjectionCheckpointId,
-        events: AccountOpened[],
-      ) => {
+      handle: async (checkpointId: CheckpointId, events: AccountOpened[]) => {
         return Promise.all(
           events.map(async (event) => {
             try {
@@ -221,10 +224,7 @@ export class AccountCashflowProjection {
       timeout: 10_000_00 * 4,
     },
     [Deposited.name]: {
-      handle: async (
-        checkpointId: ProjectionCheckpointId,
-        events: Deposited[],
-      ) => {
+      handle: async (checkpointId: CheckpointId, events: Deposited[]) => {
         return Promise.all(
           events.map(async (event) => {
             try {
@@ -274,10 +274,7 @@ export class AccountCashflowProjection {
       timeout: 10_000_00 * 4,
     },
     [Withdrawn.name]: {
-      handle: async (
-        checkpointId: ProjectionCheckpointId,
-        events: Withdrawn[],
-      ) => {
+      handle: async (checkpointId: CheckpointId, events: Withdrawn[]) => {
         return Promise.all(
           events.map(async (event) => {
             try {
@@ -313,10 +310,7 @@ export class AccountCashflowProjection {
       timeout: 4000,
     },
     [AccountRenamed.name]: {
-      handle: async (
-        checkpointId: ProjectionCheckpointId,
-        events: AccountRenamed[],
-      ) => {
+      handle: async (checkpointId: CheckpointId, events: AccountRenamed[]) => {
         const last = events.at(-1);
 
         if (!last) {
@@ -356,7 +350,7 @@ export class AccountCashflowProjection {
     },
   };
 
-  async process(checkpointId: ProjectionCheckpointId, events: IEsEvent[]) {
+  async process(checkpointId: CheckpointId, events: IEsEvent[]) {
     const byEvent = events.reduce(
       (acc, event) => {
         const name = event.name;
@@ -386,209 +380,3 @@ export class AccountCashflowProjection {
     return all.flat();
   }
 }
-
-// class CashflowOnAccountOpenedTransactionProjectionHandler {
-//   constructor(
-//     private readonly transaction: FirestoreTransactionPerformer,
-//     private readonly checkpointStore: ProjectionCheckpointStore,
-//   ) {}
-
-//   timeout = 4000; // 4 seconds
-
-//   locks(event: AccountOpened) {
-//     return new Lock({
-//       accountId: event.payload.accountId.serialize(),
-//     });
-//   }
-
-//   async process(checkpointId: ProjectionCheckpointId, event: AccountOpened) {
-//     try {
-//       const operation = this.transaction.perform(async (trx) => {
-//         await this.handle(event, trx);
-//         await this.checkpointStore.processed(checkpointId, event.id, trx);
-//       });
-//       await Promise.race([
-//         operation,
-//         wait(this.timeout).then(() => {
-//           throw new Error(`Timeout ${event.id.serialize()}`);
-//         }),
-//       ]);
-//       return true;
-//     } catch (error) {
-//       await this.checkpointStore.failed(checkpointId, event.id);
-//       return false;
-//     }
-//   }
-
-//   async handle(event: AccountOpened, trx: FirestoreTransaction) {}
-// }
-
-// abstract class FirestoreTransactionProjectionHandler<Event extends IEsEvent> {
-//   constructor(
-//     readonly transaction: FirestoreTransactionPerformer,
-//     readonly checkpointStore: ProjectionCheckpointStore,
-//   ) {}
-//   abstract timeout: number;
-//   abstract locks(event: IEsEvent): Lock;
-//   async process(checkpointId: ProjectionCheckpointId, event: Event) {
-//     try {
-//       await this.transaction.perform(async (trx) => {
-//         await Promise.race([
-//           this.handle(event, trx),
-//           wait(this.timeout).then(() => {
-//             throw new Error(`Timeout ${event.id.serialize()}`);
-//           }),
-//         ]);
-//         await this.checkpointStore.processed(checkpointId, event.id, trx);
-//       });
-//       return true;
-//     } catch (error) {
-//       await this.checkpointStore.failed(checkpointId, event.id);
-//       return false;
-//     }
-//   }
-
-//   abstract handle(event: Event, trx: FirestoreTransaction): Promise<void>;
-
-//   static for<E extends IEsEvent>({
-//     handle,
-//     locks,
-//     timeout,
-//     transaction,
-//     checkpointStore,
-//   }: {
-//     handle: (event: E, trx: FirestoreTransaction) => Promise<void>;
-//     locks: (event: E) => Lock;
-//     timeout: number;
-//     transaction: FirestoreTransactionPerformer;
-//     checkpointStore: ProjectionCheckpointStore;
-//   }) {
-//     return new (class extends FirestoreTransactionProjectionHandler<E> {
-//       timeout = timeout; // 4 seconds
-
-//       locks(event: E) {
-//         return locks(event);
-//       }
-
-//       async handle(event: E, trx: FirestoreTransaction) {
-//         await handle(event, trx);
-//       }
-//     })(transaction, checkpointStore);
-//   }
-// }
-
-// class CashflowOnAccountOpenedBatchedWriteProjectionHandler {
-//   constructor(private readonly checkpointStore: ProjectionCheckpointStore) {}
-
-//   locks(event: AccountOpened) {
-//     return new Lock({
-//       accountId: event.payload.accountId.serialize(),
-//     });
-//   }
-
-//   async process(checkpointId: ProjectionCheckpointId, event: AccountOpened) {
-//     const batch = this.checkpointStore.firestore.batch();
-//     await this.handle(event, batch);
-//     await this.checkpointStore.processedBatch(checkpointId, event.id, batch);
-//     await batch.commit();
-//   }
-
-//   async handle(event: AccountOpened, batch: WriteBatch) {}
-// }
-
-// class BatchedCashflowOnAccountOpenedBatchedWriteProjectionHandler {
-//   constructor(private readonly checkpointStore: ProjectionCheckpointStore) {}
-
-//   locks(event: AccountOpened) {
-//     return new Lock({
-//       accountId: event.payload.accountId.serialize(),
-//     });
-//   }
-
-//   async process(checkpointId: ProjectionCheckpointId, event: AccountOpened) {
-//     const batch = this.checkpointStore.firestore.batch();
-//     await this.handle(event, batch);
-//     await this.checkpointStore.processedBatch(checkpointId, event.id, batch);
-//     await batch.commit();
-//   }
-
-//   async handle(events: AccountOpened[], batch: WriteBatch) {}
-// }
-
-// class DelayMiddleware<T> {
-//   async intercept<C extends {}>(message: T, context: C) {
-//     await new Promise((resolve) => setTimeout(resolve, 1000));
-//     return [message, context] as const;
-//   }
-// }
-// class DelayMiddleware2<T> {
-//   async *intercept<C extends {}>(stream: AsyncIterableIterator<T>) {
-//     for await (const message of stream) {
-//       yield wait(1000).then(() => message)
-//     }
-//   }
-// }
-
-// class SequentialMiddleware2<T> {
-//   async *intercept<C extends {}>(stream: AsyncIterableIterator<T>) {
-//     for await (const message of stream) {
-//       const operation = yield message;
-//       await operation;
-//     }
-//   }
-// }
-
-// class SequentialByMiddleware<T> {
-//   constructor(private readonly key: (message: T) => string) {}
-//   async *intercept<C extends {}>(stream: AsyncIterableIterator<T>) {
-//     const operations = new Map<string, Promise<void>>();
-
-//     for await (const message of stream) {
-//       const key = this.key(message);
-//       if (!operations.has(key)) {
-//         operations.set(key, Promise.resolve());
-//       }
-
-//       const operation = operations.get(key)!;
-
-//       yield operation.then(() => message).then((msg) => {
-//         operations.delete(key);
-//         return msg;
-//       });
-
-//       operations.set(
-//         key,
-//         operation.then(() => wait(1000)), // Simulate some processing
-//       );
-//     }
-//   }
-// }
-
-// class DebounceMiddleware<T> {
-//   constructor(private readonly delay: number) {}
-
-//   async *intercept<C extends {}>(stream: AsyncIterableIterator<T>) {
-//     const batch = new Set<T>();
-
-//     const iterable = stream[Symbol.asyncIterator]();
-
-//     iterable.next();
-//     for await (const item of iterable) {
-//       batch.add(item);
-//       yield item;
-//     }
-//   }
-
-// class TransactionMiddleware<T> {
-//   constructor(private readonly transaction: FirestoreTransactionPerformer) {}
-
-//   intercept<C extends {}>(message: T, context: C) {
-//     return this.transaction.perform(async (trx) => {
-
-//     });
-//   }
-// }
-
-// function runMiddlewares(middlewares: any[], message: any) {
-//   for()
-// }

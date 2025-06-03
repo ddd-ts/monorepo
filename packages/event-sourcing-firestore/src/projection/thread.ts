@@ -1,6 +1,7 @@
 import { EventId, EventReference, IEsEvent } from "@ddd-ts/core";
 import {
   Choice,
+  Mapping,
   Multiple,
   Optional,
   Primitive,
@@ -66,13 +67,17 @@ export class ProcessingStartedAt extends Primitive(Date) {
 }
 
 export class Thread extends Shape({
+  counter: Number,
   head: Optional(Cursor),
-  tasks: Multiple({
-    cursor: Cursor,
-    lock: Lock,
-    timeout: Optional(Number),
-    enqueuedAt: Date,
-  }),
+  tasks: Mapping([
+    Number,
+    {
+      cursor: Cursor,
+      lock: Lock,
+      timeout: Optional(Number),
+      revision: Number,
+    },
+  ]),
   statuses: IdMap(EventId, EventStatus),
   processingStartedAt: IdMap(EventId, ProcessingStartedAt),
 }) {
@@ -80,19 +85,28 @@ export class Thread extends Shape({
     if (this.head?.isAfterOrEqual(cursor)) {
       return;
     }
-    this.tasks.push({ cursor, lock, timeout, enqueuedAt: new Date() });
+    const revision = this.counter++;
+    this.tasks[revision] = {
+      cursor,
+      lock,
+      timeout,
+      revision,
+    };
+
     this.head = cursor;
   }
 
   clean() {
-    for (const task of [...this.tasks]) {
+    for (const task of Object.values(this.tasks).sort(
+      (a, b) => a.revision - b.revision,
+    )) {
       const status = this.statuses.get(task.cursor.eventId);
       const processingStartedAt = this.processingStartedAt.get(
         task.cursor.eventId,
       );
 
       if (processingStartedAt?.timedOut(task.timeout ?? 120_000)) {
-        this.tasks.shift();
+        delete this.tasks[task.revision];
         this.statuses.delete(task.cursor.eventId);
         this.processingStartedAt.delete(task.cursor.eventId);
         console.log(
@@ -105,7 +119,7 @@ export class Thread extends Shape({
         return;
       }
 
-      this.tasks.shift();
+      delete this.tasks[task.revision];
       this.statuses.delete(task.cursor.eventId);
       this.processingStartedAt.delete(task.cursor.eventId);
     }
@@ -116,7 +130,9 @@ export class Thread extends Shape({
     const batchLocks: Lock[] = [];
     const batch: Cursor[] = [];
 
-    for (const task of [...this.tasks]) {
+    for (const task of Object.values(this.tasks).sort(
+      (a, b) => a.revision - b.revision,
+    )) {
       if (locks.some((lock) => lock.restrains(task.lock))) {
         // TODO: ADD TEST FOR JUSTIFYING THIS
         locks.push(task.lock);
@@ -151,10 +167,12 @@ export class Thread extends Shape({
     return [
       "",
       `HEAD: ${this.head}`,
-      ...this.tasks.map(
-        (task) =>
-          `\t${task.cursor.ref.serialize()} ${this.statuses.get(task.cursor.eventId)?.serialize()}`,
-      ),
+      ...Object.values(this.tasks)
+        .sort((a, b) => a.revision - b.revision)
+        .map(
+          (task) =>
+            `\t${task.cursor.ref.serialize()} ${this.statuses.get(task.cursor.eventId)?.serialize()}`,
+        ),
       "",
     ].join("\n");
   }
