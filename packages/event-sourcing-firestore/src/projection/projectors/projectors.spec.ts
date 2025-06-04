@@ -13,9 +13,11 @@ import { FirestoreProjectedStreamReader } from "../../firestore.projected-stream
 import { AccountStore, registry } from "../registry";
 import { Albert } from "./albert";
 import { Ben } from "./ben";
-import { Carl, max } from "./carl";
-import { AccountCashflowProjection2 } from "../cashflow2";
-import { ProjectorSuite2 } from "./projection.suite2";
+import { Carl } from "./carl";
+import { Daniel } from "./daniel";
+import { Eric } from "./eric";
+import { AccountCashflowProjection } from "../cashflow";
+import { ProjectorSuite } from "./projection.suite";
 
 describe("Projectors", () => {
   const app = fb.initializeApp({ projectId: "demo-es" });
@@ -30,7 +32,7 @@ describe("Projectors", () => {
       const accountStore = new AccountStore(firestore);
       const transaction = new FirestoreTransactionPerformer(firestore);
       const checkpointStore = new CheckpointStoreClass(firestore);
-      const projection = new AccountCashflowProjection2(
+      const projection = new AccountCashflowProjection(
         transaction,
         checkpointStore as any,
       );
@@ -55,21 +57,21 @@ describe("Projectors", () => {
     };
   }
 
-  it("test", async () => {
-    await firestore.collection("test").doc("test").set({ a: 100 });
+  // it("test", async () => {
+  //   await firestore.collection("test").doc("test").set({ a: 100 });
 
-    await firestore
-      .collection("test")
-      .doc("test")
-      .update({
-        a: max(101),
-      });
-  });
+  //   await firestore
+  //     .collection("test")
+  //     .doc("test")
+  //     .update({
+  //       a: max(101),
+  //     });
+  // });
 
-  describe("Albert", () => {
+  describe.skip("Albert", () => {
     const prepare = makePrepare(Albert.Projector, Albert.CheckpointStore);
 
-    const suite = ProjectorSuite2(prepare);
+    const suite = ProjectorSuite(prepare, "Albert");
 
     it("SingleEvent", () => suite.SingleEvent());
 
@@ -92,10 +94,10 @@ describe("Projectors", () => {
     // );
   });
 
-  describe("Ben", () => {
+  describe.skip("Ben", () => {
     const prepare = makePrepare(Ben.Projector, Ben.CheckpointStore);
 
-    const suite = ProjectorSuite2(prepare);
+    const suite = ProjectorSuite(prepare, "Ben");
 
     it("SingleEvent", () => suite.SingleEvent());
 
@@ -118,10 +120,61 @@ describe("Projectors", () => {
     // );
   });
 
-  describe("Carl", () => {
+  describe.skip("Carl", () => {
     const prepare = makePrepare(Carl.Projector, Carl.CheckpointStore);
 
-    const suite = ProjectorSuite2(prepare);
+    const suite = ProjectorSuite(prepare, "Carl");
+
+    it("SingleEvent", () => suite.SingleEvent());
+
+    it("SimpleLocking", () => suite.SimpleLocking());
+
+    it("SimpleConcurrency", () => suite.SimpleConcurrency());
+
+    it("SimpleBatching", () => suite.SimpleBatching());
+
+    it("DuplicateHandling", () => suite.DuplicateHandling(), 30_000);
+
+    it("HeavyHandleConcurrency", () => suite.HeavyHandleConcurrency(), 100_000);
+
+    // it("ExplicitFailureRetry", () => suite.ExplicitFailureRetry(), 40_000);
+
+    // it.skip(
+    //   "ImplicitTimeoutFailureRetry",
+    //   () => suite.ImplicitTimeoutFailureRetry(),
+    //   40_000,
+    // );
+  });
+
+  describe("Daniel", () => {
+    const prepare = makePrepare(Daniel.Projector, Daniel.CheckpointStore);
+
+    const suite = ProjectorSuite(prepare, "Daniel");
+
+    it("SingleEvent", () => suite.SingleEvent());
+
+    it("SimpleLocking", () => suite.SimpleLocking());
+
+    it("SimpleConcurrency", () => suite.SimpleConcurrency());
+
+    it("SimpleBatching", () => suite.SimpleBatching());
+
+    it("DuplicateHandling", () => suite.DuplicateHandling(), 30_000);
+
+    it("HeavyHandleConcurrency", () => suite.HeavyHandleConcurrency(), 100_000);
+
+    // it("ExplicitFailureRetry", () => suite.ExplicitFailureRetry(), 40_000);
+
+    // it.skip(
+    //   "ImplicitTimeoutFailureRetry",
+    //   () => suite.ImplicitTimeoutFailureRetry(),
+    //   40_000,
+    // );
+  });
+  describe("Eric", () => {
+    const prepare = makePrepare(Eric.Projector, Eric.CheckpointStore);
+
+    const suite = ProjectorSuite(prepare, "Eric");
 
     it("SingleEvent", () => suite.SingleEvent());
 

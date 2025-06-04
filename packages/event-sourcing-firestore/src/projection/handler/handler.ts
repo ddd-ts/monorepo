@@ -170,8 +170,8 @@ const WithCheckpoint = Subtrait([{} as typeof BaseHandler], (base) => {
   type CheckpointStore = {
     processed(
       checkpointId: CheckpointId,
-      event: EventId,
-      trx?: Transaction,
+      event: EventId[],
+      context: { transaction?: Transaction },
     ): Promise<void>;
   };
 
@@ -191,19 +191,12 @@ const WithCheckpoint = Subtrait([{} as typeof BaseHandler], (base) => {
       context: { checkpointId: CheckpointId; transaction?: Transaction },
     ) {
       console.log("WithCheckpoint.process before");
-      const result = await super.process(events, context);
+      await super.process(events, context);
+      const ids = events.map((event) => event.id);
       console.log("WithCheckpoint.process after");
-      await Promise.all(
-        events.map((event) =>
-          this.checkpointStore.processed(
-            context.checkpointId,
-            event.id,
-            context.transaction,
-          ),
-        ),
-      );
+      await this.checkpointStore.processed(context.checkpointId, ids, context);
       console.log("WithCheckpoint.process done");
-      return events.map((event) => event.id);
+      return ids;
     }
   }
   return WithCheckpoint;

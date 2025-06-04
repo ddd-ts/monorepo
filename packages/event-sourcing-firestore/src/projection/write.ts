@@ -7,23 +7,21 @@ export class StableEventId extends Primitive(String) {
 
   static testseeds = new Map<any, number>();
 
-  static generate(test: Function) {
+  static generate(test: string) {
     const seed = StableEventId.testseeds.get(test) || 0;
     StableEventId.testseeds.set(test, seed + 1);
-    return new StableEventId(
-      `${StableEventId.globalseed}-${test.name}-${seed}`,
-    );
+    return new StableEventId(`${StableEventId.globalseed}-${test}-${seed}`);
   }
 }
 
 export class AccountId extends Primitive(String) {
-  static generate(test: Function) {
+  static generate(test: string) {
     return new AccountId(`A${StableEventId.generate(test).serialize()}`);
   }
 }
 
 export class BankId extends Primitive(String) {
-  static generate(test: Function) {
+  static generate(test: string) {
     return new BankId(`B${StableEventId.generate(test).serialize()}`);
   }
 }
@@ -87,7 +85,7 @@ export class Account extends EsAggregate("Account", {
     balance: Number,
   },
 }) {
-  static open(bankId: BankId, test: Function) {
+  static open(bankId: BankId, test: string) {
     const accountId = AccountId.generate(test);
     const change = AccountOpened.new({ accountId, bankId });
     const instance = this.new(change);
@@ -171,11 +169,6 @@ export class Bank extends EsAggregate("Bank", {
     accounts: [AccountId],
   },
 }) {
-  static create() {
-    const bankId = BankId.generate();
-    return this.new(BankCreated.new({ bankId }));
-  }
-
   @On(BankCreated)
   static onCreated(event: BankCreated) {
     return new Bank({

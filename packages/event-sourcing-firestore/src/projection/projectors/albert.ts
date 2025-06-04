@@ -116,7 +116,7 @@ class Projector {
   ) {}
 
   async enqueue(e: IEsEvent): Promise<boolean> {
-    const checkpointId = this.projection.getShardCheckpointId(e as any);
+    const checkpointId = this.projection.getCheckpointId(e as any);
 
     const accountId = e.payload.accountId.serialize();
     const until = (e as any).ref;
@@ -141,10 +141,7 @@ class Projector {
     );
 
     for await (const event of stream) {
-      const handler = this.projection.handlers[event.name];
-
-      const lock = handler.locks(event as any);
-
+      const lock = this.projection.getLock(event);
       // TRY WITH A SINGLE TRANSACTION OR BATCH
       await this.transaction.perform(async (trx) => {
         const state = await this.store.expected(checkpointId, trx);
@@ -159,7 +156,7 @@ class Projector {
 
   async process(event: IEsEvent): Promise<any> {
     console.log(`Projector: processing event ${event.toString()}`);
-    const checkpointId = this.projection.getShardCheckpointId(event as any);
+    const checkpointId = this.projection.getCheckpointId(event as any);
 
     const batch = await this.transaction.perform(async (trx) => {
       const state = await this.store.expected(checkpointId, trx);
@@ -265,34 +262,32 @@ class CheckpointStore extends FirestoreStore<Checkpoint> {
 
   async processed(
     id: CheckpointId,
-    eventId: EventId,
-    trx?: FirestoreTransaction,
+    eventIds: EventId[],
+    context: {
+      transaction?: FirestoreTransaction;
+      batchWriter?: WriteBatch;
+    } = {},
   ) {
-    if (trx) {
-      return trx.transaction.update(this.collection.doc(id.serialize()), {
-        [`statuses.${eventId.serialize()}`]: "done",
-      });
+    const { transaction, batchWriter } = context;
+
+    const patch = eventIds.reduce((acc, eventId) => {
+      acc[`statuses.${eventId.serialize()}`] = "done";
+      return acc;
+    }, {} as any);
+
+    const ref = this.collection.doc(id.serialize());
+
+    if (batchWriter) {
+      return batchWriter.update(ref, patch);
     }
 
-    console.log(
-      `CheckpointStore.processed: ${id.serialize()} ${eventId.serialize()}`,
-    );
+    if (transaction) {
+      return transaction.transaction.update(ref, patch);
+    }
 
-    await this.collection.doc(id.serialize()).update({
-      [`statuses.${eventId.serialize()}`]: "done",
-    });
+    await ref.update(patch);
 
     return;
-  }
-
-  async processedBatch(
-    id: CheckpointId,
-    eventId: EventId,
-    batchWriter: WriteBatch,
-  ) {
-    return batchWriter.update(this.collection.doc(id.serialize()), {
-      [`statuses.${eventId.serialize()}`]: "done",
-    });
   }
 
   async failed(id: CheckpointId, eventId: EventId, trx?: FirestoreTransaction) {
@@ -307,18 +302,6 @@ class CheckpointStore extends FirestoreStore<Checkpoint> {
     });
 
     return;
-  }
-
-  async countProcessing(id: CheckpointId) {
-    const existing = await this.expected(id);
-    return existing.tasks.filter((task) =>
-      existing.statuses.get(task.cursor.eventId)?.is("processing"),
-    ).length;
-  }
-
-  async isFinished(id: CheckpointId) {
-    const existing = await this.expected(id);
-    return existing.tasks.length === 0;
   }
 }
 

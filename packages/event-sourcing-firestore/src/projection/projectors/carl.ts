@@ -1,7 +1,7 @@
 import { FieldValue, WriteBatch } from "firebase-admin/firestore";
-import { Dict, Mapping, Multiple, Optional, Shape } from "@ddd-ts/shape";
+import { Dict, Multiple, Optional, Shape } from "@ddd-ts/shape";
 import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
-import { AutoSerializer, EventReference } from "@ddd-ts/core";
+import { AutoSerializer } from "@ddd-ts/core";
 import { FirestoreStore, FirestoreTransaction } from "@ddd-ts/store-firestore";
 import { EventId, IEsEvent } from "@ddd-ts/core";
 import { IdMap } from "../../idmap";
@@ -10,7 +10,7 @@ import { AccountCashflowProjection } from "../cashflow";
 import { CheckpointId } from "../checkpoint-id";
 import { Lock } from "../lock";
 import { StableEventId } from "../write";
-import { Cursor, EventStatus, ProcessingStartedAt } from "./shared";
+import { Cursor, EventStatus } from "./shared";
 import { wait } from "../tools";
 
 class Task extends Shape({
@@ -163,19 +163,6 @@ class Checkpoint extends Shape({
   }
 }
 
-export function max(n: number) {
-  const incr = FieldValue.increment(n);
-
-  //@ts-ignore
-  //@ts-ignore
-  incr.toProto = (serializer: any, fieldPath: any) => ({
-    fieldPath: fieldPath.formattedName,
-    maximum: { integerValue: n },
-  });
-
-  return incr;
-}
-
 class Projector {
   constructor(
     public readonly projection: AccountCashflowProjection,
@@ -185,8 +172,7 @@ class Projector {
   ) {}
 
   async enqueue(e: IEsEvent): Promise<boolean> {
-    const checkpointId = this.projection.getShardCheckpointId(e as any);
-    // this actually makes it work with large batches lmao ✓ HeavyHandleConcurrency (10935 ms)
+    const checkpointId = this.projection.getCheckpointId(e as any);
     await wait(Math.random() * 100 + 100);
     const accountId = e.payload.accountId.serialize();
     const until = (e as any).ref;
@@ -211,7 +197,7 @@ class Projector {
     await this.transaction
       .perform(async (trx) => {
         for (const event of events) {
-          const lock = this.projection.handlers[event.name].locks(event as any);
+          const lock = this.projection.getLock(event);
           await this.store.enqueue(checkpointId, event, lock, trx);
         }
       })
@@ -226,7 +212,7 @@ class Projector {
 
   async process(event: IEsEvent): Promise<any> {
     console.log(`Projector: processing event ${event.toString()}`);
-    const checkpointId = this.projection.getShardCheckpointId(event as any);
+    const checkpointId = this.projection.getCheckpointId(event as any);
 
     const state = await this.store.expected(checkpointId);
 
@@ -363,32 +349,33 @@ class CheckpointStore extends FirestoreStore<Checkpoint> {
 
   async processed(
     id: CheckpointId,
-    eventId: EventId,
-    trx?: FirestoreTransaction,
+    eventIds: EventId[],
+    context: {
+      transaction?: FirestoreTransaction;
+      batchWriter?: WriteBatch;
+    } = {},
   ) {
-    if (trx) {
-      return trx.transaction.update(this.collection.doc(id.serialize()), {
-        [`statuses.${eventId.serialize()}`]: "done",
-        [`claims.${eventId.serialize()}`]: FieldValue.delete(),
-      });
+    const { transaction, batchWriter } = context;
+
+    const patch = eventIds.reduce((acc, eventId) => {
+      acc[`statuses.${eventId.serialize()}`] = "done";
+      acc[`claims.${eventId.serialize()}`] = FieldValue.delete();
+      return acc;
+    }, {} as any);
+
+    const ref = this.collection.doc(id.serialize());
+
+    if (batchWriter) {
+      return batchWriter.update(ref, patch);
     }
 
-    await this.collection.doc(id.serialize()).update({
-      [`statuses.${eventId.serialize()}`]: "done",
-      [`claims.${eventId.serialize()}`]: FieldValue.delete(),
-    });
+    if (transaction) {
+      return transaction.transaction.update(ref, patch);
+    }
+
+    await ref.update(patch);
 
     return;
-  }
-
-  async processedBatch(
-    id: CheckpointId,
-    eventId: EventId,
-    batchWriter: WriteBatch,
-  ) {
-    return batchWriter.update(this.collection.doc(id.serialize()), {
-      [`statuses.${eventId.serialize()}`]: "done",
-    });
   }
 
   async failed(id: CheckpointId, eventId: EventId, trx?: FirestoreTransaction) {
@@ -403,16 +390,6 @@ class CheckpointStore extends FirestoreStore<Checkpoint> {
     });
 
     return;
-  }
-
-  async countProcessing(id: CheckpointId) {
-    const existing = await this.expected(id);
-    return existing.countProcessing();
-  }
-
-  async isFinished(id: CheckpointId) {
-    const existing = await this.expected(id);
-    return existing.tasks.size === 0;
   }
 }
 

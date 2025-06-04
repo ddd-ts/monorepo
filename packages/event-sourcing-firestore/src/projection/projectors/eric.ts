@@ -1,7 +1,7 @@
-import { FieldValue, WriteBatch } from "firebase-admin/firestore";
-import { Dict, Multiple, Optional, Shape } from "@ddd-ts/shape";
+import { FieldValue, Timestamp, WriteBatch } from "firebase-admin/firestore";
+import { Dict, Multiple, Optional, Primitive, Shape } from "@ddd-ts/shape";
 import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
-import { AutoSerializer } from "@ddd-ts/core";
+import { AutoSerializer, EventReference, IFact } from "@ddd-ts/core";
 import { FirestoreStore, FirestoreTransaction } from "@ddd-ts/store-firestore";
 import { EventId, IEsEvent } from "@ddd-ts/core";
 import { IdMap } from "../../idmap";
@@ -34,6 +34,31 @@ class Claims extends IdMap(EventId, EventIds) {
     }
     return claimed;
   }
+}
+
+export function max(n: number) {
+  const incr = FieldValue.increment(0);
+
+  //@ts-ignore
+  //@ts-ignore
+  incr.toProto = (serializer: any, fieldPath: any) => ({
+    fieldPath: fieldPath.formattedName,
+    maximum: { integerValue: n },
+  });
+
+  return incr;
+}
+export function min(n: number) {
+  const incr = FieldValue.increment(0);
+
+  //@ts-ignore
+  //@ts-ignore
+  incr.toProto = (serializer: any, fieldPath: any) => ({
+    fieldPath: fieldPath.formattedName,
+    minimum: { integerValue: n },
+  });
+
+  return incr;
 }
 
 class Checkpoint extends Shape({
@@ -162,6 +187,29 @@ class Checkpoint extends Shape({
   }
 }
 
+class Pointer extends Shape({
+  seconds: Number,
+  nanoseconds: Number,
+}) {
+  static from(event: IEsEvent) {
+    const e = event as IFact;
+
+    const timestamp = (e as any).occurredAt.inner as Timestamp;
+
+    const nano = timestamp.nanoseconds + e.revision * 1000;
+    const seconds = timestamp.seconds;
+
+    return new Pointer({
+      seconds: seconds,
+      nanoseconds: nano,
+    });
+  }
+
+  serialize() {
+    return new Timestamp(this.seconds, this.nanoseconds);
+  }
+}
+
 class Projector {
   constructor(
     public readonly projection: AccountCashflowProjection,
@@ -177,28 +225,32 @@ class Projector {
     const accountId = e.payload.accountId.serialize();
     const until = (e as any).ref;
 
-    await this.store.initialize(checkpointId);
-    const state = await this.store.expected(checkpointId);
+    // await this.store.initialize(checkpointId);
+    // const state = await this.store.expected(checkpointId);
 
-    const cursor = Cursor.from(e);
+    // const cursor = Cursor.from(e);
 
-    if (!state.shouldEnqueue(cursor)) {
-      console.log(`Skipping ${e.id.serialize()} has already been enqueued`);
-      return false;
-    }
+    // if (!state.shouldEnqueue(cursor)) {
+    //   console.log(`Skipping ${e.id.serialize()} has already been enqueued`);
+    //   return false;
+    // }
 
     const events = await this.reader.slice(
       this.projection.source,
       accountId,
-      state.getHead()?.ref,
+      undefined,
       until,
     );
 
     const todo = events.map((e) => {
       const cursor = Cursor.from(e);
       const lock = this.projection.getLock(e);
-      return { id: e.id, cursor, lock };
+      return { id: e.id, cursor, lock, event: e };
     });
+
+    const queue = this.store.collection
+      .doc(checkpointId.serialize())
+      .collection("queue");
 
     await this.store.enqueue(checkpointId, todo).catch((e) => {
       throw new Error(
@@ -213,25 +265,41 @@ class Projector {
     console.log(`Projector: processing event ${event.toString()}`);
     const checkpointId = this.projection.getCheckpointId(event as any);
 
-    const state = await this.store.expected(checkpointId);
+    const doc = await this.store.collection
+      .doc(checkpointId.serialize())
+      .collection("queue")
+      .doc(event.id.serialize())
+      .get();
 
-    if (state.hasCompleted(Cursor.from(event))) {
+    if (doc.data()?.processed) {
       console.log(`Projector: event ${event.toString()} already processed`);
       return true;
     }
 
-    const batchAttempt = state.startNextBatch();
+    // const state = await this.store.expected(checkpointId);
 
-    const claimId = event.id.serialize();
-    await Promise.all(
-      batchAttempt.map((c) =>
-        this.store.claim(checkpointId, claimId, c.eventId),
-      ),
-    );
+    // if (state.hasCompleted(Cursor.from(event))) {
+    //   console.log(`Projector: event ${event.toString()} already processed`);
+    //   return true;
+    // }
 
-    const state2 = await this.store.expected(checkpointId);
+    // const batchAttempt = state.startNextBatch();
+    // const claimId = event.id.serialize();
+    // await Promise.all(
+    //   batchAttempt.map((c) =>
+    //     this.store.claim(checkpointId, claimId, c.eventId),
+    //   ),
+    // );
 
-    const batch = state2.getClaimed(event.id);
+    // const state2 = await this.store.expected(checkpointId);
+
+    // const batch = state2.getClaimed(event.id);
+
+    const batch = await this.store.getNextBatch(checkpointId).catch((e) => {
+      throw new Error(
+        `Failed to get next batch for checkpoint ${checkpointId.serialize()}: ${e.message}`,
+      );
+    });
 
     if (batch.length === 0) {
       console.log(
@@ -242,7 +310,7 @@ class Projector {
     }
 
     const events = await Promise.all(
-      batch.map((cursor) => this.reader.get(cursor.ref)),
+      batch.map((cursor) => this.reader.get(cursor)),
     );
 
     console.log(
@@ -278,32 +346,64 @@ class Projector {
 
 class CheckpointSerializer extends AutoSerializer.First(Checkpoint) {}
 
-class CheckpointStore extends FirestoreStore<Checkpoint> {
+class CheckpointStore extends FirestoreStore<Checkpoint, any> {
   constructor(db: FirebaseFirestore.Firestore) {
     super(db.collection("projection"), new CheckpointSerializer());
   }
 
   async initialize(id: CheckpointId) {
-    const existing = await this.load(id);
-    if (existing) {
-      return;
+    // const existing = await this.load(id);
+    // if (existing) {
+    //   return;
+    // }
+    // const serialized = await this.serializer.serialize(Checkpoint.initial(id));
+    // await this.collection
+    //   .doc(id.serialize())
+    //   .create(serialized)
+    //   .catch((e) => {
+    //     if (e.code === 6) {
+    //       return;
+    //     }
+    //     throw e;
+    //   });
+  }
+
+  async getTail(id: CheckpointId) {
+    this.collection
+      .doc(id.serialize())
+      .collection("queue")
+      .where("processed", "==", false)
+      .orderBy("order", "asc")
+      .limit(1);
+    const doc = await this.collection.doc(id.serialize()).get();
+    return doc;
+    // const doc = await this.collection.doc(id.serialize()).get();
+    // const data = doc.data();
+
+    // if (!data) {
+    //   return undefined;
+    // }
+
+    // return data.tail;
+  }
+
+  async getHead(id: CheckpointId) {
+    const doc = await this.collection.doc(id.serialize()).get();
+    const data = doc.data();
+
+    if (!data) {
+      throw new Error(`Checkpoint not found: ${id}`);
     }
 
-    const serialized = await this.serializer.serialize(Checkpoint.initial(id));
-
-    await this.collection
-      .doc(id.serialize())
-      .create(serialized)
-      .catch((e) => {
-        if (e.code === 6) {
-          return;
-        }
-        throw e;
-      });
+    return data.head;
   }
 
   async expected(id: CheckpointId, trx?: FirestoreTransaction) {
     const existing = await this.load(id, trx);
+    this.collection
+      .doc(id.serialize())
+      .collection("queue")
+      .where("unclaimed", "==", true);
     if (!existing) {
       throw new Error(`Projection state not found: ${id}`);
     }
@@ -311,25 +411,134 @@ class CheckpointStore extends FirestoreStore<Checkpoint> {
     return existing;
   }
 
-  async claim(id: CheckpointId, claimId: string, eventId: EventId) {
-    return this.collection.doc(id.serialize()).update({
-      [`claims.${eventId.serialize()}`]: FieldValue.arrayUnion(claimId),
-    });
+  async getNextBatch(id: CheckpointId) {
+    let query = this.collection
+      .doc(id.serialize())
+      .collection("queue")
+      .orderBy("order", "asc");
+
+    const tail = await this.collection
+      .doc(id.serialize())
+      .collection("queue")
+      .where("processed", "==", false)
+      .orderBy("order", "asc")
+      .limit(1)
+      .get();
+
+    if (tail.docs[0]) {
+      query = query.startAt(tail.docs[0]);
+    }
+
+    const all = await query.get();
+
+    const events = all.docs.map(
+      (doc) => [doc.ref, doc.createTime, doc.data()] as const,
+    );
+
+    const firstNonProcessed = events.findIndex((e) => !e[2].processed);
+    const eventsToProcess = events.slice(firstNonProcessed);
+
+    const locks: Lock[] = [];
+    const batchLocks: Lock[] = [];
+
+    const batch: EventReference[] = [];
+
+    const claimer = EventId.generate().serialize();
+
+    for (const event of eventsToProcess) {
+      const lock = Lock.deserialize(event[2].lock);
+
+      if (event[2].processed) {
+        continue;
+      }
+
+      if (event[2].claimed) {
+        locks.push(lock);
+        continue;
+      }
+
+      if (locks.some((l) => l.restrains(lock))) {
+        locks.push(lock);
+        continue;
+      }
+
+      if (batchLocks.some((l) => l.restrains(lock, false))) {
+        locks.push(lock);
+        continue;
+      }
+
+      batchLocks.push(lock);
+      try {
+        await this.collection
+          .doc(id.serialize())
+          .collection("queue")
+          .doc(event[2].id)
+          .update(
+            {
+              claimer,
+            },
+            { lastUpdateTime: event[1] },
+          );
+        batch.push(new EventReference(event[2].cursor.ref));
+      } catch (e) {
+        if (e.code === 9) {
+          console.log(`Claimed by another process, skipping ${event[2].id}`);
+          break;
+        }
+        console.log(e);
+        break;
+      }
+    }
+
+    return batch;
   }
+
+  // async claim(id: CheckpointId, claimer: Pointer, eventId: EventId) {
+  //   return this.collection
+  //     .doc(id.serialize())
+  //     .collection("queue")
+  //     .doc(eventId.serialize())
+  //     .update({
+  //       claimer: min(claimer.serialize()),
+  //       unclaimed: FieldValue.delete(),
+  //       claimed: true,
+  //     });
+  // }
 
   async enqueue(
     id: CheckpointId,
-    events: { id: EventId; cursor: Cursor; lock: Lock }[],
+    events: { id: EventId; event: IEsEvent; cursor: Cursor; lock: Lock }[],
   ) {
-    await this.collection.doc(id.serialize()).update({
-      ...events.reduce((acc, event) => {
-        acc[`tasks.${event.id.serialize()}`] = {
-          cursor: event.cursor.serialize(),
-          lock: event.lock.serialize(),
-        };
-        return acc;
-      }, {} as any),
-    });
+    const queue = this.collection.doc(id.serialize()).collection("queue");
+
+    await Promise.all(
+      events.map((event) => {
+        const taskRef = queue.doc(event.id.serialize());
+        return taskRef
+          .create({
+            $name: "Task",
+            id: event.id.serialize(),
+            cursor: event.cursor.serialize(),
+            lock: event.lock.serialize(),
+            processed: false,
+            unclaimed: true,
+            order: Pointer.from(event.event).serialize(),
+            queuedAt: FieldValue.serverTimestamp(),
+          })
+          .catch((e) => {
+            if (e.code === 6) {
+              // Document already exists, ignore
+              return;
+            }
+            throw e;
+          });
+      }),
+    );
+
+    // await this.collection.doc(id.serialize()).set({
+    //   $name: "Checkpoint",
+    //   head: max(tail + events.length),
+    // });
   }
 
   async string(id: CheckpointId) {
@@ -347,60 +556,38 @@ class CheckpointStore extends FirestoreStore<Checkpoint> {
   ) {
     const { transaction, batchWriter } = context;
 
-    const patch = eventIds.reduce((acc, eventId) => {
-      acc[`statuses.${eventId.serialize()}`] = "done";
-      acc[`claims.${eventId.serialize()}`] = FieldValue.delete();
-      return acc;
-    }, {} as any);
-
-    const ref = this.collection.doc(id.serialize());
-
-    if (batchWriter) {
-      return batchWriter.update(ref, patch);
-    }
-
     if (transaction) {
-      return transaction.transaction.update(ref, patch);
+      for (const eventId of eventIds) {
+        transaction.transaction.update(
+          this.collection
+            .doc(id.serialize())
+            .collection("queue")
+            .doc(eventId.serialize()),
+          {
+            processed: true,
+          },
+        );
+      }
+      return;
     }
 
-    await ref.update(patch);
-
-    return;
-  }
-
-  async failed(
-    id: CheckpointId,
-    eventIds: EventId[],
-    context: {
-      transaction?: FirestoreTransaction;
-      batchWriter?: WriteBatch;
-    } = {},
-  ) {
-    const { transaction, batchWriter } = context;
-
-    const patch = eventIds.reduce((acc, eventId) => {
-      acc[`statuses.${eventId.serialize()}`] = "failed";
-      acc[`claims.${eventId.serialize()}`] = FieldValue.delete();
-      return acc;
-    }, {} as any);
-
-    const ref = this.collection.doc(id.serialize());
-
-    if (batchWriter) {
-      return batchWriter.update(ref, patch);
-    }
-
-    if (transaction) {
-      return transaction.transaction.update(ref, patch);
-    }
-
-    await ref.update(patch);
+    await Promise.all(
+      eventIds.map((eventId) =>
+        this.collection
+          .doc(id.serialize())
+          .collection("queue")
+          .doc(eventId.serialize())
+          .update({
+            processed: true,
+          }),
+      ),
+    );
 
     return;
   }
 }
 
-export const Daniel = {
+export const Eric = {
   Projector,
   Checkpoint,
   CheckpointStore,
