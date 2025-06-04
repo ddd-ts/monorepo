@@ -107,7 +107,7 @@ export class ProjectionCheckpointStore extends FirestoreStore<ProjectionCheckpoi
 
   async string(id: CheckpointId) {
     const existing = await this.expected(id);
-    return existing?.toString().replaceAll(StableEventId.seed, "seed");
+    return existing?.toString().replaceAll(StableEventId.globalseed, "seed");
   }
 
   async processed(

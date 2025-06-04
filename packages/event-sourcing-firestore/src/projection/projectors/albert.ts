@@ -260,7 +260,7 @@ class CheckpointStore extends FirestoreStore<Checkpoint> {
 
   async string(id: CheckpointId) {
     const existing = await this.expected(id);
-    return existing?.toString().replaceAll(StableEventId.seed, "seed");
+    return existing?.toString().replaceAll(StableEventId.globalseed, "seed");
   }
 
   async processed(
@@ -273,6 +273,10 @@ class CheckpointStore extends FirestoreStore<Checkpoint> {
         [`statuses.${eventId.serialize()}`]: "done",
       });
     }
+
+    console.log(
+      `CheckpointStore.processed: ${id.serialize()} ${eventId.serialize()}`,
+    );
 
     await this.collection.doc(id.serialize()).update({
       [`statuses.${eventId.serialize()}`]: "done",

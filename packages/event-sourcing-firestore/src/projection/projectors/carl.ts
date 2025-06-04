@@ -1,7 +1,7 @@
-import { WriteBatch } from "firebase-admin/firestore";
-import { Multiple, Optional, Shape } from "@ddd-ts/shape";
+import { FieldValue, WriteBatch } from "firebase-admin/firestore";
+import { Dict, Mapping, Multiple, Optional, Shape } from "@ddd-ts/shape";
 import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
-import { AutoSerializer } from "@ddd-ts/core";
+import { AutoSerializer, EventReference } from "@ddd-ts/core";
 import { FirestoreStore, FirestoreTransaction } from "@ddd-ts/store-firestore";
 import { EventId, IEsEvent } from "@ddd-ts/core";
 import { IdMap } from "../../idmap";
@@ -11,62 +11,109 @@ import { CheckpointId } from "../checkpoint-id";
 import { Lock } from "../lock";
 import { StableEventId } from "../write";
 import { Cursor, EventStatus, ProcessingStartedAt } from "./shared";
+import { wait } from "../tools";
+
+class Task extends Shape({
+  cursor: Cursor,
+  lock: Lock,
+}) {}
+
+class EventIds extends Multiple(EventId) {
+  firstIs(eventId: EventId) {
+    return this.value[0]?.equals(eventId);
+  }
+}
+
+class Claims extends IdMap(EventId, EventIds) {
+  getClaimed(eventId: EventId) {
+    const claimed: EventId[] = [];
+    for (const [claimId, claimers] of this.entries()) {
+      if (claimers.firstIs(eventId)) {
+        claimed.push(claimId);
+      }
+    }
+    return claimed;
+  }
+}
 
 class Checkpoint extends Shape({
   id: CheckpointId,
-  head: Optional(Cursor),
-  tasks: Multiple({
-    cursor: Cursor,
-    lock: Lock,
-    timeout: Optional(Number),
-    enqueuedAt: Date,
-  }),
+  tail: Optional(Cursor),
+  tasks: IdMap(EventId, Task),
   statuses: IdMap(EventId, EventStatus),
-  processingStartedAt: IdMap(EventId, ProcessingStartedAt),
+  claims: Claims,
 }) {
+  getClaimed(eventId: EventId) {
+    const ids = this.claims.getClaimed(eventId);
+    return ids
+      .map((id) => this.tasks.get(id)?.cursor)
+      .filter(Boolean)
+      .sort((a, b) => (a?.isAfter(b!) ? 1 : -1)) as Cursor[];
+  }
+
   static initial(id: CheckpointId) {
     return new Checkpoint({
       id,
-      head: undefined,
-      tasks: [],
+      tail: undefined,
+      tasks: IdMap.for(EventId, Dict({ cursor: Cursor, lock: Lock })),
       statuses: IdMap.for(EventId, EventStatus),
-      processingStartedAt: IdMap.for(EventId, ProcessingStartedAt),
+      claims: new Claims(),
     });
   }
 
+  countProcessing() {
+    console.log(this.serialize());
+    const claimed = [...this.claims.keys()];
+
+    const done = claimed.filter((id) => !this.statuses.get(id)?.is("done"));
+
+    return done.length;
+  }
+
+  sortedTasks() {
+    return [...this.tasks.values()].sort((a, b) =>
+      a.cursor.isAfter(b.cursor) ? 1 : -1,
+    );
+  }
+
+  getHead() {
+    const tasks = this.sortedTasks();
+    return tasks.length > 0 ? tasks.at(-1)?.cursor : this.tail;
+  }
+
   shouldEnqueue(cursor: Cursor) {
-    if (this.head?.isAfterOrEqual(cursor)) {
+    if (this.getHead()?.isAfterOrEqual(cursor)) {
       return false;
     }
     return true;
   }
 
   hasCompleted(cursor: Cursor) {
-    if (this.tasks.some((task) => task.cursor.is(cursor))) {
+    if (this.tasks.has(cursor.eventId)) {
       return this.statuses.get(cursor.eventId)?.is("done");
     }
-    return this.head?.isAfterOrEqual(cursor) ?? false;
-  }
-
-  enqueue(cursor: Cursor, lock: Lock, timeout?: number) {
-    if (this.head?.isAfterOrEqual(cursor)) {
-      return;
-    }
-    this.tasks.push({ cursor, lock, timeout, enqueuedAt: new Date() });
-    this.head = cursor;
+    return this.tail?.isAfterOrEqual(cursor) ?? false;
   }
 
   clean() {
-    for (const task of [...this.tasks]) {
-      const status = this.statuses.get(task.cursor.eventId);
-
-      if (!status?.is("done")) {
-        return;
+    const tasks = [...this.tasks.values()].sort((a, b) =>
+      a.cursor.isAfter(b.cursor) ? 1 : -1,
+    );
+    for (const task of tasks) {
+      if (this.tail && task.cursor.isBefore(this.tail)) {
+        this.tasks.delete(task.cursor.eventId);
+        this.statuses.delete(task.cursor.eventId);
+        this.tail = task.cursor;
+        continue;
       }
 
-      this.tasks.shift();
-      this.statuses.delete(task.cursor.eventId);
-      this.processingStartedAt.delete(task.cursor.eventId);
+      const status = this.statuses.get(task.cursor.eventId);
+
+      if (status?.is("done")) {
+        this.tasks.delete(task.cursor.eventId);
+        this.statuses.delete(task.cursor.eventId);
+        this.tail = task.cursor;
+      }
     }
   }
 
@@ -75,9 +122,16 @@ class Checkpoint extends Shape({
     const batchLocks: Lock[] = [];
     const batch: Cursor[] = [];
 
-    for (const task of [...this.tasks]) {
+    const tasks = this.sortedTasks();
+
+    for (const task of tasks) {
+      if (this.tail && task.cursor.isBefore(this.tail)) {
+        console.warn(
+          `Skipping task ${task.cursor.eventId.serialize()} as it is before the tail ${this.tail?.eventId.serialize()}`,
+        );
+      }
+
       if (locks.some((lock) => lock.restrains(task.lock))) {
-        // TODO: ADD TEST FOR JUSTIFYING THIS
         locks.push(task.lock);
         continue;
       }
@@ -88,6 +142,12 @@ class Checkpoint extends Shape({
       }
 
       const status = this.statuses.get(task.cursor.eventId);
+
+      if (this.claims.has(task.cursor.eventId)) {
+        locks.push(task.lock);
+        continue;
+      }
+
       if (status?.is("processing") || status?.is("done")) {
         locks.push(task.lock);
         continue;
@@ -97,14 +157,23 @@ class Checkpoint extends Shape({
       batchLocks.push(task.lock);
 
       this.statuses.set(task.cursor.eventId, EventStatus.processing());
-      this.processingStartedAt.set(
-        task.cursor.eventId,
-        new ProcessingStartedAt(new Date()),
-      );
     }
 
     return batch;
   }
+}
+
+export function max(n: number) {
+  const incr = FieldValue.increment(n);
+
+  //@ts-ignore
+  //@ts-ignore
+  incr.toProto = (serializer: any, fieldPath: any) => ({
+    fieldPath: fieldPath.formattedName,
+    maximum: { integerValue: n },
+  });
+
+  return incr;
 }
 
 class Projector {
@@ -117,7 +186,8 @@ class Projector {
 
   async enqueue(e: IEsEvent): Promise<boolean> {
     const checkpointId = this.projection.getShardCheckpointId(e as any);
-
+    // this actually makes it work with large batches lmao ✓ HeavyHandleConcurrency (10935 ms)
+    await wait(Math.random() * 100 + 100);
     const accountId = e.payload.accountId.serialize();
     const until = (e as any).ref;
 
@@ -127,27 +197,29 @@ class Projector {
     const cursor = Cursor.from(e);
 
     if (!state.shouldEnqueue(cursor)) {
-      console.log(
-        `Skipping event ${e.id.serialize()} as it is after the last cursor ${state.head?.ref.serialize()}`,
-      );
+      console.log(`Skipping ${e.id.serialize()} has already been enqueued`);
       return false;
     }
 
     const events = await this.reader.slice(
       this.projection.source,
       accountId,
-      state.head?.ref, // MAYBE HEAD ?
+      state.getHead()?.ref,
       until,
     );
 
-    await this.transaction.perform(async (trx) => {
-      const state = await this.store.expected(checkpointId, trx);
-      for (const event of events) {
-        const lock = this.projection.handlers[event.name].locks(event as any);
-        state.enqueue(Cursor.from(event), lock);
-      }
-      await this.store.save(state, trx);
-    });
+    await this.transaction
+      .perform(async (trx) => {
+        for (const event of events) {
+          const lock = this.projection.handlers[event.name].locks(event as any);
+          await this.store.enqueue(checkpointId, event, lock, trx);
+        }
+      })
+      .catch((e) => {
+        throw new Error(
+          `Failed to enqueue events for checkpoint ${checkpointId.serialize()}: ${e.message}`,
+        );
+      });
 
     return false;
   }
@@ -156,21 +228,32 @@ class Projector {
     console.log(`Projector: processing event ${event.toString()}`);
     const checkpointId = this.projection.getShardCheckpointId(event as any);
 
-    const batch = await this.transaction.perform(async (trx) => {
-      const state = await this.store.expected(checkpointId, trx);
-      if (state.hasCompleted(Cursor.from(event))) {
-        return false;
-      }
-      const batch = state.startNextBatch();
-      await this.store.save(state, trx);
-      return batch;
-    });
+    const state = await this.store.expected(checkpointId);
 
-    if (!batch) {
+    if (state.hasCompleted(Cursor.from(event))) {
+      console.log(`Projector: event ${event.toString()} already processed`);
+      return true;
+    }
+
+    const batchAttempt = state.startNextBatch();
+
+    const claimId = event.id.serialize();
+    await Promise.all(
+      batchAttempt.map((c) =>
+        this.store.claim(checkpointId, claimId, c.eventId),
+      ),
+    );
+
+    const state2 = await this.store.expected(checkpointId);
+
+    const batch = state2.getClaimed(event.id);
+
+    if (batch.length === 0) {
       console.log(
-        `Skipping event ${event.id.serialize()} as it is after the last cursor`,
+        `Projector: no batch found for event ${event.toString()}, retrying`,
       );
-      return;
+      await wait(Math.random() * 100 + 100);
+      return this.process(event);
     }
 
     const events = await Promise.all(
@@ -181,7 +264,13 @@ class Projector {
       `Projector: processing batch of ${events.length} events`,
       events.map((e) => e.toString()),
     );
-    const processed = await this.projection.process(checkpointId, events);
+    const processed = await this.projection
+      .process(checkpointId, events)
+      .catch((e) => {
+        throw new Error(
+          `Failed to process batch for checkpoint ${checkpointId}: ${e.message}`,
+        );
+      });
 
     if (processed.some((id) => id?.equals(event.id))) {
       console.log(`Batch contained target event ${event}`);
@@ -237,18 +326,32 @@ class CheckpointStore extends FirestoreStore<Checkpoint> {
     return existing;
   }
 
+  async claim(id: CheckpointId, claimId: string, eventId: EventId) {
+    return this.collection.doc(id.serialize()).update({
+      [`claims.${eventId.serialize()}`]: FieldValue.arrayUnion(claimId),
+    });
+  }
+
   async enqueue(
     id: CheckpointId,
     event: IEsEvent,
-    revision: number,
     lock: Lock,
-    trx: FirestoreTransaction,
+    trx?: FirestoreTransaction,
   ) {
-    return trx.transaction.update(this.collection.doc(id.serialize()), {
-      [`tasks.${revision}`]: {
+    if (trx) {
+      trx.transaction.update(this.collection.doc(id.serialize()), {
+        [`tasks.${event.id.serialize()}`]: {
+          cursor: Cursor.from(event).serialize(),
+          lock: lock.serialize(),
+        },
+      });
+      return;
+    }
+
+    await this.collection.doc(id.serialize()).update({
+      [`tasks.${event.id.serialize()}`]: {
         cursor: Cursor.from(event).serialize(),
         lock: lock.serialize(),
-        revision,
       },
     });
   }
@@ -266,11 +369,13 @@ class CheckpointStore extends FirestoreStore<Checkpoint> {
     if (trx) {
       return trx.transaction.update(this.collection.doc(id.serialize()), {
         [`statuses.${eventId.serialize()}`]: "done",
+        [`claims.${eventId.serialize()}`]: FieldValue.delete(),
       });
     }
 
     await this.collection.doc(id.serialize()).update({
       [`statuses.${eventId.serialize()}`]: "done",
+      [`claims.${eventId.serialize()}`]: FieldValue.delete(),
     });
 
     return;
@@ -302,18 +407,16 @@ class CheckpointStore extends FirestoreStore<Checkpoint> {
 
   async countProcessing(id: CheckpointId) {
     const existing = await this.expected(id);
-    return existing.tasks.filter((task) =>
-      existing.statuses.get(task.cursor.eventId)?.is("processing"),
-    ).length;
+    return existing.countProcessing();
   }
 
   async isFinished(id: CheckpointId) {
     const existing = await this.expected(id);
-    return existing.tasks.length === 0;
+    return existing.tasks.size === 0;
   }
 }
 
-export const Ben = {
+export const Carl = {
   Projector,
   Checkpoint,
   CheckpointStore,

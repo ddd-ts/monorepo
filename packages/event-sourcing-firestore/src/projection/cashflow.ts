@@ -370,7 +370,7 @@ export class AccountCashflowProjection {
         throw new Error(`No handler for event ${name}`);
       }
 
-      const processed = await handler.handle(checkpointId, events as any);
+      const processed = await handler.process(events, { checkpointId });
 
       return processed.filter((e) => !!e);
     });

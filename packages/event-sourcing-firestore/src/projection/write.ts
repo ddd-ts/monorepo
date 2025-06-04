@@ -2,25 +2,29 @@ import { EsAggregate, EsEvent, EventId, On } from "@ddd-ts/core";
 import { Primitive } from "../../../shape/dist";
 
 export class StableEventId extends Primitive(String) {
-  static seed = Math.random().toString(36).substring(2, 5);
+  static globalseed = Math.random().toString(36).substring(2, 5);
   static current = 0;
 
-  static generate() {
-    return new EventId(
-      String(`${this.seed}-${++this.current}`).padStart(5, "0"),
+  static testseeds = new Map<any, number>();
+
+  static generate(test: Function) {
+    const seed = StableEventId.testseeds.get(test) || 0;
+    StableEventId.testseeds.set(test, seed + 1);
+    return new StableEventId(
+      `${StableEventId.globalseed}-${test.name}-${seed}`,
     );
   }
 }
 
 export class AccountId extends Primitive(String) {
-  static generate() {
-    return new AccountId(`A${StableEventId.generate().serialize()}`);
+  static generate(test: Function) {
+    return new AccountId(`A${StableEventId.generate(test).serialize()}`);
   }
 }
 
 export class BankId extends Primitive(String) {
-  static generate() {
-    return new BankId(`B${StableEventId.generate().serialize()}`);
+  static generate(test: Function) {
+    return new BankId(`B${StableEventId.generate(test).serialize()}`);
   }
 }
 
@@ -28,6 +32,7 @@ export class AccountOpened extends EsEvent("AccountOpened", {
   accountId: AccountId,
   bankId: BankId,
 }) {
+  declare static name: "AccountOpened";
   // id = StableEventId.generate();
 
   toString() {
@@ -40,7 +45,9 @@ export class Deposited extends EsEvent("Deposited", {
   accountId: AccountId,
   amount: Number,
 }) {
+  declare static name: "Deposited";
   // id = StableEventId.generate();
+
   toString() {
     return `Account<${this.payload.accountId.serialize()}>:Deposited(${this.payload.amount})`;
   }
@@ -51,7 +58,9 @@ export class Withdrawn extends EsEvent("Withdrawn", {
   accountId: AccountId,
   amount: Number,
 }) {
+  declare static name: "Withdrawn";
   // id = StableEventId.generate();
+
   toString() {
     return `Account<${this.payload.accountId.serialize()}>:Withdrawn(${this.payload.amount})`;
   }
@@ -62,6 +71,7 @@ export class AccountRenamed extends EsEvent("AccountRenamed", {
   bankId: BankId,
   newName: String,
 }) {
+  declare static name: "AccountRenamed";
   // id = StableEventId.generate();
   toString() {
     return `Account<${this.payload.accountId.serialize()}>:Renamed(${this.payload.newName})`;
@@ -77,8 +87,8 @@ export class Account extends EsAggregate("Account", {
     balance: Number,
   },
 }) {
-  static open(bankId: BankId) {
-    const accountId = AccountId.generate();
+  static open(bankId: BankId, test: Function) {
+    const accountId = AccountId.generate(test);
     const change = AccountOpened.new({ accountId, bankId });
     const instance = this.new(change);
     return [instance, change] as const;

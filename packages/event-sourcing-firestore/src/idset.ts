@@ -102,9 +102,9 @@ abstract class SerializableSet<Of extends InstanceType<AutoSerializable>> {
 function memoize<T extends (...args: any[]) => any>(
   fn: T,
   keyFn: (...args: any[]) => string,
-) {
+): T {
   const cache = new Map<string, ReturnType<T>>();
-  return (...args: Parameters<T>) => {
+  const memo = (...args: Parameters<T>) => {
     const key = keyFn(...args);
     if (cache.has(key)) {
       return cache.get(key)!;
@@ -113,6 +113,8 @@ function memoize<T extends (...args: any[]) => any>(
     cache.set(key, value);
     return value;
   };
+
+  return memo as any;
 }
 
 /**
