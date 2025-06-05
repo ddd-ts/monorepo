@@ -43,8 +43,10 @@ export class EventStreamStore<Event extends IEsEvent> {
     const serialized = await Promise.all(
       changes.map((change) => this.serializer.serialize(change)),
     );
-    trx.onCommit(() => {
-      for (const change of changes) this.eventBus?.publish(change);
+    trx.onCommit(async () => {
+      for (const change of changes) {
+        await this.eventBus?.publish(change);
+      }
     });
     return this.storageLayer.append(
       streamId,
