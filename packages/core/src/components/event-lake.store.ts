@@ -36,8 +36,10 @@ export class EventLakeStore<Event extends IEsEvent> {
       changes.map((change) => this.serializer.serialize(change)),
     );
 
-    trx.onCommit(() => {
-      for (const change of changes) this.eventBus?.publish(change);
+    trx.onCommit(async () => {
+      for (const change of changes) {
+        await this.eventBus?.publish(change);
+      }
     });
 
     return this.storageLayer.append(lakeId, serialized as any, trx);
