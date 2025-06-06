@@ -1,7 +1,14 @@
+function now() {
+  if (typeof process === "object" && typeof process.hrtime === "function") {
+    return process.hrtime.bigint();
+  }
+  return Date.now();
+}
+
 export class Collection {
   constructor(
-    private data: Map<string, { savedAt: number; data: any }> = new Map()
-  ) { }
+    private data: Map<string, { savedAt: number; data: any }> = new Map(),
+  ) {}
 
   clear() {
     this.data.clear();
@@ -38,7 +45,7 @@ export class Collection {
   }
 
   getRaw(id: string) {
-    return this.data.get(id)
+    return this.data.get(id);
   }
 
   countAll() {
@@ -58,15 +65,14 @@ export class Collection {
   }
 
   save(id: string, data: any): void {
-    const now = process.hrtime.bigint();
-    this.data.set(id, { savedAt: Number(now), data });
+    this.data.set(id, { savedAt: Number(now()), data });
   }
 
   toPretty() {
     return [...this.data.entries()]
       .map(
         ([id, data]) =>
-          `\t\t"${id}": ${JSON.stringify(data.data, replaceBigInt)}`
+          `\t\t"${id}": ${JSON.stringify(data.data, replaceBigInt)}`,
       )
       .join(",\n");
   }

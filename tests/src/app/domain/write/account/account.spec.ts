@@ -1,4 +1,4 @@
-import { EventId, type IEsEvent } from "@ddd-ts/core";
+import { EventId, EventReference, type IEsEvent } from "@ddd-ts/core";
 import { Constructor } from "@ddd-ts/types";
 import { Account, AccountOpened } from "./account";
 import { Deposited } from "./deposited.event";
@@ -64,9 +64,12 @@ describe("EsAggregate", () => {
 
       expect(account.changes).toEqual([]);
 
+      const id = EventId.generate();
+
       account.load(
         new Deposited({
-          id: EventId.generate(),
+          id,
+          ref: new EventReference(id.serialize()),
           revision: 1,
           name: "Deposited",
           occurredAt: new Date(),
@@ -93,9 +96,12 @@ describe("EsAggregate", () => {
       const account = Account.open();
       account.acknowledgeChanges();
 
+      const id = EventId.generate();
+
       account.load(
         new Deposited({
-          id: EventId.generate(),
+          id,
+          ref: new EventReference(id.serialize()),
           name: "Deposited",
           occurredAt: new Date(),
           revision: 1,
@@ -115,9 +121,11 @@ describe("EsAggregate", () => {
 
       expect(account.acknowledgedRevision).toEqual(0);
 
+      const id = EventId.generate();
       account.load(
         new Deposited({
-          id: EventId.generate(),
+          id,
+          ref: new EventReference(id.serialize()),
           name: "Deposited",
           occurredAt: new Date(),
           revision: 1,
@@ -135,11 +143,14 @@ describe("EsAggregate", () => {
       const account = Account.open();
       account.acknowledgeChanges();
 
+      const id = EventId.generate();
+
       // expected revision 1
       expect(() =>
         account.load(
           new Deposited({
-            id: EventId.generate(),
+            id,
+            ref: new EventReference(id.serialize()),
             name: "Deposited",
             occurredAt: new Date(),
             revision: 2,
@@ -156,9 +167,12 @@ describe("EsAggregate", () => {
       const account = Account.open();
       account.acknowledgeChanges();
 
+      const id = EventId.generate();
+
       account.load(
         new Deposited({
-          id: EventId.generate(),
+          id,
+          ref: new EventReference(id.serialize()),
           name: "Deposited",
           occurredAt: new Date(),
           revision: 1,
@@ -173,7 +187,8 @@ describe("EsAggregate", () => {
       expect(() =>
         account.load(
           new Deposited({
-            id: EventId.generate(),
+            id,
+            ref: new EventReference(id.serialize()),
             name: "Deposited",
             occurredAt: new Date(),
             revision: 1,
@@ -192,10 +207,13 @@ describe("EsAggregate", () => {
 
       account.deposit(10);
 
+      const id = EventId.generate();
+
       expect(() =>
         account.load(
           new Deposited({
-            id: EventId.generate(),
+            id,
+            ref: new EventReference(id.serialize()),
             name: "Deposited",
             occurredAt: new Date(),
             revision: 2,

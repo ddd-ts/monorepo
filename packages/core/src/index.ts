@@ -80,4 +80,6 @@ export { Identifiable } from "./traits/identifiable";
 export { Named } from "./traits/named";
 export { Shaped, NamedShape } from "./traits/shaped";
 
+export { EventCommitResult } from "./components/event-commit-result";
+
 import "./metadata.polyfill";

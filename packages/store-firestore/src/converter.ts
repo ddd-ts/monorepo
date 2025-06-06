@@ -63,7 +63,9 @@ export function decodeFirebaseTimestamps(
     return obj;
   }
   if (obj?.toDate) {
-    return obj.toDate();
+    const result = obj.toDate();
+    result.inner = obj;
+    return result;
   }
   if (obj?.constructor?.name === "VectorValue") {
     return obj;

@@ -64,21 +64,25 @@ export function ProjectedStreamReaderSuite(config: {
   const streamStore = new EventStreamStore(config.streamStorageLayer, registry);
   const reader = new ProjectedStreamReader(config.readerStorageLayer, registry);
 
-  function appendToLake(
+  async function appendToLake(
     lakeId: LakeId,
     events: (Added | Removed | Multiplied)[],
   ) {
-    return transaction.perform((trx) => lakeStore.append(lakeId, events, trx));
+    const refs = await transaction.perform((trx) =>
+      lakeStore.append(lakeId, events, trx),
+    );
+    return refs.values();
   }
 
-  function appendToStream(
+  async function appendToStream(
     streamId: StreamId,
     expectedRevision: number,
     events: (Added | Removed | Multiplied)[],
   ) {
-    return transaction.perform((trx) =>
+    const refs = await transaction.perform((trx) =>
       streamStore.append(streamId, events, expectedRevision, trx),
     );
+    return [...refs.result.values()].map((r) => r.ref);
   }
 
   it("should read events in order", async () => {

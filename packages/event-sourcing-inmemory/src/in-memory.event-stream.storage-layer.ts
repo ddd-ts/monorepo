@@ -5,6 +5,7 @@ import {
   EventReference,
   EventStreamStorageLayer,
   ConcurrencyError,
+  EventCommitResult,
 } from "@ddd-ts/core";
 import { InMemoryDatabase, InMemoryTransaction } from "@ddd-ts/store-inmemory";
 
@@ -23,7 +24,7 @@ export class InMemoryEventStreamStorageLayer
     expectedRevision: number,
     trx: InMemoryTransaction,
   ) {
-    const refs: EventReference[] = [];
+    const result = new EventCommitResult();
 
     let revision = expectedRevision + 1;
 
@@ -43,10 +44,10 @@ export class InMemoryEventStreamStorageLayer
         trx.transaction,
       );
 
-      refs.push(ref);
+      result.set(change.id, ref, revision);
       revision++;
     }
-    return refs;
+    return result;
   }
 
   async *read(

@@ -11,6 +11,10 @@ export class Queue<T> {
     this._onClose = onClose;
   }
 
+  isFlushed(): boolean {
+    return this.pushQueue.length === 0;
+  }
+
   push(value: T): void {
     const resolve = this.pullQueue.shift();
     if (resolve) {

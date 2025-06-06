@@ -23,6 +23,15 @@
       "program": "${workspaceFolder}/tools/node_modules/jest/bin/jest",
       "windows": {
         "program": "${workspaceFolder}/node_modules/jest/bin/jest"
+      },
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/**/node_modules/**",
+        "${workspaceFolder}/**/dist/**",
+        "${workspaceFolder}/node_modules/**",
+      ],
+      "env": {
+        "DEBUG": "true",
       }
     },
     {
@@ -37,7 +46,7 @@
       ],
       "skipFiles": [
         "<node_internals>/**",
-        "${workspaceFolder}/**/node_modules/**"
+        "${workspaceFolder}/**/node_modules/**",
       ]
     }
   ]
