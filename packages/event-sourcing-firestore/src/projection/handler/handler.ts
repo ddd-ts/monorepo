@@ -10,6 +10,12 @@ import { Lock } from "../lock";
 import { IdSet } from "../../idset";
 import { StableEventId } from "../write";
 
+
+// const log = console.log
+
+const log = (...args: any[]) => {}
+
+
 const BaseHandler = Trait((base) => {
   abstract class Handler extends base {
     declare context: {};
@@ -21,9 +27,9 @@ const BaseHandler = Trait((base) => {
     abstract locks(event: IEsEvent): Lock;
 
     async process(events: IEsEvent[], context: {}): Promise<EventId[]> {
-      console.log("BaseHandler.process before");
+      log("BaseHandler.process before");
       await this.handle(events, context);
-      console.log("BaseHandler.process after");
+      log("BaseHandler.process after");
       return events.map((event) => event.id);
     }
   }
@@ -42,12 +48,12 @@ const WithTransaction = <T extends Transaction>() =>
         transaction: T;
       };
       async process(events: IEsEvent[], context: {}) {
-        console.log("WithTransaction.process before");
+        log("WithTransaction.process before");
         await this.transaction.perform(async (trx) => {
           return super.process(events, { ...context, transaction: trx });
         });
         // await super.process(events, context);
-        console.log("WithTransaction.process after");
+        log("WithTransaction.process after");
         return events.map((event) => event.id);
       }
     }
@@ -69,7 +75,7 @@ const WithSuspense = Subtrait([{} as typeof BaseHandler], (base) => {
     >();
     suspend(event: IEsEvent | EventId) {
       const eventId = "id" in event ? event.id : event;
-      console.log(`WithSuspense.suspend: ${event}`);
+      log(`WithSuspense.suspend: ${event}`);
       return new Promise<{ resume: () => void; fail: (err?: any) => void }>(
         (resolve) => {
           this.suspended.set(eventId.serialize(), resolve);
@@ -83,7 +89,7 @@ const WithSuspense = Subtrait([{} as typeof BaseHandler], (base) => {
     >();
     resume(event: IEsEvent | EventId) {
       const eventId = "id" in event ? event.id : event;
-      console.log(`WithSuspense.resume: ${event}`);
+      log(`WithSuspense.resume: ${event}`);
       const release = this.releases.get(eventId.serialize());
       if (release) {
         release.resolve();
@@ -96,7 +102,7 @@ const WithSuspense = Subtrait([{} as typeof BaseHandler], (base) => {
 
     fail(event: IEsEvent | EventId, error?: any) {
       const eventId = "id" in event ? event.id : event;
-      console.log(`WithSuspense.fail: ${event}`);
+      log(`WithSuspense.fail: ${event}`);
       const release = this.releases.get(eventId.serialize());
       if (release) {
         release.reject(error);
@@ -112,7 +118,7 @@ const WithSuspense = Subtrait([{} as typeof BaseHandler], (base) => {
         const suspender = this.suspended.get(event.id.serialize());
 
         if (suspender) {
-          console.log(`WithSuspense.intercepted: ${event}`);
+          log(`WithSuspense.intercepted: ${event}`);
           this.releases.set(event.id.serialize(), { resolve, reject });
           suspender({
             resume: () => {
@@ -154,12 +160,12 @@ const WithSuspense = Subtrait([{} as typeof BaseHandler], (base) => {
     }
 
     async process(events: IEsEvent[], context: {}) {
-      console.log("WithSuspense.process before");
+      log("WithSuspense.process before");
       this._remember_before(events);
       await Promise.all(events.map((event) => this._intercept(event)));
       await super.process(events, context);
       this._remember_after(events);
-      console.log("WithSuspense.process after");
+      log("WithSuspense.process after");
       return events.map((event) => event.id);
     }
   }
@@ -190,12 +196,12 @@ const WithCheckpoint = Subtrait([{} as typeof BaseHandler], (base) => {
       events: IEsEvent[],
       context: { checkpointId: CheckpointId; transaction?: Transaction },
     ) {
-      console.log("WithCheckpoint.process before");
+      log("WithCheckpoint.process before");
       await super.process(events, context);
       const ids = events.map((event) => event.id);
-      console.log("WithCheckpoint.process after");
+      log("WithCheckpoint.process after");
       await this.checkpointStore.processed(context.checkpointId, ids, context);
-      console.log("WithCheckpoint.process done");
+      log("WithCheckpoint.process done");
       return ids;
     }
   }
@@ -212,18 +218,18 @@ const WithParallel = Subtrait([{} as typeof BaseHandler], (base) => {
     ): Promise<void>;
 
     async handle(events: IEsEvent[], context: this["context"]) {
-      console.log("WithParallel.handle before");
+      log("WithParallel.handle before");
       await Promise.all(events.map((event) => this.handleOne(event, context)));
-      console.log("WithParallel.handle after");
+      log("WithParallel.handle after");
     }
 
     async process(
       events: IEsEvent[],
       context: { checkpointId: CheckpointId; transaction?: Transaction },
     ) {
-      console.log("WithParallel.process before");
+      log("WithParallel.process before");
       await Promise.all(events.map((event) => super.process([event], context)));
-      console.log("WithParallel.process after");
+      log("WithParallel.process after");
       return events.map((event) => event.id);
     }
   }
@@ -240,23 +246,23 @@ const WithBatchLast = Subtrait([{} as typeof BaseHandler], (base) => {
     ): Promise<void>;
 
     async handle(events: IEsEvent[], context: this["context"]) {
-      console.log("WithBatchLast.handle before");
+      log("WithBatchLast.handle before");
       const last = events.at(-1);
       if (!last) {
         console.warn("WithBatchLast.handle called with no events");
         return;
       }
       await this.handleLast(last, context);
-      console.log("WithBatchLast.handle after");
+      log("WithBatchLast.handle after");
     }
 
     async process(
       events: IEsEvent[],
       context: { checkpointId: CheckpointId; transaction?: Transaction },
     ) {
-      console.log("WithBatchLast.process before");
+      log("WithBatchLast.process before");
       await super.process(events, context);
-      console.log("WithBatchLast.process after");
+      log("WithBatchLast.process after");
       return events.map((event) => event.id);
     }
   }

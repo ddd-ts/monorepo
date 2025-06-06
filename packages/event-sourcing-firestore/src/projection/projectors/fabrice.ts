@@ -9,7 +9,6 @@ import { FirestoreProjectedStreamReader } from "../../firestore.projected-stream
 import { AccountCashflowProjection } from "../cashflow";
 import { CheckpointId } from "../checkpoint-id";
 import { Lock } from "../lock";
-import { StableEventId } from "../write";
 import { Cursor, EventStatus } from "./shared";
 import { wait } from "../tools";
 
@@ -48,6 +47,19 @@ export function max(n: number) {
 
   return incr;
 }
+export function maxDate(n: number) {
+  const incr = FieldValue.increment(0);
+
+  //@ts-ignore
+  //@ts-ignore
+  incr.toProto = (serializer: any, fieldPath: any) => ({
+    fieldPath: fieldPath.formattedName,
+    maximum: { timestampValue: n },
+  });
+
+  return incr;
+}
+
 export function min(n: number) {
   const incr = FieldValue.increment(0);
 
@@ -190,23 +202,46 @@ class Checkpoint extends Shape({
 class Pointer extends Shape({
   seconds: Number,
   nanoseconds: Number,
+  revision: Number,
 }) {
   static from(event: IEsEvent) {
     const e = event as IFact;
 
     const timestamp = (e as any).occurredAt.inner as Timestamp;
 
-    const nano = timestamp.nanoseconds + e.revision * 1000;
+    const nano = timestamp.nanoseconds;
     const seconds = timestamp.seconds;
 
     return new Pointer({
       seconds: seconds,
       nanoseconds: nano,
+      revision: e.revision,
     });
   }
 
-  serialize() {
-    return new Timestamp(this.seconds, this.nanoseconds);
+  static fromTimestamp(timestamp: Timestamp, revision: number) {
+    return new Pointer({
+      seconds: timestamp.seconds,
+      nanoseconds: timestamp.nanoseconds,
+      revision: revision,
+    });
+  }
+
+  toNumber() {
+    const { seconds, nanoseconds, revision } = this;
+
+    // build a number that is the timestamp with microseconds precision
+
+    const microseconds = Math.floor(nanoseconds / 1000);
+
+    const timestamp = seconds * 1_000_000 + microseconds;
+
+    // create the integer $seconds$microseconds$revision on max 64 bits
+    const spaced = timestamp + revision;
+
+    console.log(`Pointer.serialize:  -> ${spaced}`);
+
+    return spaced;
   }
 }
 
@@ -281,11 +316,13 @@ class Projector {
 
     // const batch = state2.getClaimed(event.id);
 
-    const batch = await this.store.getNextBatch(checkpointId).catch((e) => {
-      throw new Error(
-        `Failed to get next batch for checkpoint ${checkpointId.serialize()}: ${e.message}`,
-      );
-    });
+    const batch = await this.store
+      .getNextBatch(checkpointId, event)
+      .catch((e) => {
+        throw new Error(
+          `Failed to get next batch for checkpoint ${checkpointId.serialize()}: ${e.message}`,
+        );
+      });
 
     if (batch.length === 0) {
       console.log(
@@ -356,7 +393,7 @@ class CheckpointStore extends FirestoreStore<Checkpoint, any> {
     }
   }
 
-  async getNextBatch(id: CheckpointId) {
+  async getNextBatch(id: CheckpointId, k: IEsEvent) {
     let query = this.collection
       .doc(id.serialize())
       .collection("queue")
@@ -371,6 +408,14 @@ class CheckpointStore extends FirestoreStore<Checkpoint, any> {
       .get();
 
     if (tail.docs[0]) {
+      const tailCursor = Cursor.deserialize(tail.docs[0].data().cursor);
+      if (tailCursor.isAfter(Cursor.from(k))) {
+        console.warn(
+          `Tail cursor ${tailCursor.serialize()} is after event ${k.id.serialize()}`,
+        );
+        return [];
+      }
+
       query = query.startAt(tail.docs[0]);
     }
 
@@ -386,7 +431,7 @@ class CheckpointStore extends FirestoreStore<Checkpoint, any> {
     const locks: Lock[] = [];
     const batchLocks: Lock[] = [];
 
-    const batch: EventReference[] = [];
+    const batch: (readonly [any, any, any])[] = [];
 
     const claimer = EventId.generate().serialize();
 
@@ -413,29 +458,56 @@ class CheckpointStore extends FirestoreStore<Checkpoint, any> {
       }
 
       batchLocks.push(lock);
-      try {
-        await this.collection
-          .doc(id.serialize())
-          .collection("queue")
-          .doc(event[2].id)
-          .update(
-            {
-              claimer,
-            },
-            { lastUpdateTime: event[1] },
-          );
-        batch.push(new EventReference(event[2].cursor.ref));
-      } catch (e: any) {
-        if (e.code === 9) {
-          console.log(`Claimed by another process, skipping ${event[2].id}`);
-          break;
-        }
-        console.log(e);
-        break;
-      }
+
+      batch.push(event);
     }
 
-    return batch;
+    const batcher = this.firestore.batch();
+
+    for (const [ref, time, event] of batch) {
+      const taskRef = this.collection
+        .doc(id.serialize())
+        .collection("queue")
+        .doc(event.id);
+
+      batcher.update(
+        taskRef,
+        {
+          claimer: claimer,
+        },
+        {
+          lastUpdateTime: time,
+        },
+      );
+    }
+
+    // if (tail.docs.length !== 0) {
+    //   const data = tail.docs[0].data();
+
+    //   batcher.set(this.collection.doc(id.serialize()), {
+    //     tail: max(
+    //       Pointer.fromTimestamp(
+    //         data.cursor.occurredAt,
+    //         data.cursor.revision,
+    //       ).toNumber(),
+    //     ),
+    //   });
+    // }
+
+    try {
+      await batcher.commit();
+    } catch (e) {
+      console.error(
+        `Failed to commit batch for checkpoint ${id.serialize()}:`,
+        e,
+      );
+      await wait(1000);
+      return this.getNextBatch(id, k);
+    }
+
+    return batch.map(([ref, time, event]) => {
+      return new EventReference(event.cursor.ref);
+    });
   }
 
   async enqueue(
@@ -455,7 +527,8 @@ class CheckpointStore extends FirestoreStore<Checkpoint, any> {
             lock: event.lock.serialize(),
             processed: false,
             unclaimed: true,
-            order: Pointer.from(event.event).serialize(),
+            // order: Pointer.from(event.event).serialize(),
+            order: Pointer.from(event.event).toNumber(),
             queuedAt: FieldValue.serverTimestamp(),
           })
           .catch((e) => {
@@ -510,7 +583,7 @@ class CheckpointStore extends FirestoreStore<Checkpoint, any> {
   }
 }
 
-export const Eric = {
+export const Fabrice = {
   Projector,
   Checkpoint,
   CheckpointStore,

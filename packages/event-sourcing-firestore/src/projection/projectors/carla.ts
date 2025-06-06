@@ -393,7 +393,7 @@ class CheckpointStore extends FirestoreStore<Checkpoint> {
   }
 }
 
-export const Carl = {
+export const Carla = {
   Projector,
   Checkpoint,
   CheckpointStore,
