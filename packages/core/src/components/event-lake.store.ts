@@ -6,6 +6,7 @@ import {
 } from "../interfaces/es-event";
 import { IEventBus } from "../interfaces/event-bus";
 import { ISerializer } from "../interfaces/serializer";
+import { EventCommitResult } from "./event-commit-result";
 import { EventReference } from "./event-id";
 import { LakeId } from "./stream-id";
 import { Transaction } from "./transaction";
@@ -15,7 +16,7 @@ export interface EventLakeStorageLayer {
     lakeId: LakeId,
     changes: ISerializedChange[],
     trx: Transaction,
-  ): Promise<EventReference[]>;
+  ): Promise<EventCommitResult>;
 
   read(
     lakeId: LakeId,
@@ -36,11 +37,16 @@ export class EventLakeStore<Event extends IEsEvent> {
       changes.map((change) => this.serializer.serialize(change)),
     );
 
+    const refs = await this.storageLayer.append(lakeId, serialized as any, trx);
+
     trx.onCommit(() => {
-      for (const change of changes) this.eventBus?.publish(change);
+      for (const change of changes) {
+        const fact = refs.factualize(change);
+        this.eventBus?.publish(fact);
+      }
     });
 
-    return this.storageLayer.append(lakeId, serialized as any, trx);
+    return changes;
   }
 
   async *read(

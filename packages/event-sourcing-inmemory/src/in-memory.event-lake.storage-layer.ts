@@ -5,6 +5,7 @@ import {
   EventReference,
   EventLakeStorageLayer,
   EventId,
+  EventCommitResult,
 } from "@ddd-ts/core";
 import { InMemoryDatabase, InMemoryTransaction } from "@ddd-ts/store-inmemory";
 
@@ -16,7 +17,7 @@ export class InMemoryEventLakeStorageLayer implements EventLakeStorageLayer {
     changes: ISerializedChange[],
     trx: InMemoryTransaction,
   ) {
-    const refs: EventReference[] = [];
+    const result = new EventCommitResult();
 
     let revision = 0;
     for (const change of changes) {
@@ -34,10 +35,10 @@ export class InMemoryEventLakeStorageLayer implements EventLakeStorageLayer {
         stored,
         trx.transaction,
       );
-      refs.push(ref);
+      result.set(change.id, ref, revision);
       revision++;
     }
-    return refs;
+    return result;
   }
 
   async *read(

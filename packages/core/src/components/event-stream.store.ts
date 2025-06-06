@@ -6,6 +6,7 @@ import {
 } from "../interfaces/es-event";
 import { IEventBus } from "../interfaces/event-bus";
 import { ISerializer } from "../interfaces/serializer";
+import { EventCommitResult } from "./event-commit-result";
 import { EventReference } from "./event-id";
 import { StreamId } from "./stream-id";
 import { Transaction } from "./transaction";
@@ -18,7 +19,7 @@ export interface EventStreamStorageLayer {
     changes: ISerializedChange[],
     expectedRevision: number,
     trx: Transaction,
-  ): Promise<EventReference[]>;
+  ): Promise<EventCommitResult>;
 
   read(streamId: StreamId, from?: number): AsyncIterable<ISerializedFact>;
 }
@@ -43,15 +44,21 @@ export class EventStreamStore<Event extends IEsEvent> {
     const serialized = await Promise.all(
       changes.map((change) => this.serializer.serialize(change)),
     );
-    trx.onCommit(() => {
-      for (const change of changes) this.eventBus?.publish(change);
-    });
-    return this.storageLayer.append(
+    const result = await this.storageLayer.append(
       streamId,
       serialized as any,
       expectedRevision,
       trx,
     );
+
+    trx.onCommit(() => {
+      for (const change of changes) {
+        const fact = result.factualize(change);
+        this.eventBus?.publish(fact);
+      }
+    });
+
+    return result;
   }
 
   async *read(streamId: StreamId, from?: number) {

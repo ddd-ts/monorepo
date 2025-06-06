@@ -1,12 +1,12 @@
-import type { Constructor } from "@ddd-ts/types";
+import type { AbstractConstructor, Constructor } from "@ddd-ts/types";
 import type { ISerializer } from "../interfaces/serializer";
 import { INamed } from "../interfaces/named";
 
-export type AutoSerializable = Constructor<{ serialize(): any }> & {
+export type AutoSerializable = AbstractConstructor<{ serialize(): any }> & {
   deserialize(value: any): any;
 };
 
-export type TypedAutoSerializable<T> = Constructor<T> & {
+export type TypedAutoSerializable<T> = AbstractConstructor<T> & {
   deserialize(value: string): T;
 };
 
@@ -36,7 +36,7 @@ export const AutoSerializer = <
   };
 };
 
-export type AutoSerializerV1<Class extends Constructor & INamed> = {
+export type AutoSerializerV1<Class extends AbstractConstructor & INamed> = {
   serialize(value: InstanceType<Class>): {
     version: 1;
   } & ReturnType<InstanceType<Class>["serialize"]>;

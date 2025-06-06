@@ -12,3 +12,5 @@ services:
       - 8080:8080 # firestore emulator
       - 8085:8085 # pubsub emulator
       - 9199:9199 # storage emulator
+      - 4500:4500 # functions emulator
+      - 9150:9150 # firestore emulator (legacy)
