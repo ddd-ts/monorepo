@@ -13,6 +13,7 @@
 	},
 	"dependencies": {
 		"@ddd-ts/core": "workspace:*",
+		"@ddd-ts/shape": "workspace:*",
 		"@ddd-ts/traits": "workspace:*",
 		"@ddd-ts/types": "workspace:*",
 		"@ddd-ts/store-firestore": "workspace:*",
