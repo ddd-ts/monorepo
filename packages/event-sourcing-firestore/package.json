@@ -17,6 +17,7 @@
 		"@ddd-ts/traits": "workspace:*",
 		"@ddd-ts/types": "workspace:*",
 		"@ddd-ts/store-firestore": "workspace:*",
+		"@opentelemetry/api": "1.6.0",
 		"firebase-admin": "^13.2.0"
 	},
 	"devDependencies": {
