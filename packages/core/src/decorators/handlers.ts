@@ -25,7 +25,7 @@ export function On(EVENT: Constructor<IEvent> & INamed) {
   return (target: any, key: string, descriptor: PropertyDescriptor) => {
     const metadata = target[Symbol.metadata] || {};
     const handlers = metadata.handlers || new Map();
-    handlers.set(EVENT.name, descriptor.value);
+    handlers.set(EVENT.$name, descriptor.value);
     metadata.handlers = handlers;
     target[Symbol.metadata] = metadata;
   };

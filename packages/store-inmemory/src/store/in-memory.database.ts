@@ -30,7 +30,7 @@ type ReadOperation = {
   type: "read";
   collectionName: string;
   id: string;
-  savedAt: number | undefined;
+  savedAt: bigint | undefined;
 };
 
 type WriteOperation = {
@@ -51,7 +51,7 @@ type DeleteOperation = {
   type: "delete";
   collectionName: string;
   id: string;
-  savedAt: number | undefined;
+  savedAt: bigint | undefined;
 };
 
 type TransactionOperation =
@@ -81,7 +81,7 @@ export class InMemoryUnderlyingTransaction {
   public markRead(
     collectionName: string,
     id: string,
-    savedAt: number | undefined,
+    savedAt: bigint | undefined,
   ) {
     this.ensureNoWrites();
     this.operations.push({ type: "read", collectionName, id, savedAt });
@@ -98,7 +98,7 @@ export class InMemoryUnderlyingTransaction {
   public markDeleted(
     collectionName: string,
     id: any,
-    savedAt: number | undefined,
+    savedAt: bigint | undefined,
   ) {
     this.operations.push({ type: "delete", collectionName, id, savedAt });
   }
@@ -236,7 +236,7 @@ export class InMemoryDatabase {
     return latestReturnValue;
   }
 
-  private streamId(trx: InMemoryTransaction): void {
+  private streamId(trx: InMemoryTransaction) {
     if (!trx.transaction.checkConsistency(this.storage)) {
       throw new TransactionCollision();
     }

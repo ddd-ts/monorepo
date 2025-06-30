@@ -15,6 +15,9 @@ type Internal<S extends DictShorthand, B extends AbstractConstructor<{}>> = {
   Serialized: (B extends { $name: infer U } ? { $name: U } : {}) & {
     -readonly [K in keyof S]: ReturnType<DefinitionOf<S[K]>["$serialize"]>;
   };
+  Deserializing: (B extends { $name: infer U } ? { $name: U } : {}) & {
+    -readonly [K in keyof S]: Parameters<DefinitionOf<S[K]>["$deserialize"]>[0];
+  };
   Inline: {
     -readonly [K in keyof S]: DefinitionOf<S[K]>["$inline"];
   };
@@ -51,7 +54,7 @@ export const Dict = <
 
     static $deserialize<T extends typeof $Dict>(
       this: T,
-      value: Cache["Serialized"],
+      value: Cache["Deserializing"],
     ): Cache["Inline"] {
       const split = Object.entries(of);
       const transform = split.map(([key, child]) => {

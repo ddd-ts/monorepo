@@ -27,7 +27,7 @@ export const Class = <
 
     static deserialize<T extends Constructor<any>>(
       this: T,
-      value: Expand<Serialized>,
+      value: Expand<Parameters<S["deserialize"]>[0]>,
     ): InstanceType<T> {
       return new this(of.deserialize(value)) as InstanceType<T>;
     }
@@ -36,7 +36,7 @@ export const Class = <
       return this.value.serialize();
     }
 
-    static $deserialize(value: Serialized): Inline {
+    static $deserialize(value: Parameters<S["deserialize"]>[0]): Inline {
       return of.deserialize(value);
     }
 

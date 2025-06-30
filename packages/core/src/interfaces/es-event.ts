@@ -1,8 +1,11 @@
+import { MicrosecondTimestamp } from "@ddd-ts/shape";
+import { EventId } from "../components/event-id";
 import type { IEvent } from "./event";
 
 export type IFact<T extends IEsEvent = IEsEvent> = T & {
+  ref: string;
   revision: number;
-  occurredAt: Date;
+  occurredAt: MicrosecondTimestamp;
 };
 
 export type IChange<T extends IEsEvent = IEsEvent> = T & {
@@ -10,9 +13,16 @@ export type IChange<T extends IEsEvent = IEsEvent> = T & {
   occurredAt: undefined;
 };
 
+export type ISavedChange<T extends IEsEvent = IEsEvent> = T & {
+  ref: string;
+  revision: number;
+  occurredAt: undefined;
+};
+
 export interface IEsEvent<Name extends string = string, Payload = any>
   extends IEvent<Name, Payload> {
-  occurredAt?: Date;
+  id: EventId;
+  occurredAt?: MicrosecondTimestamp;
   revision?: number;
 }
 
@@ -20,7 +30,7 @@ export interface ISerializedEvent {
   $name: string;
   name: string;
   id: string;
-  occurredAt?: Date;
+  occurredAt?: MicrosecondTimestamp;
   revision?: number;
   payload: any;
   version: number;
@@ -30,8 +40,19 @@ export interface ISerializedChange {
   $name: string;
   name: string;
   id: string;
+  ref?: string;
+  revision?: number;
+  payload: any;
+  version: number;
+}
+
+export interface ISerializedSavedChange {
+  $name: string;
+  name: string;
+  id: string;
+  ref: string;
   occurredAt: undefined;
-  revision: undefined;
+  revision: number;
   payload: any;
   version: number;
 }
@@ -40,6 +61,7 @@ export interface ISerializedFact {
   $name: string;
   name: string;
   id: string;
+  ref: string;
   occurredAt: Date;
   revision: number;
   payload: any;

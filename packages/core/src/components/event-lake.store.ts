@@ -1,8 +1,9 @@
 import {
-  IChange,
   IEsEvent,
+  ISavedChange,
   ISerializedChange,
   ISerializedFact,
+  ISerializedSavedChange,
 } from "../interfaces/es-event";
 import { IEventBus } from "../interfaces/event-bus";
 import { ISerializer } from "../interfaces/serializer";
@@ -15,7 +16,7 @@ export interface EventLakeStorageLayer {
     lakeId: LakeId,
     changes: ISerializedChange[],
     trx: Transaction,
-  ): Promise<EventReference[]>;
+  ): Promise<ISerializedSavedChange[]>;
 
   read(
     lakeId: LakeId,
@@ -27,20 +28,39 @@ export interface EventLakeStorageLayer {
 export class EventLakeStore<Event extends IEsEvent> {
   constructor(
     public readonly storageLayer: EventLakeStorageLayer,
-    public readonly serializer: ISerializer<Event>,
+    public readonly serializer: ISerializer<Event, any>,
     public readonly eventBus?: IEventBus,
   ) {}
 
-  async append(lakeId: LakeId, changes: Event[], trx: Transaction) {
+  async append(
+    lakeId: LakeId,
+    changes: Event[],
+    trx: Transaction,
+  ): Promise<ISavedChange<Event>[]> {
     const serialized = await Promise.all(
       changes.map((change) => this.serializer.serialize(change)),
     );
 
-    trx.onCommit(() => {
-      for (const change of changes) this.eventBus?.publish(change);
+    const result = await this.storageLayer.append(lakeId, serialized, trx);
+
+    const saved = (await Promise.all(
+      result.map((r) => this.serializer.deserialize(r)),
+    )) as ISavedChange<Event>[];
+
+    for (const save of saved) {
+      const matching = changes.find((c) => c.id.equals(save.id));
+      if (matching) {
+        (matching as any).revision = save.revision;
+        (matching as any).ref = save.ref;
+      }
+    }
+
+    trx.onCommit(async () => {
+      if (!this.eventBus) return;
+      return Promise.all(saved.map((s) => this.eventBus?.publish(s)));
     });
 
-    return this.storageLayer.append(lakeId, serialized as any, trx);
+    return saved;
   }
 
   async *read(
