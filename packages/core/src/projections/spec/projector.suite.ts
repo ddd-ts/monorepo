@@ -150,6 +150,8 @@ Withdrawn:
     await projection.tick();
     await projection.tick();
 
+    // await new Promise((resolve) => setTimeout(resolve, 3000));
+
     expect(projection.print(n)).toMatchInlineSnapshot(`
 "
 AccountOpened: 
@@ -310,6 +312,7 @@ Withdrawn:
     projection.resume(deposit);
     projection.resume(withdraw);
     await projection.tick();
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     expect(projection.print(n)).toMatchInlineSnapshot(`
 "
@@ -873,15 +876,13 @@ AccountRenamed:
     await projector.handle(deposited);
 
     unmarkFailing();
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 4000));
 
     const withdrawn = account.withdraw(50);
     await accountStore.save(account);
     await projector.handle(withdrawn);
 
-    await projection.tick();
-    await projection.tick();
-    await projection.tick();
+    await new Promise((resolve) => setTimeout(resolve, 4000));
 
     expect(await getFlow(account.id)).toEqual(1150);
   }

@@ -7,7 +7,7 @@ type GetDescription<D extends Description<any>> = D[keyof D];
 type MapToDescription<
   ProcessTraits extends Trait[],
   HandleTraits extends Trait[] = ProcessTraits,
-> = ProcessTraits extends [...infer R extends Trait[], infer H extends Trait]
+> = ProcessTraits extends [infer H extends Trait, ...infer R extends Trait[]]
   ? H extends Trait
     ? InstanceType<ReturnType<H["factory"]>> extends infer Impl
       ? Impl extends { description: infer D extends Description<any> }
@@ -36,7 +36,7 @@ type MapToDescription<
         : MapToDescription<R, HandleTraits>
       : never
     : never
-  : HandleTraits extends [...infer R extends Trait[], infer H extends Trait]
+  : HandleTraits extends [infer H extends Trait, ...infer R extends Trait[]]
     ? H extends Trait
       ? InstanceType<ReturnType<H["factory"]>> extends infer Impl
         ? Impl extends { description: infer D extends Description<any> }

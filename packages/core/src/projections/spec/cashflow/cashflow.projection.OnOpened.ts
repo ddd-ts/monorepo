@@ -9,11 +9,11 @@ export class CashflowOnOpenedHandler extends Derive(
   Handler.Base,
   Handler.Debug,
   Handler.Store<CashflowStore>(),
-  Handler.OnProcessed,
   Handler.Transaction<Transaction>(),
+  Handler.OnProcessed,
   Handler.Suspense,
   Handler.LocalRetry(3, 100),
-  Handler.LocalTimeout(1000),
+  Handler.LocalTimeout(3000),
   Handler.Parallel,
 ) {
   locks(event: AccountOpened) {

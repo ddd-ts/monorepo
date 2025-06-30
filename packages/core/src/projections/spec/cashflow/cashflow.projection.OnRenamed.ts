@@ -8,11 +8,11 @@ import { Lock } from "../../lock";
 export class CashflowOnRenamedHandler extends Derive(
   Handler.Base,
   Handler.Store<CashflowStore>(),
-  Handler.OnProcessed,
   Handler.Transaction<Transaction>(),
-  Handler.Suspense,
-  Handler.BatchLast,
   Handler.LocalTimeout(2000),
+  Handler.OnProcessed,
+  Handler.BatchLast,
+  Handler.Suspense,
 ) {
   locks(event: AccountRenamed) {
     return new Lock({

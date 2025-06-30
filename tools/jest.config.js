@@ -8,7 +8,7 @@ const config = (workspace) => ({
   rootDir: `${workspace.path}/src`,
   testEnvironment: "node",
   setupFilesAfterEnv: [
-    // "../node_modules/@ddd-ts/tools/jest.console.js",
+    "../node_modules/@ddd-ts/tools/jest.console.js",
     // "../node_modules/@ddd-ts/tools/jest.telemetry.setup.js",
   ],
   globals: {

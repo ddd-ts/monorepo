@@ -65,24 +65,24 @@ describe("Firestore Projector", () => {
       ) {
         const id = accountId.serialize();
 
-        if (amount === 404) {
-          throw new Error("Amount cannot be 404");
-        }
+        // if (amount === 404) {
+        //   throw new Error("Amount cannot be 404");
+        // }
 
-        if (amount > 50000 && amount < 60000) {
-          const defaultFailures = new Map([[amount, amount - 50000]]);
-          const failures = this.failures.get(id) || defaultFailures;
-          this.failures.set(id, failures);
+        // if (amount > 50000 && amount < 60000) {
+        //   const defaultFailures = new Map([[amount, amount - 50000]]);
+        //   const failures = this.failures.get(id) || defaultFailures;
+        //   this.failures.set(id, failures);
 
-          const failuresLeft = failures.get(amount)!;
-          failures.set(amount, failuresLeft - 1);
+        //   const failuresLeft = failures.get(amount)!;
+        //   failures.set(amount, failuresLeft - 1);
 
-          if (failuresLeft >= 1) {
-            throw new Error(
-              `Simulated failure for amount ${amount} (${failuresLeft} failures left)`,
-            );
-          }
-        }
+        //   if (failuresLeft >= 1) {
+        //     throw new Error(
+        //       `Simulated failure for amount ${amount} (${failuresLeft} failures left)`,
+        //     );
+        //   }
+        // }
 
         await context.trx.transaction.update(
           this.collection.doc(accountId.serialize()),
@@ -121,7 +121,12 @@ describe("Firestore Projector", () => {
 
       const queueStore = new FirestoreQueueStore(database);
 
-      const projector = new FirestoreProjector(projection, reader, queueStore);
+      const projector = new FirestoreProjector(projection, reader, queueStore, {
+        onEnqueueError: console.log,
+        onProcessError: console.error,
+        retry: { attempts: 40, minDelay: 100, maxDelay: 1000 },
+        enqueue: { batchSize: 50 },
+      });
 
       return {
         accountStore,

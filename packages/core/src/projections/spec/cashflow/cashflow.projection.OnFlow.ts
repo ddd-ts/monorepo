@@ -7,16 +7,17 @@ import { Lock } from "../../lock";
 
 export class CashflowOnFlowHandler extends Derive(
   Handler.Base,
+  Handler.Debug,
   Handler.Store<CashflowStore>(),
-  Handler.OnProcessed,
-  Handler.Transaction<Transaction>(),
-  Handler.Suspense,
-  Handler.LocalTimeout(1000),
-  Handler.ClaimTimeout(1000),
+  Handler.ClaimTimeout(2_000),
+  Handler.SkipAfter(20),
+  Handler.RetryInIsolationAfter(18),
+  Handler.LocalTimeout(500),
   Handler.LocalRetry(3, 10),
-  Handler.SkipAfter(100),
-  Handler.RetryInIsolationAfter(50),
   Handler.Parallel,
+  Handler.Suspense,
+  Handler.Transaction<Transaction>(),
+  Handler.OnProcessed,
 ) {
   locks(event: Withdrawn | Deposited) {
     return new Lock({
@@ -26,7 +27,7 @@ export class CashflowOnFlowHandler extends Derive(
   }
 
   async handleOne(event: Withdrawn | Deposited, context: this["context"]) {
-    console.log(`Handling ${event}`);
+    // await new Promise((resolve) => setTimeout(resolve, 100)); // Simulate async operation
     await this.store.increment(
       event.payload.accountId,
       event.payload.amount,

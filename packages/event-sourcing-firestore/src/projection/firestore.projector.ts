@@ -22,7 +22,7 @@ import {
   DefaultConverter,
   FirestoreTransaction,
 } from "@ddd-ts/store-firestore";
-import { Trace } from "./trace.decorator";
+// import { Trace } from "./trace.decorator";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -36,6 +36,12 @@ export class FirestoreProjector {
     public config = {
       retry: { attempts: 20, minDelay: 10, maxDelay: 1000 },
       enqueue: { batchSize: 100 },
+      onProcessError: (error: Error) => {
+        console.error("Error processing event:", error);
+      },
+      onEnqueueError: (error: Error) => {
+        console.error("Error enqueuing tasks:", error);
+      },
     },
   ) {}
 
@@ -48,17 +54,17 @@ export class FirestoreProjector {
       const jitteredDelay = this.config.retry.minDelay + jitter;
       await wait(jitteredDelay);
     }
-    throw new Error("Breathing stopped, handler flatlined");
+    // throw new Error("Breathing stopped, handler flatlined");
   }
 
-  @Trace("projector.handle", ($, e) => ({
-    eventId: e.id.serialize(),
-    eventName: e.name,
-    eventRevision: e.revision,
-    eventReference: e.ref,
-    projectionName: $.projection.constructor.name,
-    checkpointId: $.projection.getCheckpointId(e).serialize(),
-  }))
+  // @Trace("projector.handle", ($, e) => ({
+  //   eventId: e.id.serialize(),
+  //   eventName: e.name,
+  //   eventRevision: e.revision,
+  //   eventReference: e.ref,
+  //   projectionName: $.projection.constructor.name,
+  //   checkpointId: $.projection.getCheckpointId(e).serialize(),
+  // }))
   async handle(savedChange: ISavedChange<IEsEvent>) {
     const checkpointId = this.projection.getCheckpointId(savedChange);
     const target = await this.getCursor(savedChange);
@@ -69,22 +75,30 @@ export class FirestoreProjector {
       );
     }
 
+    const errors = [];
+
     for await (const attempt of this.breathe()) {
       const source = this.projection.getSource(savedChange);
-      if (await this.attempt(source, checkpointId, target)) {
+      const [ok, message] = await this.attempt(source, checkpointId, target);
+
+      if (ok) {
         return;
       }
+
+      errors.push(message);
     }
 
-    throw new Error(`Failed to handle event ${savedChange.id.serialize()}`);
+    throw new Error(
+      `Failed to handle event ${savedChange.id.serialize()}: ${errors.join(", ")}`,
+    );
   }
 
-  @Trace("projector.reader.getCursor")
+  // @Trace("projector.reader.getCursor")
   private async getCursor(savedChange: ISavedChange<IEsEvent>) {
     return await this.reader.getCursor(savedChange);
   }
 
-  @Trace("projector.attempt")
+  // @Trace("projector.attempt")
   private async attempt(
     source: ProjectedStream,
     checkpointId: CheckpointId,
@@ -93,37 +107,40 @@ export class FirestoreProjector {
     const headCursor = await this.getQueueHead(checkpointId);
 
     if (!headCursor?.isAfterOrEqual(target)) {
-      if (!(await this.enqueue(source, checkpointId, target))) {
-        return false;
+      const [ok, message] = await this.enqueue(source, checkpointId, target);
+      if (!ok) {
+        return [false, message] as const;
       }
     }
 
     if (await this.checkIsProcessed(checkpointId, target.eventId)) {
-      return true;
+      return [true, "Successfully processed"] as const;
     }
 
     const unprocessed = await this.getUnprocessed(checkpointId);
 
     if (!unprocessed.length) {
-      return false;
+      return [false, "No unprocessed tasks found"] as const;
     }
 
     const batch = Task.batch(unprocessed);
     const claimer = ClaimerId.generate();
 
-    if (!(await this.claimTasks(checkpointId, claimer, batch))) {
-      return false;
+    const [ok, message] = await this.claimTasks(checkpointId, claimer, batch);
+
+    if (!ok) {
+      return [false, message] as const;
     }
 
     return await this.processEvents(checkpointId, claimer, target.eventId);
   }
 
-  @Trace("projector.queue.head")
+  // @Trace("projector.queue.head")
   private async getQueueHead(checkpointId: CheckpointId) {
     return await this.queue.head(checkpointId);
   }
 
-  @Trace("projector.readSourceStream")
+  // @Trace("projector.readSourceStream")
   private async readSourceStream(
     source: ProjectedStream,
     checkpointId: CheckpointId,
@@ -135,7 +152,7 @@ export class FirestoreProjector {
     return this.reader.slice(source, shard, headCursor, target, limit);
   }
 
-  @Trace("projector.enqueue")
+  // @Trace("projector.enqueue")
   private async enqueue(
     source: ProjectedStream,
     checkpointId: CheckpointId,
@@ -148,28 +165,20 @@ export class FirestoreProjector {
       return Task.new(e, settings);
     });
 
-    try {
-      await this.queue.enqueue(checkpointId, tasks);
-      return true;
-    } catch (e) {
-      if (!(e instanceof AlreadyEnqueuedError)) {
-        console.error(e);
-      }
-      return false;
-    }
+    return await this.queue.enqueue(checkpointId, tasks);
   }
 
-  @Trace("projector.queue.isProcessed")
+  // @Trace("projector.queue.isProcessed")
   private async checkIsProcessed(checkpointId: CheckpointId, eventId: EventId) {
     return await this.queue.isProcessed(checkpointId, eventId);
   }
 
-  @Trace("projector.queue.unprocessed")
+  // @Trace("projector.queue.unprocessed")
   private async getUnprocessed(checkpointId: CheckpointId) {
     return await this.queue.unprocessed(checkpointId);
   }
 
-  @Trace("projector.queue.claim")
+  // @Trace("projector.queue.claim")
   private async claimTasks(
     checkpointId: CheckpointId,
     claimer: ClaimerId,
@@ -177,13 +186,13 @@ export class FirestoreProjector {
   ) {
     try {
       await this.queue.claim(checkpointId, claimer, batch);
-      return true;
+      return [true, "Tasks claimed successfully"] as const;
     } catch (e) {
-      return false;
+      return [false, e] as const;
     }
   }
 
-  @Trace("projector.processEvents")
+  // @Trace("projector.processEvents")
   private async processEvents(
     checkpointId: CheckpointId,
     claimer: ClaimerId,
@@ -191,7 +200,7 @@ export class FirestoreProjector {
   ) {
     const tasks = await this.queue.claimed(checkpointId, claimer);
     const todo = await Promise.all(tasks.map((t) => this.reader.get(t.cursor)));
-    const filtered = todo.filter((t) => !!t);
+    const filtered = todo.filter((t) => !!t) as IEsEvent[];
 
     const onProcessed = this.queue.processed.bind(this.queue);
     const context = { onProcessed, checkpointId };
@@ -200,16 +209,16 @@ export class FirestoreProjector {
       const processed = await this.projection.process(filtered, context);
 
       if (processed.some((id) => id?.equals(targetEventId))) {
-        return true;
+        return [true, "Target event processed successfully"] as const;
       }
 
-      return false;
+      return [false, "Target event not processed yet"] as const;
     } catch (e) {
-      console.error(e);
+      this.config.onProcessError(e as Error);
       if (this._unclaim) {
         await this.queue.unclaim(checkpointId, tasks);
       }
-      return false;
+      return [false, e] as const;
     }
   }
 }
@@ -259,11 +268,12 @@ export class FirestoreQueueStore {
 
     try {
       await batch.commit();
+      return [true, "Tasks enqueued successfully"] as const;
     } catch (err: any) {
       if (err.code === 6) {
-        throw new AlreadyEnqueuedError();
+        return [false, new AlreadyEnqueuedError()] as const;
       }
-      throw err;
+      return [false, err] as const;
     }
   }
 
@@ -541,6 +551,9 @@ export class Task<Stored extends boolean> extends Shape({
 
     for (const task of tasks) {
       if (task.shouldSkip) {
+        console.log(
+          `Skipping task ${task.id.serialize()} due to skipAfter limit`,
+        );
         continue;
       }
 
@@ -548,7 +561,9 @@ export class Task<Stored extends boolean> extends Shape({
         if (batch.length > 0) {
           return batch;
         }
-
+        console.log(
+          `Isolating task ${task.id.serialize()} due to isolateAfter limit`,
+        );
         batch.push(task);
         return batch;
       }
