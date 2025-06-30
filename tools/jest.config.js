@@ -1,9 +1,16 @@
 const { getPnpmWorkspaces } = require("workspace-tools");
 
+/**
+ * @typedef {() => import("jest").Config}
+ */
 const config = (workspace) => ({
   displayName: workspace.name,
   rootDir: `${workspace.path}/src`,
   testEnvironment: "node",
+  setupFilesAfterEnv: [
+    // "../node_modules/@ddd-ts/tools/jest.console.js",
+    // "../node_modules/@ddd-ts/tools/jest.telemetry.setup.js",
+  ],
   globals: {
     CURRENT_WORKSPACE: workspace.name,
     CURRENT_WORKSPACE_PATH: workspace.path,
