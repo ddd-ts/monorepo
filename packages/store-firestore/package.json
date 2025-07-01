@@ -12,6 +12,7 @@
 		"firebase-admin": "^13.2.0"
 	},
 	"devDependencies": {
+		"@ddd-ts/shape": "workspace:*",
 		"@ddd-ts/tools": "workspace:*",
 		"@ddd-ts/types": "workspace:*",
 		"@types/jest": "^29.5.1"

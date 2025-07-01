@@ -1,12 +1,12 @@
-import type { Constructor } from "@ddd-ts/types";
-import type { ISerializer } from "../interfaces/serializer";
+import type { AbstractConstructor, Constructor } from "@ddd-ts/types";
+import type { ISerializer, Serialized } from "../interfaces/serializer";
 import { INamed } from "../interfaces/named";
 
-export type AutoSerializable = Constructor<{ serialize(): any }> & {
+export type AutoSerializable = AbstractConstructor<{ serialize(): any }> & {
   deserialize(value: any): any;
 };
 
-export type TypedAutoSerializable<T> = Constructor<T> & {
+export type TypedAutoSerializable<T> = AbstractConstructor<T> & {
   deserialize(value: string): T;
 };
 
@@ -19,7 +19,9 @@ export const AutoSerializer = <
 ) => {
   type Instance = InstanceType<T>;
 
-  return class $AutoSerializer implements ISerializer<Instance> {
+  return class $AutoSerializer
+    implements ISerializer<Instance, Serialized<Instance> & { version: V }>
+  {
     serialize(
       value: Instance,
     ): { version: V } & ReturnType<Instance["serialize"]> {
@@ -36,17 +38,11 @@ export const AutoSerializer = <
   };
 };
 
-export type AutoSerializerV1<Class extends Constructor & INamed> = {
-  serialize(value: InstanceType<Class>): {
-    version: 1;
-  } & ReturnType<InstanceType<Class>["serialize"]>;
-
-  deserialize(
-    serialized: {
-      version: 1;
-    } & ReturnType<InstanceType<Class>["serialize"]>,
-  ): InstanceType<Class>;
-};
+export type AutoSerializerV1<Class extends AbstractConstructor & INamed> =
+  ISerializer<
+    InstanceType<Class>,
+    Serialized<InstanceType<Class>> & { version: 1 }
+  >;
 
 AutoSerializer.First = <T extends AutoSerializable>(of: T) =>
   class FirstSerializer extends AutoSerializer(of, 1) {};

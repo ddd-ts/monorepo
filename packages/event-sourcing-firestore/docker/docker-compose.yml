@@ -1,5 +1,3 @@
-version: "3.4"
-
 services:
   firebase:
     image: andreysenov/firebase-tools
@@ -12,3 +10,29 @@ services:
       - 8080:8080 # firestore emulator
       - 8085:8085 # pubsub emulator
       - 9199:9199 # storage emulator
+      - 4500:4500 # functions emulator
+      - 9150:9150 # firestore emulator (legacy)
+
+#   signoz:
+#     container_name: signoz
+#     image: ghcr.io/aetherall/signoz-standalone:latest
+#     environment:
+#       SIGNOZ_ADMIN_EMAIL: admin@signoz.local
+#       SIGNOZ_ADMIN_PASSWORD: admin123
+#       SIGNOZ_ADMIN_NAME: Admin
+#       SIGNOZ_TELEMETRY_ENABLED: false
+#     ports:
+#       - 9999:8080
+#       - 4317:4317
+#       - 4318:4318
+#     volumes:
+#       - signoz_db_telemetry:/var/lib/clickhouse
+#       - signoz_db_application:/var/lib/signoz
+
+# volumes:
+#   signoz_db_telemetry:
+#     external: true
+#     name: signoz_db_telemetry
+#   signoz_db_application:
+#     external: true
+#     name: signoz_db_application

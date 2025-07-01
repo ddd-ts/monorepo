@@ -1,7 +1,8 @@
+import "./metadata.polyfill";
 export { StreamId, LakeId } from "./components/stream-id";
 export { AutoSerializable, AutoSerializer } from "./components/auto-serializer";
 export { EventBusProjectionProcessor } from "./components/event-bus.projection-processor";
-export { EventId, EventReference } from "./components/event-id";
+export { EventId } from "./components/event-id";
 export {
   EventLakeStore,
   EventLakeStorageLayer,
@@ -40,9 +41,11 @@ export type {
   IEsEvent,
   IChange,
   IFact,
+  ISavedChange,
   ISerializedEvent,
   ISerializedChange,
   ISerializedFact,
+  ISerializedSavedChange,
 } from "./interfaces/es-event";
 export type { IEventBus } from "./interfaces/event-bus";
 export type { IEventSourced } from "./interfaces/event-sourced";
@@ -79,5 +82,8 @@ export {
 export { Identifiable } from "./traits/identifiable";
 export { Named } from "./traits/named";
 export { Shaped, NamedShape } from "./traits/shaped";
+export { Cursor } from "./components/cursor";
 
-import "./metadata.polyfill";
+export * from "./projections";
+export { Handler } from "./projections";
+export { ESProjection } from "./projections/projection";

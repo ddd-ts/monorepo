@@ -37,6 +37,16 @@ export class InMemoryStore<M extends IIdentifiable> implements Store<M> {
     this.database.clear(this.collection);
   }
 
+  async create(model: M, trx?: InMemoryTransaction): Promise<void> {
+    const serialized = await this.serializer.serialize(model);
+    await this.database.create(
+      this.collection,
+      model.id.serialize(),
+      { ...(this.$name ? { $name: this.$name } : {}), ...serialized },
+      trx?.transaction,
+    );
+  }
+
   async save(model: M, trx?: InMemoryTransaction): Promise<void> {
     const serialized = await this.serializer.serialize(model);
     await this.database.save(

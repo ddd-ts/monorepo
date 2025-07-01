@@ -15,6 +15,7 @@ type Matcher<V> = { some: (value: V) => any; none: () => any };
 
 type Internal<S extends Definition | Shorthand> = {
   Serialized: ReturnType<DefinitionOf<S>["$serialize"]> | undefined;
+  Deserializing: Parameters<DefinitionOf<S>["$deserialize"]>[0] | undefined;
   Inline: Expand<DefinitionOf<S>["$inline"]> | undefined;
   Required: Expand<DefinitionOf<S>["$inline"]>;
 };
@@ -49,12 +50,12 @@ export const Optional = <
 
     static deserialize<T extends Constructor>(
       this: T,
-      value: Cache["Inline"],
+      value: Cache["Deserializing"],
     ): InstanceType<T> {
       return new (this as any)((this as any).$deserialize(value)) as any;
     }
 
-    static $deserialize(value: Cache["Serialized"]): Definition["$inline"] {
+    static $deserialize(value: Cache["Deserializing"]): Definition["$inline"] {
       if (value === undefined) {
         return undefined;
       }

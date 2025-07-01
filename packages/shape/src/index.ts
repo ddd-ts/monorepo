@@ -10,3 +10,4 @@ export * from "./mapping";
 export * from "./multiple";
 export * from "./nothing";
 export * from "./optional";
+export * from "./addons/microsecond-timestamp";

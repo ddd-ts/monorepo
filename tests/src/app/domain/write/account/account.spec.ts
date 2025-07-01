@@ -2,6 +2,7 @@ import { EventId, type IEsEvent } from "@ddd-ts/core";
 import { Constructor } from "@ddd-ts/types";
 import { Account, AccountOpened } from "./account";
 import { Deposited } from "./deposited.event";
+import { MicrosecondTimestamp } from "@ddd-ts/shape";
 
 function expectedChange(event: Constructor<IEsEvent>, payload: any) {
   return expect.objectContaining({
@@ -64,12 +65,15 @@ describe("EsAggregate", () => {
 
       expect(account.changes).toEqual([]);
 
+      const id = EventId.generate();
+
       account.load(
         new Deposited({
-          id: EventId.generate(),
+          id,
+          ref: id.serialize(),
           revision: 1,
           name: "Deposited",
-          occurredAt: new Date(),
+          occurredAt: MicrosecondTimestamp.now(),
           payload: {
             accountId: account.id,
             amount: 10,
@@ -93,11 +97,14 @@ describe("EsAggregate", () => {
       const account = Account.open();
       account.acknowledgeChanges();
 
+      const id = EventId.generate();
+
       account.load(
         new Deposited({
-          id: EventId.generate(),
+          id,
+          ref: id.serialize(),
           name: "Deposited",
-          occurredAt: new Date(),
+          occurredAt: MicrosecondTimestamp.now(),
           revision: 1,
           payload: {
             accountId: account.id,
@@ -115,11 +122,13 @@ describe("EsAggregate", () => {
 
       expect(account.acknowledgedRevision).toEqual(0);
 
+      const id = EventId.generate();
       account.load(
         new Deposited({
-          id: EventId.generate(),
+          id,
+          ref: id.serialize(),
           name: "Deposited",
-          occurredAt: new Date(),
+          occurredAt: MicrosecondTimestamp.now(),
           revision: 1,
           payload: {
             accountId: account.id,
@@ -135,13 +144,16 @@ describe("EsAggregate", () => {
       const account = Account.open();
       account.acknowledgeChanges();
 
+      const id = EventId.generate();
+
       // expected revision 1
       expect(() =>
         account.load(
           new Deposited({
-            id: EventId.generate(),
+            id,
+            ref: id.serialize(),
             name: "Deposited",
-            occurredAt: new Date(),
+            occurredAt: MicrosecondTimestamp.now(),
             revision: 2,
             payload: {
               accountId: account.id,
@@ -156,11 +168,14 @@ describe("EsAggregate", () => {
       const account = Account.open();
       account.acknowledgeChanges();
 
+      const id = EventId.generate();
+
       account.load(
         new Deposited({
-          id: EventId.generate(),
+          id,
+          ref: id.serialize(),
           name: "Deposited",
-          occurredAt: new Date(),
+          occurredAt: MicrosecondTimestamp.now(),
           revision: 1,
           payload: {
             accountId: account.id,
@@ -173,9 +188,10 @@ describe("EsAggregate", () => {
       expect(() =>
         account.load(
           new Deposited({
-            id: EventId.generate(),
+            id,
+            ref: id.serialize(),
             name: "Deposited",
-            occurredAt: new Date(),
+            occurredAt: MicrosecondTimestamp.now(),
             revision: 1,
             payload: {
               accountId: account.id,
@@ -192,12 +208,15 @@ describe("EsAggregate", () => {
 
       account.deposit(10);
 
+      const id = EventId.generate();
+
       expect(() =>
         account.load(
           new Deposited({
-            id: EventId.generate(),
+            id,
+            ref: id.serialize(),
             name: "Deposited",
-            occurredAt: new Date(),
+            occurredAt: MicrosecondTimestamp.now(),
             revision: 2,
             payload: {
               accountId: account.id,

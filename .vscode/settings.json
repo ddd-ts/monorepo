@@ -3,6 +3,6 @@
     "runAllTestsOnStartup": false,
     "type": "on-demand"
   },
-  "jest.jestCommandLine": "./tools/node_modules/.bin/jest --config tools/jest.ws.config.js",
+  "jest.jestCommandLine": "./tools/node_modules/.bin/jest --config tools/jest.ws.config.js --runInBand",
   "typescript.tsdk": "./tools/node_modules/typescript/lib",
 }

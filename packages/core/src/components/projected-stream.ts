@@ -1,7 +1,13 @@
 import { Either, Multiple, Shape } from "@ddd-ts/shape";
-import { IEsEvent, ISerializedFact } from "../interfaces/es-event";
-import { EventReference } from "./event-id";
+import {
+  IEsEvent,
+  IFact,
+  ISavedChange,
+  ISerializedFact,
+  ISerializedSavedChange,
+} from "../interfaces/es-event";
 import { ISerializer } from "../interfaces/serializer";
+import { Cursor } from "./cursor";
 
 export class StreamSource extends Shape({
   aggregateType: String,
@@ -25,12 +31,24 @@ export class ProjectedStream extends Shape({
 }) {}
 
 export interface ProjectedStreamStorageLayer {
+  getCursor(savedChange: ISerializedSavedChange): Promise<Cursor | undefined>;
+
+  get(cursor: Cursor): Promise<ISerializedFact | undefined>;
+
   read(
     projectedStream: ProjectedStream,
     shard: string,
-    startAfter?: EventReference,
-    endAt?: EventReference,
+    startAfter?: Cursor,
+    endAt?: Cursor,
   ): AsyncIterable<ISerializedFact>;
+
+  slice(
+    projectedStream: ProjectedStream,
+    shard: string,
+    startAfter?: Cursor,
+    endAt?: Cursor,
+    count?: number,
+  ): Promise<ISerializedFact[]>;
 }
 
 export class ProjectedStreamReader<Event extends IEsEvent> {
@@ -39,16 +57,49 @@ export class ProjectedStreamReader<Event extends IEsEvent> {
     private readonly registry: ISerializer<Event>,
   ) {}
 
+  async getCursor(savedChange: ISavedChange<Event>) {
+    const serialized = await this.registry.serialize(savedChange);
+    return this.reader.getCursor(serialized as ISerializedSavedChange);
+  }
+
+  async get(cursor: Cursor) {
+    const serializedFact = await this.reader.get(cursor);
+    if (!serializedFact) {
+      return undefined;
+    }
+    return this.registry.deserialize(serializedFact) as IFact<Event>;
+  }
+
   async *read(
-    projectedStream: ProjectedStream,
+    source: ProjectedStream,
     shard: string,
-    startAfter?: EventReference,
-    endAt?: EventReference,
-  ) {
-    const stream = this.reader.read(projectedStream, shard, startAfter, endAt);
+    startAfter?: Cursor,
+    endAt?: Cursor,
+  ): AsyncGenerator<IFact<Event>> {
+    const stream = this.reader.read(source, shard, startAfter, endAt);
 
     for await (const fact of stream) {
-      yield this.registry.deserialize(fact);
+      yield this.registry.deserialize(fact) as IFact<Event>;
     }
+  }
+
+  async slice(
+    source: ProjectedStream,
+    shard: string,
+    startAfter?: Cursor,
+    endAt?: Cursor,
+    limit?: number,
+  ) {
+    const slice = await this.reader.slice(
+      source,
+      shard,
+      startAfter,
+      endAt,
+      limit,
+    );
+
+    return (await Promise.all(
+      slice.map((fact) => this.registry.deserialize(fact)),
+    )) as IFact<Event>[];
   }
 }

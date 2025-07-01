@@ -1,7 +1,14 @@
+function now() {
+  if (typeof process === "object" && typeof process.hrtime === "function") {
+    return process.hrtime.bigint() / BigInt(1000);
+  }
+  return BigInt(Date.now() * 1_000);
+}
+
 export class Collection {
   constructor(
-    private data: Map<string, { savedAt: number; data: any }> = new Map()
-  ) { }
+    private data: Map<string, { savedAt: bigint; data: any }> = new Map(),
+  ) {}
 
   clear() {
     this.data.clear();
@@ -10,7 +17,7 @@ export class Collection {
   getLatestSnapshot(id: string) {
     const data = [...this.data.values()];
     const sameId = data.filter((d) => d.data.id === id);
-    const sorted = sameId.sort((a, b) => b.savedAt - a.savedAt);
+    const sorted = sameId.sort((a, b) => (b.savedAt > a.savedAt ? 1 : -1));
     return sorted[0]?.data;
   }
 
@@ -38,7 +45,7 @@ export class Collection {
   }
 
   getRaw(id: string) {
-    return this.data.get(id)
+    return this.data.get(id);
   }
 
   countAll() {
@@ -58,15 +65,14 @@ export class Collection {
   }
 
   save(id: string, data: any): void {
-    const now = process.hrtime.bigint();
-    this.data.set(id, { savedAt: Number(now), data });
+    this.data.set(id, { savedAt: now(), data });
   }
 
   toPretty() {
     return [...this.data.entries()]
       .map(
         ([id, data]) =>
-          `\t\t"${id}": ${JSON.stringify(data.data, replaceBigInt)}`
+          `\t\t"${id}": ${JSON.stringify(data.data, replaceBigInt)}`,
       )
       .join(",\n");
   }

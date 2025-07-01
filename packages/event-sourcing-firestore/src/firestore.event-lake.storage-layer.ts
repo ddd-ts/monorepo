@@ -3,9 +3,9 @@ import {
   EventId,
   type ISerializedChange,
   type ISerializedFact,
-  EventReference,
   EventLakeStorageLayer,
 } from "@ddd-ts/core";
+import { ISerializedSavedChange } from "@ddd-ts/core/dist/interfaces/es-event";
 
 import {
   DefaultConverter,
@@ -37,7 +37,7 @@ export class FirestoreEventLakeStorageLayer implements EventLakeStorageLayer {
   ) {
     const collection = this.getCollection(lakeId);
 
-    const refs: EventReference[] = [];
+    const result: ISerializedSavedChange[] = [];
 
     let revision = 0;
     for (const change of changes) {
@@ -51,13 +51,19 @@ export class FirestoreEventLakeStorageLayer implements EventLakeStorageLayer {
       };
 
       const ref = collection.doc(change.id);
-      refs.push(new EventReference(ref.path));
       trx.transaction.create(ref, this.converter.toFirestore(storageChange));
+
+      result.push({
+        ...change,
+        ref: ref.path,
+        revision: revision,
+        occurredAt: undefined,
+      });
 
       revision++;
     }
 
-    return refs;
+    return result;
   }
 
   async *read(
