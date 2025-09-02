@@ -8,16 +8,16 @@ export class CashflowSerializer extends AutoSerializer.First(Cashflow) {}
 export interface CashflowStore {
   load(accountId: AccountId): Promise<Cashflow | undefined>;
 
-  init(accountId: AccountId, context: { trx: Transaction }): Promise<void>;
+  init(accountId: AccountId, context?: { trx?: Transaction }): Promise<void>;
   increment(
     accountId: AccountId,
     amount: number,
-    context: { trx: Transaction },
+    context?: { trx?: Transaction },
   ): Promise<void>;
 
   rename(
     accountId: AccountId,
     newName: string,
-    context: { trx: Transaction },
+    context?: { trx?: Transaction },
   ): Promise<void>;
 }

@@ -1,31 +1,33 @@
 import { BaseHandler } from "./base.handler";
 import { WithBatchLast } from "./batch.handler";
-import { WithCheckpoint, WithOnProcessed } from "./checkpoint.handler";
-import { WithDebug } from "./description.handler";
+import { WithOnProcessed } from "./checkpoint.handler";
+import { WithContext } from "./context.handler";
 import { WithParallel } from "./parallel.handler";
+import { WithLocalRetry } from "./retry.handler";
+import { WithSequential } from "./sequential.handler";
 import {
-  WithLocalRetry,
+  WithClaimTimeout,
   WithIsolateAfter,
   WithSkipAfter,
-} from "./retry.handler";
-import { WithStore } from "./store.handler";
+} from "./settings.handle";
 import { WithSuspense } from "./suspense.handler";
-import { WithClaimTimeout, WithLocalTimeout } from "./timeout.handler";
+import { WithLocalTimeout } from "./timeout.handler";
 import { WithTransaction } from "./transaction.handler";
 
 export const Handler = {
   Base: BaseHandler,
   Transaction: WithTransaction,
   Suspense: WithSuspense,
-  Checkpoint: WithCheckpoint,
   Parallel: WithParallel,
+  Sequential: WithSequential,
   BatchLast: WithBatchLast,
-  Store: WithStore,
+  Context: WithContext,
   OnProcessed: WithOnProcessed,
   LocalRetry: WithLocalRetry,
   LocalTimeout: WithLocalTimeout,
-  RetryInIsolationAfter: WithIsolateAfter,
-  SkipAfter: WithSkipAfter,
   ClaimTimeout: WithClaimTimeout,
-  Debug: WithDebug,
+  IsolateAfter: WithIsolateAfter,
+  SkipAfter: WithSkipAfter,
 } as const;
+
+export { ProjectionContext } from "./context.handler";

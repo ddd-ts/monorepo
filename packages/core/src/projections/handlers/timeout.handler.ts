@@ -1,11 +1,10 @@
-import { IEsEvent } from "../../interfaces/es-event";
 import { EventId } from "../../components/event-id";
 import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
-import { Description } from "./description.handler";
+import { Description } from "./description";
 
 export const WithLocalTimeout = <const D extends number>(timeout: D) =>
-  Subtrait([{} as typeof BaseHandler], (base) => {
+  Subtrait([{} as ReturnType<typeof BaseHandler>], (base) => {
     abstract class WithLocalTimeout extends base {
       declare description: Description<{
         name: "WithLocalTimeout";
@@ -14,7 +13,7 @@ export const WithLocalTimeout = <const D extends number>(timeout: D) =>
 
       timeout = timeout;
 
-      async process(events: IEsEvent[], context: {}) {
+      async process(events: this["event"][], context: {}) {
         const timeoutPromise = new Promise<EventId[]>((_, reject) =>
           setTimeout(() => {
             reject(
@@ -32,14 +31,4 @@ export const WithLocalTimeout = <const D extends number>(timeout: D) =>
       }
     }
     return WithLocalTimeout;
-  });
-
-export const WithClaimTimeout = <const C extends number>(after: C) =>
-  Subtrait([{} as typeof BaseHandler], (base) => {
-    abstract class WithClaimTimeout extends base {
-      getClaimTimeout(event: IEsEvent): number {
-        return after;
-      }
-    }
-    return WithClaimTimeout;
   });

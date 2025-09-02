@@ -7,8 +7,9 @@ import {
 } from "@ddd-ts/shape";
 import { type Constructor } from "@ddd-ts/types";
 import { EventId } from "../components/event-id";
-import { WithDerivations } from "@ddd-ts/traits";
+import { Derive, WithDerivations } from "@ddd-ts/traits";
 import { Named } from "../traits/named";
+import { Shaped } from "../traits/shaped";
 
 export const EsEvent = <
   const Name extends string,
@@ -30,15 +31,28 @@ export const EsEvent = <
     }
   }
 
-  return Shape(
-    {
+  return WithDerivations(
+    $EsEvent,
+    Named(name),
+    Shaped({
       name,
+      $name: name,
       id: EventId,
       payload,
       revision: Optional(Number),
       occurredAt: Optional(MicrosecondTimestamp),
       ref: Optional(String),
-    },
-    WithDerivations($EsEvent, Named(name)),
+    }),
   );
+
+  // return Shape(
+  //   {
+  //     name,
+  //     id: EventId,
+  //     payload,
+  //     revision: Optional(Number),
+  //     occurredAt: Optional(MicrosecondTimestamp),
+  //   },
+  //   WithDerivations($EsEvent, Named(name)),
+  // );
 };

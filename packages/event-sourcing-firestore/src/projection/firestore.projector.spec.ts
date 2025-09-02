@@ -6,7 +6,7 @@ import {
   FirestoreTransaction,
   FirestoreTransactionPerformer,
 } from "@ddd-ts/store-firestore";
-import { IEventBus, ProjectorTesting } from "@ddd-ts/core";
+import { IEventBus, ProjectionContext, ProjectorTesting } from "@ddd-ts/core";
 import { FirestoreProjectedStreamReader } from "../firestore.projected-stream.reader";
 import { MakeFirestoreEventStreamAggregateStore } from "../firestore.event-stream.aggregate-store";
 import { FirestoreQueueStore, FirestoreProjector } from "./firestore.projector";
@@ -44,8 +44,11 @@ describe("Firestore Projector", () => {
         );
       }
 
-      async init(accountId: AccountId, context: { trx: FirestoreTransaction }) {
-        await context.trx.transaction.create(
+      async init(
+        accountId: AccountId,
+        context = ProjectionContext.get<{ trx: FirestoreTransaction }>(),
+      ) {
+        await context.trx?.transaction.create(
           this.collection.doc(accountId.serialize()),
           {
             id: accountId.serialize(),
@@ -61,7 +64,7 @@ describe("Firestore Projector", () => {
       async increment(
         accountId: AccountId,
         amount: number,
-        context: { trx: FirestoreTransaction },
+        context = ProjectionContext.get<{ trx: FirestoreTransaction }>(),
       ) {
         const id = accountId.serialize();
 
@@ -84,7 +87,7 @@ describe("Firestore Projector", () => {
         //   }
         // }
 
-        await context.trx.transaction.update(
+        await context.trx?.transaction.update(
           this.collection.doc(accountId.serialize()),
           {
             flow: FieldValue.increment(amount),
@@ -95,9 +98,9 @@ describe("Firestore Projector", () => {
       async rename(
         accountId: AccountId,
         newName: string,
-        context: { trx: FirestoreTransaction },
+        context = ProjectionContext.get<{ trx: FirestoreTransaction }>(),
       ) {
-        await context.trx.transaction.update(
+        await context.trx?.transaction.update(
           this.collection.doc(accountId.serialize()),
           {
             name: newName,

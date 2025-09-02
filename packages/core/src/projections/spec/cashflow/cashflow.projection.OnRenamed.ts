@@ -6,13 +6,13 @@ import { Handler } from "../../handlers";
 import { Lock } from "../../lock";
 
 export class CashflowOnRenamedHandler extends Derive(
-  Handler.Base,
-  Handler.Store<CashflowStore>(),
+  Handler.Base<AccountRenamed, { store: CashflowStore }>(),
+  Handler.OnProcessed,
+  Handler.Context,
   Handler.Transaction<Transaction>(),
   Handler.LocalTimeout(2000),
-  Handler.OnProcessed,
-  Handler.BatchLast,
   Handler.Suspense,
+  Handler.BatchLast,
 ) {
   locks(event: AccountRenamed) {
     return new Lock({
@@ -21,11 +21,10 @@ export class CashflowOnRenamedHandler extends Derive(
     });
   }
 
-  async handleLast(event: AccountRenamed, context: this["context"]) {
-    await this.store.rename(
+  async handleLast(event: AccountRenamed) {
+    await this.props.store.rename(
       event.payload.accountId,
       event.payload.newName,
-      context,
     );
   }
 }

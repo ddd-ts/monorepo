@@ -85,5 +85,4 @@ export { Shaped, NamedShape } from "./traits/shaped";
 export { Cursor } from "./components/cursor";
 
 export * from "./projections";
-export { Handler } from "./projections";
 export { ESProjection } from "./projections/projection";

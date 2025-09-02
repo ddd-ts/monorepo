@@ -16,6 +16,7 @@ import {
   IFact,
   Serialized,
   Lock,
+  buffer,
 } from "@ddd-ts/core";
 import { MicrosecondTimestamp, Optional, Shape } from "@ddd-ts/shape";
 import {
@@ -25,6 +26,20 @@ import {
 // import { Trace } from "./trace.decorator";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function* batched<T>(iterable: AsyncIterable<T>, batchSize = 100) {
+  let batch: T[] = [];
+  for await (const item of iterable) {
+    batch.push(item);
+    if (batch.length >= batchSize) {
+      yield batch;
+      batch = [];
+    }
+  }
+  if (batch.length > 0) {
+    yield batch;
+  }
+}
 
 export class FirestoreProjector {
   _unclaim = true;
@@ -54,7 +69,6 @@ export class FirestoreProjector {
       const jitteredDelay = this.config.retry.minDelay + jitter;
       await wait(jitteredDelay);
     }
-    // throw new Error("Breathing stopped, handler flatlined");
   }
 
   // @Trace("projector.handle", ($, e) => ({
@@ -81,9 +95,7 @@ export class FirestoreProjector {
       const source = this.projection.getSource(savedChange);
       const [ok, message] = await this.attempt(source, checkpointId, target);
 
-      if (ok) {
-        return;
-      }
+      if (ok) return;
 
       errors.push(message);
     }
@@ -113,7 +125,7 @@ export class FirestoreProjector {
       }
     }
 
-    if (await this.checkIsProcessed(checkpointId, target.eventId)) {
+    if (await this.checkIsProcessed(checkpointId, target)) {
       return [true, "Successfully processed"] as const;
     }
 
@@ -169,8 +181,8 @@ export class FirestoreProjector {
   }
 
   // @Trace("projector.queue.isProcessed")
-  private async checkIsProcessed(checkpointId: CheckpointId, eventId: EventId) {
-    return await this.queue.isProcessed(checkpointId, eventId);
+  private async checkIsProcessed(checkpointId: CheckpointId, cursor: Cursor) {
+    return await this.queue.isProcessed(checkpointId, cursor);
   }
 
   // @Trace("projector.queue.unprocessed")
@@ -302,6 +314,7 @@ export class FirestoreQueueStore {
 
   async head(checkpointId: CheckpointId) {
     const head = this.queue(checkpointId)
+      .where("skipped", "==", false)
       .orderBy("occurredAt", "desc")
       .orderBy("revision", "desc")
       .limit(1);
@@ -328,6 +341,7 @@ export class FirestoreQueueStore {
   async unprocessed(checkpointId: CheckpointId) {
     const query = this.queue(checkpointId)
       .where("processed", "==", false)
+      .where("skipped", "==", false)
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc");
 
@@ -361,6 +375,7 @@ export class FirestoreQueueStore {
           claimer: FieldValue.delete(),
           claimedAt: FieldValue.delete(),
           attempts: task.attempts,
+          skipped: task.skipped,
         });
       }
       await batch.commit();
@@ -375,6 +390,7 @@ export class FirestoreQueueStore {
   ): Promise<Task<true>[]> {
     const query = this.queue(checkpointId)
       .where("claimer", "==", claimer.serialize())
+      .where("skipped", "==", false)
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc");
 
@@ -401,9 +417,19 @@ export class FirestoreQueueStore {
 
     await batch.commit();
   }
-  async isProcessed(checkpointId: CheckpointId, eventId: EventId) {
-    const doc = await this.queued(checkpointId, eventId).get();
-    return doc.exists && doc.data()?.processed === true;
+  async isProcessed(checkpointId: CheckpointId, cursor: Cursor) {
+    const doc = await this.queued(checkpointId, cursor.eventId).get();
+    if (doc.exists) {
+      const data = doc.data();
+      if (!data) return false;
+      if (data.processed === true) return true;
+      return false;
+    }
+
+    const tail = await this.getTailCursor(checkpointId);
+    if (tail?.isAfterOrEqual(cursor)) return true;
+
+    return false;
   }
 
   checkpoint(id: CheckpointId) {
@@ -446,6 +472,110 @@ export class FirestoreQueueStore {
 
     return;
   }
+
+  async getTailCursor(id: CheckpointId) {
+    const tail = this.queue(id)
+      .where("skipped", "==", false)
+      .orderBy("occurredAt", "asc")
+      .orderBy("revision", "asc")
+      .limit(1);
+    const tailDoc = (await tail.get()).docs[0];
+    if (!tailDoc) {
+      return undefined;
+    }
+
+    const tailData = this.converter.fromFirestoreSnapshot(tailDoc);
+    if (!tailData) {
+      return undefined;
+    }
+    const tailCursor = tailDoc
+      ? Cursor.deserialize({
+          ref: tailData.ref,
+          occurredAt: tailData.occurredAt,
+          revision: tailData.revision,
+          eventId: tailData.id,
+        })
+      : undefined;
+    return tailCursor;
+  }
+
+  async cleanup(id: CheckpointId) {
+    const query = this.queue(id)
+      .where("skipped", "==", false)
+      .orderBy("occurredAt", "asc")
+      .orderBy("revision", "asc");
+
+    const MIN_TRAIL = 1; // Keep at least one processed document to maintain the tail cursor
+    const TRAIL = MIN_TRAIL + 30; // Extra buffer to optimize isProcessed checks
+
+    const snapshot = await query.get();
+
+    if (snapshot.size < TRAIL) return;
+
+    const stopper = snapshot.docs.findIndex((doc) => !doc.data().processed);
+    const cleanable = snapshot.docs.slice(0, stopper);
+
+    const cleaning = cleanable.slice(0, cleanable.length - TRAIL);
+    if (cleaning.length === 0) return;
+
+    const batch = this.collection.firestore.batch();
+    for (const queued of cleaning) batch.delete(queued.ref);
+    await batch.commit();
+  }
+
+  async flush(id: CheckpointId) {
+    const stream = this.queue(id).stream() as AsyncIterable<any>;
+    const writer = this.collection.firestore.bulkWriter();
+    for await (const queued of stream) writer.delete(queued.ref);
+    await writer.close();
+  }
+
+  /**
+   * This method adds a fake processed event to the queue.
+   * It is useful for initializing the tail cursor of a new projection, at the
+   * same time as the projection's initial state is created, reset, or updated.
+   * By default, it will use the current time as the occurredAt timestamp.
+   * You can override this by providing a specific timestamp.
+   *
+   * This ensures that the projection can start processing new events from the
+   * correct point in time, avoiding reprocessing of old events.
+   */
+  async seed(checkpointId: CheckpointId) {
+    const cursor = new Cursor({
+      ref: "seed",
+      occurredAt: MicrosecondTimestamp.now(),
+      revision: 0,
+      eventId: EventId.generate(),
+    });
+
+    const task = new Task<false>({
+      id: EventId.generate(),
+      ref: "Seed",
+      occurredAt: cursor.occurredAt,
+      revision: cursor.revision,
+      attempts: 0,
+      processed: true,
+      claimer: undefined,
+      claimedAt: undefined,
+      lock: new Lock({}),
+      claimTimeout: 0,
+      skipAfter: 0,
+      isolateAfter: 0,
+      skipped: false,
+      lastUpdateTime: undefined,
+    });
+
+    try {
+      const serialized = task.serialize();
+      const converted = this.converter.toFirestore(serialized);
+      await this.queued(checkpointId, task.cursor.eventId).create(converted);
+    } catch (e) {
+      // Ignore if already exists
+      if (!(e instanceof AlreadyEnqueuedError)) {
+        throw e;
+      }
+    }
+  }
 }
 
 export class ClaimerId extends EventId {}
@@ -460,6 +590,7 @@ export class Task<Stored extends boolean> extends Shape({
   claimedAt: Optional(MicrosecondTimestamp),
   lock: Lock,
   skipAfter: Number,
+  skipped: Boolean,
   isolateAfter: Number,
   claimTimeout: Number,
   lastUpdateTime: Optional(MicrosecondTimestamp),
@@ -496,6 +627,7 @@ export class Task<Stored extends boolean> extends Shape({
       claimTimeout: config.claimTimeout,
       skipAfter: config.skipAfter,
       isolateAfter: config.isolateAfter,
+      skipped: false,
       ref: fact.ref,
       revision: fact.revision,
       occurredAt: fact.occurredAt,
@@ -528,6 +660,10 @@ export class Task<Stored extends boolean> extends Shape({
       this.claimedAt = undefined;
       this.claimer = undefined;
       this.attempts += 1;
+    }
+
+    if (this.attempts > this.skipAfter) {
+      this.skipped = true;
     }
   }
 

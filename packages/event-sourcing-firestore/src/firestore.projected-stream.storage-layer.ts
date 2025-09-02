@@ -1,6 +1,4 @@
 import {
-  IEsEvent,
-  ISavedChange,
   ISerializedFact,
   ISerializedSavedChange,
   LakeSource,
@@ -56,19 +54,6 @@ export class FirestoreProjectedStreamStorageLayer
       .orderBy("occurredAt")
       .orderBy("revision");
 
-    const [start, end] = await Promise.all([
-      startAfter ? this.firestore.doc(startAfter.ref).get() : null,
-      endAt ? this.firestore.doc(endAt.ref).get() : null,
-    ]);
-
-    if (startAfter && !start?.exists) {
-      throw new Error(`StartAfter event not found: ${startAfter}`);
-    }
-
-    if (endAt && !end?.exists) {
-      throw new Error(`EndAt event not found: ${endAt}`);
-    }
-
     const filters = projectedStream.sources.map((source) => {
       if (source instanceof LakeSource) {
         return new FirestoreLakeSourceFilter().filter(shard, source);
@@ -81,12 +66,14 @@ export class FirestoreProjectedStreamStorageLayer
 
     query = query.where(Filter.or(...filters));
 
-    if (start) {
-      query = query.startAfter(start);
+    if (startAfter) {
+      const ts = this.microsecondToTimestamp(startAfter.occurredAt);
+      query = query.startAfter(ts, startAfter.revision);
     }
 
-    if (end) {
-      query = query.endAt(end);
+    if (endAt) {
+      const ts = this.microsecondToTimestamp(endAt.occurredAt);
+      query = query.endAt(ts, endAt.revision);
     }
 
     for await (const doc of query.stream() as AsyncIterable<QueryDocumentSnapshot>) {
@@ -155,19 +142,6 @@ export class FirestoreProjectedStreamStorageLayer
       .orderBy("occurredAt")
       .orderBy("revision");
 
-    const [start, end] = await Promise.all([
-      startAfter ? this.firestore.doc(startAfter.ref).get() : null,
-      endAt ? this.firestore.doc(endAt.ref).get() : null,
-    ]);
-
-    if (startAfter && !start?.exists) {
-      throw new Error(`StartAfter event not found: ${startAfter}`);
-    }
-
-    if (endAt && !end?.exists) {
-      throw new Error(`EndAt event not found: ${endAt}`);
-    }
-
     const filters = projectedStream.sources.map((source) => {
       if (source instanceof LakeSource) {
         return new FirestoreLakeSourceFilter().filter(shard, source);
@@ -180,18 +154,14 @@ export class FirestoreProjectedStreamStorageLayer
 
     query = query.where(Filter.or(...filters));
 
-    if (start) {
-      // const occurredAt = this.microsecondToTimestamp(startAfter.occurredAt);
-      // const revision = startAfter.revision;
-      // query = query.startAfter([occurredAt, revision]);
-      query = query.startAfter(start);
+    if (startAfter) {
+      const ts = this.microsecondToTimestamp(startAfter.occurredAt);
+      query = query.startAfter(ts, startAfter.revision);
     }
 
     if (endAt) {
-      // const occurredAt = this.microsecondToTimestamp(endAt.occurredAt);
-      // const revision = endAt.revision;
-      // query = query.endAt([occurredAt, revision]);
-      query = query.endAt(end);
+      const ts = this.microsecondToTimestamp(endAt.occurredAt);
+      query = query.endAt(ts, endAt.revision);
     }
 
     if (limit) {

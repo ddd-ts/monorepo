@@ -6,11 +6,10 @@ import { Handler } from "../../handlers";
 import { Lock } from "../../lock";
 
 export class CashflowOnOpenedHandler extends Derive(
-  Handler.Base,
-  Handler.Debug,
-  Handler.Store<CashflowStore>(),
-  Handler.Transaction<Transaction>(),
+  Handler.Base<AccountOpened, { store: CashflowStore }>(),
+  Handler.Context,
   Handler.OnProcessed,
+  Handler.Transaction<Transaction>(),
   Handler.Suspense,
   Handler.LocalRetry(3, 100),
   Handler.LocalTimeout(3000),
@@ -22,7 +21,7 @@ export class CashflowOnOpenedHandler extends Derive(
     });
   }
 
-  async handleOne(event: AccountOpened, context: this["context"]) {
-    await this.store.init(event.payload.accountId, context);
+  async handleOne(event: AccountOpened) {
+    await this.props.store.init(event.payload.accountId);
   }
 }

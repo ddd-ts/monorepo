@@ -2,12 +2,15 @@ import { ImplementsTrait } from "@ddd-ts/traits";
 import { EventId } from "../components/event-id";
 import { IEsEvent } from "../interfaces/es-event";
 import { Lock } from "./lock";
-import { WithClaimTimeout } from "./handlers/timeout.handler";
-import { WithIsolateAfter, WithSkipAfter } from "./handlers/retry.handler";
 import { INamed } from "../interfaces/named";
 import { Constructor } from "@ddd-ts/types";
 import { ProjectedStream } from "../components/projected-stream";
 import { CheckpointId } from "./checkpoint";
+import {
+  WithClaimTimeout,
+  WithIsolateAfter,
+  WithSkipAfter,
+} from "./handlers/settings.handle";
 
 interface IESProjectionHandler<E extends IEsEvent, C> {
   process(events: E[], context: C): Promise<EventId[]>;

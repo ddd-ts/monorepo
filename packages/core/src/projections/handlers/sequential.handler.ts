@@ -2,13 +2,13 @@ import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
 import { Description } from "./description";
 
-export const WithParallel = Subtrait(
+export const WithSequential = Subtrait(
   [{} as ReturnType<typeof BaseHandler>],
   (base) => {
-    abstract class WithParallel extends base {
+    abstract class WithSequential extends base {
       declare description: Description<{
-        name: "WithParallel";
-        process: "await parallel for (const event of events)";
+        name: "WithSequential";
+        process: "for await (const event of events)";
         handle: "call handleOne for the event";
       }>;
 
@@ -24,12 +24,12 @@ export const WithParallel = Subtrait(
       }
 
       async process(events: this["event"][], context: any) {
-        await Promise.all(
-          events.map((event) => super.process([event], context)),
-        );
+        for await (const event of events) {
+          await super.process([event], context);
+        }
         return events.map((event) => event.id);
       }
     }
-    return WithParallel;
+    return WithSequential;
   },
 );

@@ -26,9 +26,9 @@
       },
       "skipFiles": [
         "<node_internals>/**",
-        "${workspaceFolder}/**/node_modules/**",
+        // "${workspaceFolder}/**/node_modules/**",
         "${workspaceFolder}/**/dist/**",
-        "${workspaceFolder}/node_modules/**",
+        // "${workspaceFolder}/node_modules/**",
       ],
       "env": {
         "DEBUG": "true",

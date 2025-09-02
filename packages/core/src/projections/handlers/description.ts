@@ -1,8 +1,11 @@
 import { Expand } from "@ddd-ts/shape";
-import { Subtrait, Trait } from "@ddd-ts/traits";
-import { BaseHandler } from "./base.handler";
+import { Trait } from "@ddd-ts/traits";
 
 type GetDescription<D extends Description<any>> = D[keyof D];
+
+type Reverse<T extends any[]> = T extends [infer F, ...infer R]
+  ? [...Reverse<R>, F]
+  : [];
 
 type MapToDescription<
   ProcessTraits extends Trait[],
@@ -77,7 +80,7 @@ type MapToDescription<
 export type DerivedDescription<Derived> = Derived extends {
   __traits__: infer Traits extends Trait[];
 }
-  ? Expand<MapToDescription<Traits>>
+  ? Expand<MapToDescription<Reverse<Traits>>>
   : never;
 
 export type IDescription = {
@@ -91,12 +94,3 @@ export type IDescription = {
 };
 
 export type Description<T extends IDescription> = { [K in T["name"]]: T };
-
-export const WithDebug = Subtrait([{} as typeof BaseHandler], (base) => {
-  abstract class WithDebug extends base {
-    static debug<T>(this: T, debug: DerivedDescription<T>): never {
-      throw new Error("Debugging not implemented for this handler");
-    }
-  }
-  return WithDebug;
-});

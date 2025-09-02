@@ -669,8 +669,8 @@ AccountRenamed:
     await accountStore.save(account);
 
     projector.handle(opened);
-
     await projection.suspend(opened);
+
     const second = await projection.suspend(opened);
     second.resume();
 
