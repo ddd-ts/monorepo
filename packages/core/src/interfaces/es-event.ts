@@ -22,6 +22,7 @@ export type ISavedChange<T extends IEsEvent = IEsEvent> = T & {
 export interface IEsEvent<Name extends string = string, Payload = any>
   extends IEvent<Name, Payload> {
   id: EventId;
+  ref?: string;
   occurredAt?: MicrosecondTimestamp;
   revision?: number;
 }
@@ -30,6 +31,7 @@ export interface ISerializedEvent {
   $name: string;
   name: string;
   id: string;
+  ref?: string;
   occurredAt?: MicrosecondTimestamp;
   revision?: number;
   payload: any;
@@ -40,7 +42,6 @@ export interface ISerializedChange {
   $name: string;
   name: string;
   id: string;
-  ref?: string;
   revision?: number;
   payload: any;
   version: number;

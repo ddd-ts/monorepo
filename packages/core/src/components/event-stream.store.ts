@@ -59,8 +59,13 @@ export class EventStreamStore<Event extends IEsEvent> {
     for (const save of saved) {
       const matching = changes.find((c) => c.id.equals(save.id));
       if (matching) {
+        // Update the original event with revision and ref.
+        // Although it should not be necessary when letting the lake publish events.
         (matching as any).revision = save.revision;
         (matching as any).ref = save.ref;
+
+        // Update the saved change as well, this is the one being published.
+        (saved as any).ref = save.ref;
       }
     }
 

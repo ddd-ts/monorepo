@@ -95,7 +95,10 @@ export class FirestoreProjector {
       const source = this.projection.getSource(savedChange);
       const [ok, message] = await this.attempt(source, checkpointId, target);
 
-      if (ok) return;
+      if (ok) {
+        await this.queue.cleanup(checkpointId);
+        return;
+      }
 
       errors.push(message);
     }

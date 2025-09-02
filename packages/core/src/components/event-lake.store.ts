@@ -7,7 +7,7 @@ import {
 } from "../interfaces/es-event";
 import { IEventBus } from "../interfaces/event-bus";
 import { ISerializer } from "../interfaces/serializer";
-import { EventReference } from "./event-id";
+import { EventId } from "./event-id";
 import { LakeId } from "./stream-id";
 import { Transaction } from "./transaction";
 
@@ -20,8 +20,8 @@ export interface EventLakeStorageLayer {
 
   read(
     lakeId: LakeId,
-    startAfter?: EventReference,
-    endAt?: EventReference,
+    startAfter?: EventId,
+    endAt?: EventId,
   ): AsyncIterable<ISerializedFact>;
 }
 
@@ -50,8 +50,13 @@ export class EventLakeStore<Event extends IEsEvent> {
     for (const save of saved) {
       const matching = changes.find((c) => c.id.equals(save.id));
       if (matching) {
+        // Update the original event with revision and ref.
+        // Although it should not be necessary when letting the lake publish events.
         (matching as any).revision = save.revision;
         (matching as any).ref = save.ref;
+
+        // Update the saved change as well, this is the one being published.
+        (saved as any).ref = save.ref;
       }
     }
 
@@ -63,11 +68,7 @@ export class EventLakeStore<Event extends IEsEvent> {
     return saved;
   }
 
-  async *read(
-    lakeId: LakeId,
-    startAfter?: EventReference,
-    endAt?: EventReference,
-  ) {
+  async *read(lakeId: LakeId, startAfter?: EventId, endAt?: EventId) {
     const lake = this.storageLayer.read(lakeId, startAfter, endAt);
     for await (const serialized of lake) {
       yield this.serializer.deserialize(serialized);
