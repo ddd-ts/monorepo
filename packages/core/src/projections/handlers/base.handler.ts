@@ -1,7 +1,6 @@
 import { Subtrait, Trait } from "@ddd-ts/traits";
 import { IEsEvent } from "../../interfaces/es-event";
 import { EventId } from "../../components/event-id";
-import { DerivedDescription } from "./description";
 
 export const WithProps = <A extends {}>() =>
   Subtrait([{} as Trait], (base, Props) => {
@@ -36,9 +35,6 @@ export const BaseHandler = Trait((base) => {
       return events.map((event) => event.id);
     }
 
-    static debug<T>(this: T, debug: DerivedDescription<T>): never {
-      throw new Error("Debugging not implemented for this handler");
-    }
   }
   return Handler;
 });

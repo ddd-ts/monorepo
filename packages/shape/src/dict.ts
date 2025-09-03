@@ -26,11 +26,10 @@ type Internal<S extends DictShorthand, B extends AbstractConstructor<{}>> = {
 export const Dict = <
   const S extends { [key: string]: any },
   B extends AbstractConstructor<{}> = typeof Empty,
-  Cache extends Internal<S, B> = Internal<S, B>,
 >(
   of: S,
   base: B = Empty as any,
-) => {
+): IDict<S, B> => {
   abstract class $Dict extends (base as any as AbstractConstructor<{}>) {
     static $shape = "dict" as const;
     static $of = of;
@@ -40,22 +39,19 @@ export const Dict = <
       Object.assign(this, args[0]);
     }
 
-    serialize(): Expand<Cache["Serialized"]> {
+    serialize() {
       return $Dict.$serialize(this as any) as any;
     }
 
     static deserialize<T extends Constructor>(
       this: T,
-      value: Expand<Cache["Serialized"]>,
+      value: any,
     ): InstanceType<T> {
       const runtime = (this as any).$deserialize(value as any);
       return new this(runtime as any) as any;
     }
 
-    static $deserialize<T extends typeof $Dict>(
-      this: T,
-      value: Cache["Deserializing"],
-    ): Cache["Inline"] {
+    static $deserialize<T extends typeof $Dict>(this: T, value: any): any {
       const split = Object.entries(of);
       const transform = split.map(([key, child]) => {
         const longhand = Shape(child) as any;
@@ -69,7 +65,7 @@ export const Dict = <
     static $serialize<T extends typeof $Dict>(
       this: T,
       value: InstanceType<T>,
-    ): Cache["Serialized"] {
+    ): any {
       const split = Object.entries(of);
       const transform = split.map(([key, child]) => {
         const longhand = Shape(child as any) as any;
@@ -84,13 +80,34 @@ export const Dict = <
 
       return merge as any;
     }
-
-    static $inline: Cache["Inline"];
   }
 
-  type DictConstructor = abstract new (
-    value: Expand<Cache["Inline"]>,
-  ) => InstanceType<B> & $Dict & Cache["Inline"];
-  type WithConstructor = Omit<B, ""> & Omit<typeof $Dict, ""> & DictConstructor;
-  return $Dict as any as WithConstructor;
+  return $Dict as any;
 };
+
+export type IDict<
+  S extends {
+    [key: string]: any;
+  },
+  B extends AbstractConstructor<{}> = typeof Empty,
+> = Omit<B, ""> & {
+  $shape: "dict";
+  $of: S;
+  deserialize<T extends Constructor>(
+    this: T,
+    value: Expand<Internal<S, B>["Serialized"]>,
+  ): InstanceType<T>;
+  $deserialize<T>(
+    this: T,
+    value: Internal<S, B>["Deserializing"],
+  ): Internal<S, B>["Inline"];
+  $serialize<T extends Constructor>(
+    this: T,
+    value: InstanceType<T>,
+  ): Internal<S, B>["Serialized"];
+  $inline: Internal<S, B>["Inline"];
+} & (abstract new (
+    value: Expand<Internal<S, B>["Inline"]>,
+  ) => InstanceType<B> & {
+    serialize(): Expand<Internal<S, B>["Serialized"]>;
+  } & Internal<S, B>["Inline"]);

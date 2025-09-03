@@ -12,13 +12,12 @@ export const Class = <
 >(
   of: S,
   base = Empty,
-) => {
+): IClass<S, B> => {
   type Serialized = ReturnType<InstanceType<S>["serialize"]>;
   type Inline = InstanceType<S>;
 
   abstract class $Class extends base {
     static $shape = "class" as const;
-
     static $of = of;
 
     constructor(public value: InstanceType<B>) {
@@ -50,7 +49,28 @@ export const Class = <
     static $inline: Inline;
   }
 
-  type Class = typeof $Class;
+  return $Class as any;
+};
 
-  return $Class as Class;
+export type IClass<
+  S extends ClassShorthand,
+  B extends AbstractConstructor<any> = typeof Empty,
+> = (abstract new (
+  value: InstanceType<B>,
+) => {
+  value: InstanceType<B>;
+  serialize<T>(this: T): Expand<ReturnType<InstanceType<S>["serialize"]>>;
+}) & {
+  $shape: "class";
+  $of: S;
+  deserialize<T extends Constructor<any>>(
+    this: T,
+    value: Expand<Parameters<S["deserialize"]>[0]>,
+  ): InstanceType<T>;
+  $deserialize(value: Parameters<S["deserialize"]>[0]): InstanceType<S>;
+  $serialize<T>(
+    this: T,
+    value: InstanceType<S>,
+  ): ReturnType<InstanceType<S>["serialize"]>;
+  $inline: InstanceType<S>;
 };

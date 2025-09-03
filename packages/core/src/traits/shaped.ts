@@ -3,12 +3,9 @@ import { Trait } from "@ddd-ts/traits";
 import { ExtendsNamed } from "./named";
 
 export const Shaped = <S extends DictShorthand>(shape: S) =>
-  Trait((base) => Shape(shape, base));
+  Trait((base) => Dict(shape, base));
 
-export const NamedShape = <
-  const Name extends string,
-  S extends DictShorthand,
->(
+export const NamedShape = <const Name extends string, S extends DictShorthand>(
   name: Name,
   shape: S,
 ) => Trait((base) => Dict(shape, ExtendsNamed(name, base)));
