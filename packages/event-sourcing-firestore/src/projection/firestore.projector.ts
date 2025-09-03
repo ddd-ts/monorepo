@@ -16,30 +16,14 @@ import {
   IFact,
   Serialized,
   Lock,
-  buffer,
 } from "@ddd-ts/core";
 import { MicrosecondTimestamp, Optional, Shape } from "@ddd-ts/shape";
 import {
   DefaultConverter,
   FirestoreTransaction,
 } from "@ddd-ts/store-firestore";
-// import { Trace } from "./trace.decorator";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function* batched<T>(iterable: AsyncIterable<T>, batchSize = 100) {
-  let batch: T[] = [];
-  for await (const item of iterable) {
-    batch.push(item);
-    if (batch.length >= batchSize) {
-      yield batch;
-      batch = [];
-    }
-  }
-  if (batch.length > 0) {
-    yield batch;
-  }
-}
 
 export class FirestoreProjector {
   _unclaim = true;

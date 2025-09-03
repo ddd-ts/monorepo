@@ -4,7 +4,7 @@ import { BaseHandler } from "./base.handler";
 import { Description } from "./description";
 
 export const WithLocalTimeout = <const D extends number>(timeout: D) =>
-  Subtrait([{} as ReturnType<typeof BaseHandler>], (base) => {
+  Subtrait([{} as typeof BaseHandler], (base) => {
     abstract class WithLocalTimeout extends base {
       declare description: Description<{
         name: "WithLocalTimeout";

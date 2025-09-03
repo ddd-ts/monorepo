@@ -17,7 +17,7 @@ export const WithLocalRetry = <const C extends number, const D extends number>(
   count: C,
   delay: D,
 ) =>
-  Subtrait([{} as ReturnType<typeof BaseHandler>], (base) => {
+  Subtrait([{} as typeof BaseHandler], (base) => {
     abstract class WithLocalRetry extends base {
       declare description: Description<{
         name: "WithLocalRetry";

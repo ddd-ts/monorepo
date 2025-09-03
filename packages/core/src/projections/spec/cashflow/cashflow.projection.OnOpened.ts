@@ -6,7 +6,8 @@ import { Handler } from "../../handlers";
 import { Lock } from "../../lock";
 
 export class CashflowOnOpenedHandler extends Derive(
-  Handler.Base<AccountOpened, { store: CashflowStore }>(),
+  Handler.Base,
+  Handler.WithProps<{ store: CashflowStore }>(),
   Handler.Context,
   Handler.OnProcessed,
   Handler.Transaction<Transaction>(),

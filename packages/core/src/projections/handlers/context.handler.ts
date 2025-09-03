@@ -15,22 +15,19 @@ export class ProjectionContext {
   }
 }
 
-export const WithContext = Subtrait(
-  [{} as ReturnType<typeof BaseHandler>],
-  (base) => {
-    abstract class WithContext extends base {
-      declare description: Description<{
-        name: "WithContext";
-        process: "with async context";
-      }>;
+export const WithContext = Subtrait([{} as typeof BaseHandler], (base) => {
+  abstract class WithContext extends base {
+    declare description: Description<{
+      name: "WithContext";
+      process: "with async context";
+    }>;
 
-      async process(events: this["event"][], context: this["context"]) {
-        return ProjectionContext.with(context, () =>
-          super.process(events, context),
-        );
-      }
+    async process(events: this["event"][], context: this["context"]) {
+      return ProjectionContext.with(context, () =>
+        super.process(events, context),
+      );
     }
+  }
 
-    return WithContext;
-  },
-);
+  return WithContext;
+});

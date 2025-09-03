@@ -4,7 +4,7 @@ import { BaseHandler } from "./base.handler";
 import { Description } from "./description";
 
 export const WithClaimTimeout = <const C extends number>(after: C) =>
-  Subtrait([{} as ReturnType<typeof BaseHandler>], (base) => {
+  Subtrait([{} as typeof BaseHandler], (base) => {
     abstract class WithClaimTimeout extends base {
       declare description: Description<{
         name: "WithClaimTimeout";
@@ -19,7 +19,7 @@ export const WithClaimTimeout = <const C extends number>(after: C) =>
   });
 
 export const WithIsolateAfter = <const C extends number>(after: C) =>
-  Subtrait([{} as ReturnType<typeof BaseHandler>], (base) => {
+  Subtrait([{} as typeof BaseHandler], (base) => {
     abstract class WithIsolateAfter extends base {
       declare description: Description<{
         name: "WithIsolateAfter";
@@ -34,7 +34,7 @@ export const WithIsolateAfter = <const C extends number>(after: C) =>
   });
 
 export const WithSkipAfter = <const C extends number>(after: C) =>
-  Subtrait([{} as ReturnType<typeof BaseHandler>], (base) => {
+  Subtrait([{} as typeof BaseHandler], (base) => {
     abstract class WithSkipAfter extends base {
       declare description: Description<{
         name: "WithSkipAfter";

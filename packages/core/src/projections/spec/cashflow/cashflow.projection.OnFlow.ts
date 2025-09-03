@@ -10,12 +10,8 @@ import { Lock } from "../../lock";
 import { Description } from "../../handlers/description";
 
 export class CashflowOnFlowHandler extends Derive(
-  Handler.Base<
-    Withdrawn | Deposited,
-    {
-      store: CashflowStore;
-    }
-  >(),
+  Handler.Base,
+  Handler.WithProps<{ store: CashflowStore }>(),
   Handler.OnProcessed,
   Handler.Context,
   Handler.Transaction<Transaction>(),

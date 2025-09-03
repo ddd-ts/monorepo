@@ -7,7 +7,7 @@ import {
 } from "../../components/transaction";
 
 export const WithTransaction = <T extends Transaction>() =>
-  Subtrait([{} as ReturnType<typeof BaseHandler>], (base, Props) => {
+  Subtrait([{} as typeof BaseHandler], (base, Props) => {
     abstract class WithTransaction extends base {
       declare description: Description<{
         name: "withTransaction";

@@ -1,4 +1,4 @@
-import { BaseHandler } from "./base.handler";
+import { BaseHandler, WithProps } from "./base.handler";
 import { WithBatchLast } from "./batch.handler";
 import { WithOnProcessed } from "./checkpoint.handler";
 import { WithContext } from "./context.handler";
@@ -28,6 +28,7 @@ export const Handler = {
   ClaimTimeout: WithClaimTimeout,
   IsolateAfter: WithIsolateAfter,
   SkipAfter: WithSkipAfter,
+  WithProps: WithProps,
 } as const;
 
 export { ProjectionContext } from "./context.handler";

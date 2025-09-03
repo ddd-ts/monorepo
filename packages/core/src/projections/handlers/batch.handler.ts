@@ -4,38 +4,35 @@ import { Description } from "./description";
 import { CheckpointId } from "../checkpoint";
 import { Transaction } from "../../components/transaction";
 
-export const WithBatchLast = Subtrait(
-  [{} as ReturnType<typeof BaseHandler>],
-  (base) => {
-    abstract class WithBatchLast extends base {
-      declare description: Description<{
-        name: "WithBatchLast";
-        handle: "call handleLast with the last event of the batch";
-      }>;
-      declare context: { checkpointId: CheckpointId };
+export const WithBatchLast = Subtrait([{} as typeof BaseHandler], (base) => {
+  abstract class WithBatchLast extends base {
+    declare description: Description<{
+      name: "WithBatchLast";
+      handle: "call handleLast with the last event of the batch";
+    }>;
+    declare context: { checkpointId: CheckpointId };
 
-      abstract handleLast(
-        event: this["event"],
-        context: this["context"],
-      ): Promise<void>;
+    abstract handleLast(
+      event: this["event"],
+      context: this["context"],
+    ): Promise<void>;
 
-      async handle(events: this["event"][], context: this["context"]) {
-        const last = events.at(-1);
-        if (!last) {
-          console.warn("WithBatchLast.handle called with no events");
-          return;
-        }
-        await this.handleLast(last, context);
+    async handle(events: this["event"][], context: this["context"]) {
+      const last = events.at(-1);
+      if (!last) {
+        console.warn("WithBatchLast.handle called with no events");
+        return;
       }
-
-      async process(
-        events: this["event"][],
-        context: { checkpointId: CheckpointId; transaction?: Transaction },
-      ) {
-        await super.process(events, context);
-        return events.map((event) => event.id);
-      }
+      await this.handleLast(last, context);
     }
-    return WithBatchLast;
-  },
-);
+
+    async process(
+      events: this["event"][],
+      context: { checkpointId: CheckpointId; transaction?: Transaction },
+    ) {
+      await super.process(events, context);
+      return events.map((event) => event.id);
+    }
+  }
+  return WithBatchLast;
+});
