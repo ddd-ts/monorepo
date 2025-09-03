@@ -49,7 +49,7 @@ export class FirestoreProjector {
     public readonly reader: ProjectedStreamReader<IEsEvent>,
     public readonly queue: FirestoreQueueStore,
     public config = {
-      retry: { attempts: 20, minDelay: 10, maxDelay: 1000 },
+      retry: { attempts: 10, minDelay: 10, maxDelay: 200 },
       enqueue: { batchSize: 100 },
       onProcessError: (error: Error) => {
         console.error("Error processing event:", error);
