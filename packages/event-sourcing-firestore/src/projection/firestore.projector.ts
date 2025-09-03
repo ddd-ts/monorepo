@@ -487,13 +487,16 @@ export class FirestoreQueueStore {
   }
 
   async cleanup(id: CheckpointId) {
+    const aDayAgo = MicrosecondTimestamp.now().sub(MicrosecondTimestamp.DAY);
+
     const query = this.queue(id)
       .where("skipped", "==", false)
+      .where("occurredAt", "<", aDayAgo.serialize()) // Only consider events older than 24 hours
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc");
 
     const MIN_TRAIL = 1; // Keep at least one processed document to maintain the tail cursor
-    const TRAIL = MIN_TRAIL + 30; // Extra buffer to optimize isProcessed checks
+    const TRAIL = MIN_TRAIL + 0; // Extra buffer to optimize isProcessed checks
 
     const snapshot = await query.get();
 

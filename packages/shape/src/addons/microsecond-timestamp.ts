@@ -1,4 +1,10 @@
 export class MicrosecondTimestamp {
+  static MILLISECOND = new MicrosecondTimestamp(BigInt(1_000));
+  static SECOND = this.MILLISECOND.mult(1000);
+  static MINUTE = this.SECOND.mult(60);
+  static HOUR = this.MINUTE.mult(60);
+  static DAY = this.HOUR.mult(24);
+
   constructor(readonly micros: bigint) {}
 
   isAfter(other: MicrosecondTimestamp): boolean {
@@ -13,12 +19,20 @@ export class MicrosecondTimestamp {
     return this.micros < other.micros;
   }
 
-  add(micros: bigint): MicrosecondTimestamp {
-    return new MicrosecondTimestamp(this.micros + micros);
+  add(micros: bigint | MicrosecondTimestamp): MicrosecondTimestamp {
+    const value =
+      micros instanceof MicrosecondTimestamp ? micros.micros : micros;
+    return new MicrosecondTimestamp(this.micros + value);
   }
 
-  sub(micros: bigint): MicrosecondTimestamp {
-    return new MicrosecondTimestamp(this.micros - micros);
+  sub(micros: bigint | MicrosecondTimestamp): MicrosecondTimestamp {
+    const value =
+      micros instanceof MicrosecondTimestamp ? micros.micros : micros;
+    return new MicrosecondTimestamp(this.micros - value);
+  }
+
+  mult(factor: number): MicrosecondTimestamp {
+    return new MicrosecondTimestamp(this.micros * BigInt(factor));
   }
 
   static now(): MicrosecondTimestamp {
