@@ -344,7 +344,7 @@ export function caseFixture(
         attempts: number;
         minDelay: number;
         maxDelay: number;
-        backoff: number;
+        backoff?: number;
       };
       enqueue?: { batchSize: number };
     };
@@ -428,11 +428,11 @@ export function caseFixture(
         {
           onEnqueueError: console.log,
           onProcessError: console.error,
-          retry: opts.projector?.retry || {
-            attempts: 10,
-            minDelay: 100,
-            maxDelay: 100,
-            backoff: 1,
+          retry: {
+            attempts: opts.projector?.retry?.attempts || 10,
+            minDelay: opts.projector?.retry?.minDelay || 100,
+            maxDelay: opts.projector?.retry?.maxDelay || 100,
+            backoff: opts.projector?.retry?.backoff || 1,
           },
           enqueue: opts.projector?.enqueue || { batchSize: 50 },
         },
