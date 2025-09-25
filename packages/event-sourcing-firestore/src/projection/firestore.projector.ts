@@ -88,7 +88,7 @@ export class FirestoreProjector {
     const errors = [];
 
     for await (const [attempt, defer] of this.breathe()) {
-      console.log(`Attempt ${attempt} for event ${savedChange.id.serialize()}`);
+      // console.log(`Attempt ${attempt} for event ${savedChange.id.serialize()}`);
       const source = this.projection.getSource(savedChange);
       const [status, message] = await this.attempt(
         source,
@@ -98,16 +98,16 @@ export class FirestoreProjector {
 
       if (status === Status.DEFERRED) {
         defer();
-        console.log(
-          `Event ${savedChange.id.serialize()} is deferred (${message})`,
-        );
+        // console.log(
+        //   `Event ${savedChange.id.serialize()} is deferred (${message})`,
+        // );
         continue;
       }
 
       if (status === Status.SUCCESS) {
-        console.log(
-          `Event ${savedChange.id.serialize()} processed successfully`,
-        );
+        // console.log(
+        //   `Event ${savedChange.id.serialize()} processed successfully`,
+        // );
         await this.queue.cleanup(checkpointId);
         return;
       }
@@ -165,10 +165,10 @@ export class FirestoreProjector {
       ] as const;
     }
 
-    console.log(
-      `Claiming batch of ${batch.length} tasks with events:`,
-      batch.map((t) => t.id.serialize()),
-    );
+    // console.log(
+    //   `Claiming batch of ${batch.length} tasks with events:`,
+    //   batch.map((t) => t.id.serialize()),
+    // );
 
     const claimer = ClaimerId.generate();
 
@@ -320,9 +320,9 @@ export class FirestoreQueueStore {
   }
 
   async enqueue(checkpointId: CheckpointId, tasks: Task<false>[]) {
-    console.log(
-      `Enqueuing ${tasks.length} tasks for checkpoint ${checkpointId.serialize()}`,
-    );
+    // console.log(
+    //   `Enqueuing ${tasks.length} tasks for checkpoint ${checkpointId.serialize()}`,
+    // );
 
     const batch = this.collection.firestore.batch();
 
@@ -744,13 +744,13 @@ export class Task<Stored extends boolean> extends Shape({
   }
 
   static batch(tasks: Task<true>[]) {
-    console.log(
-      JSON.stringify(
-        tasks.map((t) => t.serialize()),
-        null,
-        2,
-      ),
-    );
+    // console.log(
+    //   JSON.stringify(
+    //     tasks.map((t) => t.serialize()),
+    //     null,
+    //     2,
+    //   ),
+    // );
 
     const locks: Lock[] = [];
     const batchLocks: Lock[] = [];
@@ -759,9 +759,9 @@ export class Task<Stored extends boolean> extends Shape({
 
     for (const task of tasks) {
       if (task.shouldSkip) {
-        console.log(
-          `Skipping task ${task.id.serialize()} due to skipAfter limit`,
-        );
+        // console.log(
+        //   `Skipping task ${task.id.serialize()} due to skipAfter limit`,
+        // );
         continue;
       }
 
@@ -769,9 +769,9 @@ export class Task<Stored extends boolean> extends Shape({
         if (batch.length > 0) {
           return batch;
         }
-        console.log(
-          `Isolating task ${task.id.serialize()} due to isolateAfter limit`,
-        );
+        // console.log(
+        //   `Isolating task ${task.id.serialize()} due to isolateAfter limit`,
+        // );
         batch.push(task);
         return batch;
       }
