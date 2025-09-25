@@ -15,13 +15,35 @@ export type PrimitiveFromConstructor<S> = Extract<
 
 export type PrimitiveShorthand = PrimitiveConstructor;
 
+export type IPrimitive<
+  S extends PrimitiveConstructor,
+  B extends AbstractConstructor<{}> = typeof Empty,
+> = Omit<B, ""> &
+  (abstract new (
+    value: Expand<PrimitiveFromConstructor<S>>,
+  ) => InstanceType<B> & {
+    readonly value: Expand<PrimitiveFromConstructor<S>>;
+    serialize(): PrimitiveFromConstructor<S>;
+  }) & {
+    $shape: "primitive";
+    deserialize<T extends Constructor<any>>(
+      this: T,
+      value: PrimitiveFromConstructor<S>,
+    ): InstanceType<T>;
+    $serialize(value: PrimitiveFromConstructor<S>): PrimitiveFromConstructor<S>;
+    $deserialize(
+      value: PrimitiveFromConstructor<S>,
+    ): PrimitiveFromConstructor<S>;
+    $inline: Expand<PrimitiveFromConstructor<S>>;
+  };
+
 export const Primitive = <
   S extends PrimitiveConstructor,
   B extends AbstractConstructor<{}> = typeof Empty,
 >(
   of: S,
   base: B = Empty as any,
-) => {
+): IPrimitive<S, B> => {
   type Inline = PrimitiveFromConstructor<S>;
 
   abstract class $Primitive extends (base as any as Constructor<{}>) {
@@ -64,5 +86,5 @@ export const Primitive = <
     Omit<typeof $Primitive, "prototype"> &
     PrimitiveConstructor;
 
-  return $Primitive as Primitive;
+  return $Primitive as any;
 };

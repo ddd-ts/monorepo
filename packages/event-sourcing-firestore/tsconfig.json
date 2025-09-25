@@ -2,10 +2,12 @@
   "extends": "@ddd-ts/tools/tsconfig.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "experimentalDecorators": true
   },
   "include": [
     "./src/**/*",
-    "./src/**/*.json"
+    "./src/**/*.json",
+    "src/projection/cases/.dsl.case.spec.ts",
   ]
 }

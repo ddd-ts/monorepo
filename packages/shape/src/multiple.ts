@@ -20,48 +20,37 @@ type Internal<S extends MultipleConfiguration> = {
 export const Multiple = <
   const S extends MultipleConfiguration,
   B extends AbstractConstructor<{}> = typeof Empty,
-  Cache extends Internal<S> = Internal<S>,
 >(
   of: S,
   base: B = Empty as any,
-) => {
+): IMultiple<S, B> => {
   const longhand = Shape(of);
 
   abstract class $Multiple extends (base as any as Constructor<{}>) {
-    constructor(public value: Cache["Inline"]) {
+    constructor(public value: any[]) {
       super();
     }
     static $shape = "multiple" as const;
 
-    serialize(): Expand<Cache["Serialized"]> {
-      return $Multiple.$serialize(this.value) as any;
+    serialize() {
+      return $Multiple.$serialize(this.value);
     }
 
-    static deserialize<T extends Constructor>(
-      this: T,
-      value: Expand<Cache["Serialized"]>,
-    ): InstanceType<T> {
-      return new (this as any)(
-        ($Multiple as any).$deserialize(value),
-      ) as InstanceType<T>;
+    static deserialize(value: any) {
+      return new (this as any)(($Multiple as any).$deserialize(value));
     }
 
-    static $deserialize<T extends Constructor>(
-      this: T,
-      value: Cache["Serialized"],
-    ): InstanceType<T> {
+    static $deserialize(value: any) {
       return (value as any).map(longhand.$deserialize);
     }
 
-    static $serialize(value: Cache["Inline"]): Cache["Serialized"] {
+    static $serialize(value: any) {
       return (value as any).map(longhand.$serialize as any);
     }
 
     [Symbol.iterator]() {
       return this.value[Symbol.iterator]();
     }
-
-    static $inline: Cache["Inline"];
 
     get map() {
       return this.value.map.bind(this.value);
@@ -158,15 +147,85 @@ export const Multiple = <
     get length() {
       return this.value.length;
     }
+
+    get fill() {
+      return this.value.fill.bind(this.value);
+    }
+
+    get copyWithin() {
+      return this.value.copyWithin.bind(this.value);
+    }
+
+    get reverse() {
+      return this.value.reverse.bind(this.value);
+    }
+
+    get shift() {
+      return this.value.shift.bind(this.value);
+    }
+
+    get unshift() {
+      return this.value.unshift.bind(this.value);
+    }
   }
 
-  type MultipleConstructor = abstract new (
-    value: Expand<Cache["Inline"]>,
-  ) => InstanceType<B> & $Multiple;
-
-  type Multiple = Omit<B, "prototype"> &
-    Omit<typeof $Multiple, ""> &
-    MultipleConstructor;
-
-  return $Multiple as any as Multiple;
+  return $Multiple as any;
 };
+
+export type IMultiple<
+  S extends MultipleConfiguration,
+  B extends AbstractConstructor<{}> = typeof Empty,
+> = Omit<B, "prototype"> &
+  (abstract new (
+    value: Internal<S>["Inline"],
+  ) => InstanceType<B> &
+    Pick<
+      Internal<S>["Inline"],
+      | "at"
+      | "length"
+      | "concat"
+      | "copyWithin"
+      | "entries"
+      | "every"
+      | "fill"
+      | "filter"
+      | "find"
+      | "findIndex"
+      | "flat"
+      | "flatMap"
+      | "forEach"
+      | "includes"
+      | "indexOf"
+      | "join"
+      | "keys"
+      | "lastIndexOf"
+      | "map"
+      | "pop"
+      | "push"
+      | "reduce"
+      | "reduceRight"
+      | "reverse"
+      | "shift"
+      | "slice"
+      | "some"
+      | "sort"
+      | "splice"
+      | "unshift"
+      | "values"
+      | typeof Symbol.iterator
+    > & {
+      value: Internal<S>["Inline"];
+      serialize(): Expand<Internal<S>["Serialized"]>;
+    }) & {
+    $shape: "multiple";
+    deserialize<T extends Constructor>(
+      this: T,
+      value: Expand<Internal<S>["Serialized"]>,
+    ): InstanceType<T>;
+    $deserialize<T extends Constructor>(
+      this: T,
+      value: Internal<S>["Serialized"],
+    ): InstanceType<T>;
+    $serialize(value: Internal<S>["Inline"]): Internal<S>["Serialized"];
+    $inline: Internal<S>["Inline"];
+  };

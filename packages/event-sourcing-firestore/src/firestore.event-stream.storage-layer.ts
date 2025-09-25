@@ -2,9 +2,9 @@ import {
   StreamId,
   type ISerializedChange,
   type ISerializedFact,
-  EventReference,
   EventStreamStorageLayer,
 } from "@ddd-ts/core";
+import { ISerializedSavedChange } from "@ddd-ts/core/dist/interfaces/es-event";
 
 import {
   DefaultConverter,
@@ -47,31 +47,35 @@ export class FirestoreEventStreamStorageLayer
     trx: FirestoreTransaction,
   ) {
     const collection = this.getCollection(streamId);
-    const refs: EventReference[] = [];
+    const result: ISerializedSavedChange[] = [];
 
     let revision = expectedRevision + 1;
     for (const change of changes) {
+      const storageChange = {
+        aggregateType: streamId.aggregateType,
+        eventId: change.id,
+        aggregateId: streamId.aggregateId,
+        revision: revision,
+        name: change.name,
+        payload: change.payload,
+        occurredAt: serverTimestamp(),
+        version: change.version,
+      };
+
       const ref = collection.doc(`${revision}`);
 
-      refs.push(new EventReference(ref.path));
+      result.push({
+        ...change,
+        ref: ref.path,
+        revision: revision,
+        occurredAt: undefined,
+      });
 
-      trx.transaction.create(
-        ref,
-        this.converter.toFirestore({
-          aggregateType: streamId.aggregateType,
-          eventId: change.id,
-          aggregateId: streamId.aggregateId,
-          revision: revision,
-          name: change.name,
-          payload: change.payload,
-          occurredAt: serverTimestamp(),
-          version: change.version,
-        }),
-      );
+      trx.transaction.create(ref, this.converter.toFirestore(storageChange));
       revision++;
     }
 
-    return refs;
+    return result;
   }
 
   async *read(
@@ -89,6 +93,7 @@ export class FirestoreEventStreamStorageLayer
       const data = this.converter.fromFirestore(e);
       yield {
         id: data.eventId,
+        ref: e.ref.path,
         revision: data.revision,
         name: data.name,
         $name: data.name,
