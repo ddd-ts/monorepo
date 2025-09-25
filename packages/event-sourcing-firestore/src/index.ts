@@ -22,3 +22,11 @@ export {
 export { FirestoreProjectedStreamReader } from "./firestore.projected-stream.reader";
 
 export { FirestoreSnapshotter } from "./firestore.snapshotter";
+
+export {
+  FirestoreProjector,
+  FirestoreQueueStore,
+  Task,
+  AlreadyEnqueuedError,
+  ClaimerId,
+} from "./projection/firestore.projector";

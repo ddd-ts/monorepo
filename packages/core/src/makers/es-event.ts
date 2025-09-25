@@ -1,18 +1,14 @@
 import {
   Optional,
-  Shape,
   type DefinitionOf,
   type DictShorthand,
+  MicrosecondTimestamp,
 } from "@ddd-ts/shape";
 import { type Constructor } from "@ddd-ts/types";
 import { EventId } from "../components/event-id";
-import { WithDerivations } from "@ddd-ts/traits";
+import { Trait, WithDerivations } from "@ddd-ts/traits";
 import { Named } from "../traits/named";
-import {
-  IChange,
-  ISerializedChange,
-  ISerializedFact,
-} from "../interfaces/es-event";
+import { Shaped } from "../traits/shaped";
 
 export const EsEvent = <
   const Name extends string,
@@ -34,14 +30,17 @@ export const EsEvent = <
     }
   }
 
-  return Shape(
-    {
+  return WithDerivations(
+    $EsEvent,
+    Named(name),
+    Shaped({
       name,
+      $name: name,
       id: EventId,
       payload,
       revision: Optional(Number),
-      occurredAt: Optional(Date),
-    },
-    WithDerivations($EsEvent, Named(name)),
+      occurredAt: Optional(MicrosecondTimestamp),
+      ...({ ref: Optional(String) } as {}),
+    }),
   );
 };

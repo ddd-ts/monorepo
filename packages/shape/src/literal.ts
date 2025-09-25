@@ -8,16 +8,13 @@ export const Literal = <
 >(
   of: S,
   base: B = Empty as any,
-) => {
+): ILiteral<S, B> => {
   type Inline = S;
 
   abstract class $Literal extends (base as any as Constructor<{}>) {
     public readonly value = of;
-
     static value = of;
-
     static $shape = "literal" as const;
-
     serialize(): S {
       return of;
     }
@@ -40,13 +37,22 @@ export const Literal = <
     static $inline: Inline;
   }
 
-  type LiteralConstructor = abstract new (
-    value: Expand<Inline>,
-  ) => InstanceType<B> & $Literal;
-
-  type Literal = Omit<B, "prototype"> &
-    Omit<typeof $Literal, "prototype"> &
-    LiteralConstructor;
-
-  return $Literal as Literal;
+  return $Literal as any;
 };
+
+export type ILiteral<
+  S extends LiteralShorthand,
+  B extends AbstractConstructor<{}> = typeof Empty,
+> = Omit<B, "prototype"> & {
+  value: S;
+  $shape: "literal";
+  deserialize<T extends Constructor>(this: T, value: S): InstanceType<T>;
+  $serialize(value: S): S;
+  $deserialize(value: S): S;
+  $inline: S;
+} & (abstract new (
+    value: Expand<S>,
+  ) => InstanceType<B> & {
+    readonly value: S;
+    serialize(): S;
+  });

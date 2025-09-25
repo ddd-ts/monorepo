@@ -2,10 +2,10 @@ import {
   StreamId,
   type ISerializedChange,
   type ISerializedFact,
-  EventReference,
   EventStreamStorageLayer,
   ConcurrencyError,
 } from "@ddd-ts/core";
+import { ISerializedSavedChange } from "@ddd-ts/core/dist/interfaces/es-event";
 import { InMemoryDatabase, InMemoryTransaction } from "@ddd-ts/store-inmemory";
 
 export class InMemoryEventStreamStorageLayer
@@ -23,16 +23,16 @@ export class InMemoryEventStreamStorageLayer
     expectedRevision: number,
     trx: InMemoryTransaction,
   ) {
-    const refs: EventReference[] = [];
+    const result: ISerializedSavedChange[] = [];
 
     let revision = expectedRevision + 1;
 
     for (const change of changes) {
-      const ref = new EventReference(`${streamId.serialize()}/${revision}`);
+      const ref = `${streamId.serialize()}/${revision}`;
 
       const stored = {
         ...change,
-        ref: ref.serialize(),
+        ref: ref,
         revision: revision,
       };
 
@@ -43,10 +43,16 @@ export class InMemoryEventStreamStorageLayer
         trx.transaction,
       );
 
-      refs.push(ref);
+      result.push({
+        ...change,
+        ref: ref,
+        revision: revision,
+        occurredAt: undefined,
+      });
+
       revision++;
     }
-    return refs;
+    return result;
   }
 
   async *read(
@@ -59,7 +65,10 @@ export class InMemoryEventStreamStorageLayer
       (a, b) => a.data.data.revision - b.data.data.revision,
     );
 
-    const facts = sorted.map((e) => e.data.data);
+    const facts = sorted.map((e) => ({
+      ...e.data.data,
+      occurredAt: e.data.savedAt,
+    }));
 
     yield* facts.slice(from !== undefined ? from : 0);
   }

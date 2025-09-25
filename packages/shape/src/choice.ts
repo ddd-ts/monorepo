@@ -1,11 +1,4 @@
-import {
-  AbstractConstructor,
-  Empty,
-  Concrete,
-  Expand,
-  Constructor,
-  MergeClasses,
-} from "./_";
+import { AbstractConstructor, Empty, Expand, Constructor } from "./_";
 
 export type ChoiceMatcher<S extends string[]> =
   | {
@@ -26,7 +19,7 @@ export const Choice = <
 >(
   config: S,
   base: B = Empty as any,
-) => {
+): IChoice<S, B> => {
   type Inline = S[number];
 
   abstract class $Choice extends (base as any as Constructor<{}>) {
@@ -88,9 +81,37 @@ export const Choice = <
     }
   }
 
-  return $Choice as any as MergeClasses<B, typeof $Choice> &
-    Omit<B, ""> &
-    Omit<typeof $Choice, ""> & {
-      [K in S[number]]: <T extends Constructor>(this: T) => InstanceType<T>;
-    };
+  return $Choice as any;
 };
+
+export type IChoice<
+  S extends string[],
+  B extends AbstractConstructor<{}> = typeof Empty,
+> = Omit<B, ""> & {
+  $shape: "choice";
+  $of: S;
+  values: S;
+  deserialize<T extends Constructor>(
+    this: T,
+    value: S[number],
+  ): InstanceType<T>;
+  $deserialize<T>(this: T, value: S[number]): S[number];
+  $serialize<T>(this: T, value: S[number]): S[number];
+  $inline: S[number];
+} & (abstract new (
+    value: S[number],
+  ) => InstanceType<B> & {
+    value: S[number];
+    is<TH, T extends S[number]>(
+      this: TH,
+      value: T,
+    ): this is Omit<TH, "serialize" | "value"> & {
+      value: T;
+      serialize(): T;
+    };
+    match<M extends ChoiceMatcher<S>>(matcher: M): ChoiceMatcherResult<M>;
+    serialize(): S[number];
+  }) & {
+    [K in S[number]]: <T extends Constructor>(this: T) => InstanceType<T>;
+  };
+//# sourceMappingURL=choice.d.ts.map

@@ -1,9 +1,9 @@
-import { Class, ClassShorthand } from "./class";
-import { Dict, DictShorthand } from "./dict";
+import { Class, IClass, ClassShorthand } from "./class";
+import { Dict, IDict, DictShorthand } from "./dict";
 import { Primitive, PrimitiveShorthand } from "./primitive";
-import { Multiple, MultipleShorthand } from "./multiple";
+import { Multiple, IMultiple, MultipleShorthand } from "./multiple";
 import { Nothing, NothingShorthand } from "./nothing";
-import { Literal, LiteralShorthand } from "./literal";
+import { Literal, ILiteral, LiteralShorthand } from "./literal";
 
 export abstract class Empty {}
 
@@ -50,19 +50,19 @@ export type DefinitionOf<
   T extends Shorthand | Definition,
   B extends AbstractConstructor<{}> = typeof Empty,
 > = T extends LiteralShorthand
-  ? ReturnType<typeof Literal<T, B>>
+  ? ILiteral<T, B>
   : T extends undefined
     ? ReturnType<typeof Nothing<B>>
     : T extends PrimitiveShorthand
       ? ReturnType<typeof Primitive<T, B>>
       : T extends MultipleShorthand
-        ? ReturnType<typeof Multiple<T[0], B>>
+        ? IMultiple<T[0], B>
         : T extends ClassShorthand
-          ? ReturnType<typeof Class<T, B>>
+          ? IClass<T, B>
           : T extends Definition
             ? T
             : T extends DictShorthand
-              ? ReturnType<typeof Dict<T, B>>
+              ? IDict<T, B>
               : never;
 
 export function Shape<

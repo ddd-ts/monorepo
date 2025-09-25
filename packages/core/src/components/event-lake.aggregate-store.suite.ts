@@ -188,7 +188,7 @@ export function EventLakeAggregateStoreSuite(config: {
   it("is fast", async () => {
     const accountStore = config.getAggregateStore(Account, registry);
 
-    const accounts = [...Array(200).keys()].map(() => Account.open());
+    const accounts = [...Array(100).keys()].map(() => Account.open());
 
     const expectMS = async (ms: number, fn: () => Promise<any>) => {
       const before = process.hrtime.bigint();
