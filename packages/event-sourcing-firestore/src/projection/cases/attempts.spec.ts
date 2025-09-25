@@ -2,7 +2,7 @@ import { caseFixture } from "../testkit/case-fixture";
 
 const test = caseFixture("Breathing", {
   projector: {
-    retry: { attempts: 3, minDelay: 10, maxDelay: 10 },
+    retry: { attempts: 3, minDelay: 10, maxDelay: 10, backoff: 1 },
     enqueue: { batchSize: 100 },
   },
 });

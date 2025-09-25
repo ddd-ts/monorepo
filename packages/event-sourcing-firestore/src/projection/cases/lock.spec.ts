@@ -87,7 +87,7 @@ test.describe(() => {
     );
 
     // For debugging:
-    //    const report = trace.map((id) =>
+    // const report = trace?.map((id) =>
     //   id === opened.id.serialize()
     //     ? "O"
     //     : deposits.has(id)

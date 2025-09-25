@@ -40,7 +40,7 @@ export function makeProjector(params: {
   const projector = new FirestoreProjector(projection, reader, queueStore, {
     onEnqueueError: console.log,
     onProcessError: console.error,
-    retry: { attempts: 40, minDelay: 100, maxDelay: 1000 },
+    retry: { attempts: 40, minDelay: 100, maxDelay: 1000, backoff: 1.5 },
     enqueue: { batchSize: 50 },
   });
 

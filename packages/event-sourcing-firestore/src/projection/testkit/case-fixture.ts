@@ -340,7 +340,12 @@ export function caseFixture(
     };
     projector?: {
       unclaimOnFailure?: boolean;
-      retry?: { attempts: number; minDelay: number; maxDelay: number };
+      retry?: {
+        attempts: number;
+        minDelay: number;
+        maxDelay: number;
+        backoff: number;
+      };
       enqueue?: { batchSize: number };
     };
   } = {},
@@ -427,6 +432,7 @@ export function caseFixture(
             attempts: 10,
             minDelay: 100,
             maxDelay: 100,
+            backoff: 1,
           },
           enqueue: opts.projector?.enqueue || { batchSize: 50 },
         },

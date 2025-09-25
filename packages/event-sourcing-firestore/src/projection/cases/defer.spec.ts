@@ -17,7 +17,7 @@ const test = caseFixture("Defer", {
     },
   },
   projector: {
-    retry: { attempts: 10, minDelay: 100, maxDelay: 100 },
+    retry: { attempts: 10, minDelay: 100, maxDelay: 100, backoff: 1 },
   },
 });
 

@@ -40,7 +40,7 @@ export class FirestoreProjector {
     public readonly reader: ProjectedStreamReader<IEsEvent>,
     public readonly queue: FirestoreQueueStore,
     public config = {
-      retry: { attempts: 10, minDelay: 10, maxDelay: 200 },
+      retry: { attempts: 10, minDelay: 10, maxDelay: 200, backoff: 1.5 },
       enqueue: { batchSize: 100 },
       onProcessError: (error: Error) => {
         console.error("Error processing event:", error);
@@ -52,17 +52,17 @@ export class FirestoreProjector {
   ) {}
 
   async *breathe() {
-    for (let i = 0; i < this.config.retry.attempts; i++) {
-      yield [
-        i,
-        () => {
-          i--;
-        },
-      ] as const;
+    const { attempts, minDelay, maxDelay, backoff } = this.config.retry;
 
-      const margin = this.config.retry.maxDelay - this.config.retry.minDelay;
+    for (let i = 0; i < attempts; i++) {
+      yield [i, () => i--] as const;
+
+      const margin = maxDelay - minDelay;
       const jitter = Math.random() * margin;
-      const jitteredDelay = this.config.retry.minDelay + jitter;
+
+      const backedoff = (backoff * i + 1) * minDelay;
+      const jitteredDelay = backedoff + jitter;
+
       await wait(jitteredDelay);
     }
   }
@@ -433,7 +433,6 @@ export class FirestoreQueueStore {
           claimedAt: FieldValue.delete(),
           attempts: task.attempts,
           remaining: task.remaining,
-          skipped: task.skipped,
         });
       }
       await batch.commit();
@@ -622,7 +621,6 @@ export class FirestoreQueueStore {
       claimTimeout: 0,
       skipAfter: 0,
       isolateAfter: 0,
-      skipped: false,
       lastUpdateTime: undefined,
     });
 
@@ -651,7 +649,6 @@ export class Task<Stored extends boolean> extends Shape({
   claimedAt: Optional(MicrosecondTimestamp),
   lock: Lock,
   skipAfter: Number,
-  skipped: Boolean,
   remaining: Number,
   isolateAfter: Number,
   claimTimeout: Number,
@@ -690,7 +687,6 @@ export class Task<Stored extends boolean> extends Shape({
       skipAfter: config.skipAfter,
       isolateAfter: config.isolateAfter,
       remaining: config.skipAfter,
-      skipped: false,
       ref: fact.ref,
       revision: fact.revision,
       occurredAt: fact.occurredAt,
@@ -724,10 +720,6 @@ export class Task<Stored extends boolean> extends Shape({
       this.claimer = undefined;
       this.attempts += 1;
       this.remaining -= 1;
-    }
-
-    if (this.attempts > this.skipAfter) {
-      this.skipped = true;
     }
   }
 
