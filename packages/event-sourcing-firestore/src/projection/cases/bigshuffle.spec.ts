@@ -15,7 +15,7 @@ const test = caseFixture("BigShuffle", {
     Withdrawn: {
       chain: [traits.Context(), traits.Parallel(), traits.Transaction()],
       lock: locks.accountAndEventId, // allows parallel withdrawals
-    },=
+    },
   },
 });
 
