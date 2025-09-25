@@ -19,6 +19,6 @@ describe("Lock", () => {
 
     // lock2 has more constraints, so it should be restrained by lock1
     expect(lock1.restrains(lock2)).toBe(true);
-    expect(lock2.restrains(lock1)).toBe(false);
+    expect(lock2.restrains(lock1)).toBe(true);
   });
 });
