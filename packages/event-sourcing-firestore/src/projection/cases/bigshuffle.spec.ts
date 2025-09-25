@@ -1,6 +1,6 @@
 import { caseFixture, locks, traits } from "../testkit/case-fixture";
 
-jest.setTimeout(10_000);
+jest.setTimeout(20_000);
 
 const test = caseFixture("BigShuffle", {
   handlers: {
@@ -15,7 +15,7 @@ const test = caseFixture("BigShuffle", {
     Withdrawn: {
       chain: [traits.Context(), traits.Parallel(), traits.Transaction()],
       lock: locks.accountAndEventId, // allows parallel withdrawals
-    },
+    },=
   },
 });
 

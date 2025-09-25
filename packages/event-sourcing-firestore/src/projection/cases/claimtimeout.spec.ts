@@ -6,7 +6,7 @@ const test = caseFixture("ClaimTimeout", {
       chain: [
         traits.Context(),
         traits.Transaction(),
-        traits.ClaimTimeout(1000),
+        traits.ClaimTimeout(500),
         traits.Parallel(),
         traits.Suspense(),
       ],
@@ -14,7 +14,7 @@ const test = caseFixture("ClaimTimeout", {
     },
   },
   projector: {
-    retry: { attempts: 3, minDelay: 500, maxDelay: 500 },
+    retry: { attempts: 2, minDelay: 500, maxDelay: 500 },
     unclaimOnFailure: false,
   },
 });
