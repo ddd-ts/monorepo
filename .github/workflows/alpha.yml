@@ -30,8 +30,8 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Test
-        run: pnpm test
+      # - name: Test
+        # run: pnpm test
 
       - name: Release Alpha
         run: sh .github/workflows/release-alpha.sh

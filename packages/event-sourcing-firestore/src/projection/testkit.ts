@@ -1,5 +1,4 @@
-process.env.FIRESTORE_EMULATOR_HOST =
-  process.env.FIRESTORE_EMULATOR_HOST || "localhost:8080";
+process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
 import * as fb from "firebase-admin";
 import type { Firestore } from "firebase-admin/firestore";
 import { FirestoreProjector, FirestoreQueueStore } from "./firestore.projector";
