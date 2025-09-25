@@ -1,11 +1,14 @@
-import { EsAggregate, EsEvent, On } from "@ddd-ts/core";
+import { AutoSerializer, EsAggregate, EsEvent, On } from "@ddd-ts/core";
 import { AccountId } from "./account-id";
 import { Deposited, Withdrawn } from "./deposited.event";
+import { Shape } from "@ddd-ts/shape";
 
 export class AccountOpened extends EsEvent("AccountOpened", {
   accountId: AccountId,
   at: Date,
 }) {}
+
+class AccountOpenedAutoSerializer extends AutoSerializer(AccountOpened, 1) {}
 
 export class Account extends EsAggregate("Account", {
   events: [AccountOpened, Deposited, Withdrawn],

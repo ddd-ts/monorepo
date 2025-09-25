@@ -2,10 +2,10 @@ import {
   LakeId,
   type ISerializedChange,
   type ISerializedFact,
-  EventReference,
   EventLakeStorageLayer,
   EventId,
 } from "@ddd-ts/core";
+import { ISerializedSavedChange } from "@ddd-ts/core/dist/interfaces/es-event";
 import { InMemoryDatabase, InMemoryTransaction } from "@ddd-ts/store-inmemory";
 
 export class InMemoryEventLakeStorageLayer implements EventLakeStorageLayer {
@@ -16,15 +16,15 @@ export class InMemoryEventLakeStorageLayer implements EventLakeStorageLayer {
     changes: ISerializedChange[],
     trx: InMemoryTransaction,
   ) {
-    const refs: EventReference[] = [];
+    const result: ISerializedSavedChange[] = [];
 
     let revision = 0;
     for (const change of changes) {
-      const ref = new EventReference(`${lakeId.serialize()}/${change.id}`);
+      const ref = `${lakeId.serialize()}/${change.id}`;
 
       const stored = {
         ...change,
-        ref: ref.serialize(),
+        ref: ref,
         revision: revision,
       };
 
@@ -34,10 +34,15 @@ export class InMemoryEventLakeStorageLayer implements EventLakeStorageLayer {
         stored,
         trx.transaction,
       );
-      refs.push(ref);
+      result.push({
+        ...change,
+        ref: ref,
+        revision: revision,
+        occurredAt: undefined,
+      });
       revision++;
     }
-    return refs;
+    return result;
   }
 
   async *read(
@@ -55,21 +60,21 @@ export class InMemoryEventLakeStorageLayer implements EventLakeStorageLayer {
           : 1,
     );
 
-    const facts = sorted.map((e) => e.data.data);
+    const facts = sorted.map((e) => e.data);
 
     let started = !startAfter;
 
     for (const fact of facts) {
-      if (startAfter && fact.id === startAfter.serialize()) {
+      if (startAfter && fact.data.id === startAfter.serialize()) {
         started = true;
         continue;
       }
-      if (endAt && fact.id === endAt.serialize()) {
-        yield fact;
+      if (endAt && fact.data.id === endAt.serialize()) {
+        yield { ...fact.data, occurredAt: fact.data.savedAt };
         break;
       }
       if (started) {
-        yield fact;
+        yield { ...fact.data, occurredAt: fact.data.savedAt };
       }
     }
   }

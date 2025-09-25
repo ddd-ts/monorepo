@@ -189,57 +189,29 @@ type Internal<
 export const DiscriminatedUnion = <
   S extends DiscriminatedUnionConfiguration,
   K extends BestKey<S>,
-  const B extends AbstractConstructor<{}> = typeof Empty,
-  IInternal extends Internal<S, K> = Internal<S, K>,
+  const B extends AbstractConstructor = typeof Empty,
 >(
   of: S,
   ...args: [base?: B]
-) => {
+): IDiscriminatedUnion<S, K, B> => {
   const base = args[0] || (Empty as any);
 
   const key = findBestKey(of);
   const map = prepareShapeMap(of, key);
 
   abstract class $DiscriminatedUnion extends (base as any as Constructor<{}>) {
-    constructor(public value: IInternal["Inline"]) {
+    constructor(public value: any) {
       super();
     }
 
-    static serialized: IInternal["Serialized"];
-
     static $of = of;
-
     static $shape = "discriminated-union" as const;
 
-    serialize(): Expand<IInternal["Serialized"]> {
-      return ($DiscriminatedUnion as any).$serialize(this.value) as any;
+    serialize() {
+      return $DiscriminatedUnion.$serialize(this.value);
     }
 
-    match<
-      M extends Matcher<IInternal["Map"]>,
-      F extends M extends ExhaustiveMatcher<IInternal["Map"]>
-        ? []
-        : M extends UnsafeFallthroughMatcher<IInternal["Map"]>
-          ? []
-          : M extends PartialMatcher<IInternal["Map"]>
-            ? [
-                fallback: (
-                  value: Omit<IInternal["Map"], keyof M>[keyof Omit<
-                    IInternal["Map"],
-                    keyof M
-                  >] extends infer U extends Shorthand
-                    ? Expand<DefinitionOf<U>["$inline"]>
-                    : never,
-                ) => any,
-              ]
-            : [],
-    >(
-      ...[matcher, fallback]: [matcher: M, ...F]
-    ):
-      | (M[keyof M] extends (...args: any[]) => any
-          ? ReturnType<M[keyof M]>
-          : never)
-      | (F[0] extends (...args: any[]) => any ? ReturnType<F[0]> : never) {
+    match(matcher: any, fallback: any) {
       const element: any = this.value;
       const discriminant = element[key];
 
@@ -256,17 +228,11 @@ export const DiscriminatedUnion = <
       throw new Error("Non-exhaustive match");
     }
 
-    static deserialize<T extends typeof $DiscriminatedUnion>(
-      this: T,
-      value: Expand<IInternal["Serialized"]>,
-    ): InstanceType<T> {
+    static deserialize(value: any) {
       return new (this as any)(this.$deserialize(value as any)) as any;
     }
 
-    static $deserialize<T extends typeof $DiscriminatedUnion>(
-      this: T,
-      value: IInternal["Serialized"],
-    ): IInternal["Inline"] {
+    static $deserialize(value: any) {
       const definition = map[value[key]];
       if (!definition) {
         throw new Error("Cannot deserialize DiscriminatedUnion");
@@ -274,22 +240,64 @@ export const DiscriminatedUnion = <
       return (definition as any).$deserialize(value);
     }
 
-    static $serialize<T extends typeof $DiscriminatedUnion>(
-      this: T,
-      value: IInternal["Inline"],
-    ): IInternal["Serialized"] {
+    static $serialize(value: any): any {
       return map[(value as any)[key]].$serialize(value);
     }
-
-    static $inline: IInternal["Inline"];
   }
 
-  type DiscriminatedUnionConstructor = abstract new (
-    value: Expand<IInternal["Inline"]>,
-  ) => InstanceType<B> & $DiscriminatedUnion;
-  type DiscriminatedUnion = Omit<B, "prototype"> &
-    Omit<typeof $DiscriminatedUnion, "prototype"> &
-    DiscriminatedUnionConstructor;
-
-  return $DiscriminatedUnion as DiscriminatedUnion;
+  return $DiscriminatedUnion as any;
 };
+
+export type IDiscriminatedUnion<
+  S extends DiscriminatedUnionConfiguration,
+  K extends BestKey<S>,
+  B extends AbstractConstructor = typeof Empty,
+> = Omit<B, "prototype"> & {
+  $shape: "discriminated-union";
+  $of: S;
+  serialized: Internal<S, K>["Serialized"];
+  deserialize<T>(
+    this: T,
+    value: Expand<Internal<S, K>["Serialized"]>,
+  ):  T extends AbstractConstructor ? InstanceType<T> : any;
+  $deserialize<T>(
+    this: T,
+    value: Internal<S, K>["Serialized"],
+  ): Internal<S, K>["Inline"];
+  $serialize<T extends AbstractConstructor>(
+    this: T,
+    value: InstanceType<T>,
+  ): Internal<S, K>["Serialized"];
+  $inline: Internal<S, K>["Inline"];
+} & (abstract new (
+    value: Internal<S, K>["Inline"],
+  ) => InstanceType<B> & {
+    value: Internal<S, K>["Inline"];
+    serialize(): Internal<S, K>["Serialized"];
+    match<
+      M extends Matcher<Internal<S, K>["Map"]>,
+      F extends M extends ExhaustiveMatcher<Internal<S, K>["Map"]>
+        ? []
+        : M extends UnsafeFallthroughMatcher<Internal<S, K>["Map"]>
+          ? []
+          : M extends PartialMatcher<Internal<S, K>["Map"]>
+            ? [
+                fallback: (
+                  value: Omit<Internal<S, K>["Map"], keyof M>[keyof Omit<
+                    Internal<S, K>["Map"],
+                    keyof M
+                  >] extends infer U extends Shorthand
+                    ? Expand<DefinitionOf<U>["$inline"]>
+                    : never,
+                ) => any,
+              ]
+            : [],
+    >(
+      matcher: M,
+      ...fallback_n: F
+    ):
+      | (M[keyof M] extends (...args: any[]) => any
+          ? ReturnType<M[keyof M]>
+          : never)
+      | (F[0] extends (...args: any[]) => any ? ReturnType<F[0]> : never);
+  });

@@ -64,14 +64,14 @@ export function ProjectedStreamReaderSuite(config: {
   const streamStore = new EventStreamStore(config.streamStorageLayer, registry);
   const reader = new ProjectedStreamReader(config.readerStorageLayer, registry);
 
-  function appendToLake(
+  async function appendToLake(
     lakeId: LakeId,
     events: (Added | Removed | Multiplied)[],
   ) {
     return transaction.perform((trx) => lakeStore.append(lakeId, events, trx));
   }
 
-  function appendToStream(
+  async function appendToStream(
     streamId: StreamId,
     expectedRevision: number,
     events: (Added | Removed | Multiplied)[],
@@ -183,8 +183,11 @@ export function ProjectedStreamReaderSuite(config: {
       ],
     });
 
+    const startCursor = await reader.getCursor(start);
+    const endCursor = await reader.getCursor(end);
+
     const result = await buffer(
-      reader.read(projectedStream, bankId.serialize(), start, end),
+      reader.read(projectedStream, bankId.serialize(), startCursor, endCursor),
     );
 
     expect(

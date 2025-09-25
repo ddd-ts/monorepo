@@ -34,6 +34,20 @@ export type EitherConfiguration = {
   [key: string]: ClassShorthand;
 };
 
+type Internal<
+  S extends EitherConfiguration,
+  B extends AbstractConstructor<{}>,
+> = {
+  Definition: DefinitionOf<S[keyof S]>;
+  Serialized: (B extends { $name: infer U } ? { $name: U } : {}) & {
+    _key: keyof S;
+  } & ReturnType<DefinitionOf<S[keyof S]>["$serialize"]>;
+  Deserializing: (B extends { $name: infer U } ? { $name: U } : {}) & {
+    _key: keyof S;
+  } & Parameters<DefinitionOf<S[keyof S]>["$deserialize"]>[0];
+  Inline: DefinitionOf<S[keyof S]>["$inline"];
+};
+
 export const Either = <
   const S extends EitherConfiguration,
   const B extends AbstractConstructor<{}> = typeof Empty,
@@ -71,22 +85,22 @@ export const Either = <
     match<
       M extends Matcher<S>,
       F extends M extends ExhaustiveMatcher<S>
-      ? []
-      : M extends UnsafeFallthroughMatcher<S>
-      ? []
-      : M extends PartialMatcher<S>
-      ? [
-        fallback: (
-          value: InstanceType<Omit<S, keyof M>[keyof Omit<S, keyof M>]>,
-        ) => any,
-      ]
-      : [],
+        ? []
+        : M extends UnsafeFallthroughMatcher<S>
+          ? []
+          : M extends PartialMatcher<S>
+            ? [
+                fallback: (
+                  value: InstanceType<Omit<S, keyof M>[keyof Omit<S, keyof M>]>,
+                ) => any,
+              ]
+            : [],
     >(
       ...[matcher, fallback]: [matcher: M, ...F]
     ):
       | (M[keyof M] extends (...args: any[]) => any
-        ? ReturnType<M[keyof M]>
-        : never)
+          ? ReturnType<M[keyof M]>
+          : never)
       | (F[0] extends (...args: any[]) => any ? ReturnType<F[0]> : never) {
       const key: any = Object.entries(of).find(
         ([_, v]) => v === ((this.value as any).constructor as any),
@@ -154,3 +168,52 @@ export const Either = <
 
   return $Either as Either;
 };
+
+export type Either<
+  S extends EitherConfiguration,
+  B extends AbstractConstructor<{}> = typeof Empty,
+> = Omit<B, "prototype"> &
+  (abstract new (
+    value: Internal<S, B>["Inline"],
+  ) => {
+    value: Internal<S, B>["Inline"];
+    serialize(): Internal<S, B>["Serialized"];
+    match<
+      M extends Matcher<S>,
+      F extends M extends ExhaustiveMatcher<S>
+        ? []
+        : M extends UnsafeFallthroughMatcher<S>
+          ? []
+          : M extends PartialMatcher<S>
+            ? [
+                fallback: (
+                  value: InstanceType<Omit<S, keyof M>[keyof Omit<S, keyof M>]>,
+                ) => any,
+              ]
+            : [],
+    >(
+      matcher: M,
+      ...fallback_n: F
+    ):
+      | (M[keyof M] extends (...args: any[]) => any
+          ? ReturnType<M[keyof M]>
+          : never)
+      | (F[0] extends (...args: any[]) => any ? ReturnType<F[0]> : never);
+  }) & {
+    serialized: Internal<S, B>["Serialized"];
+    of: S;
+    $shape: "either";
+    deserialize<T extends Constructor>(
+      this: T,
+      value: Internal<S, B>["Serialized"],
+    ): InstanceType<T>;
+    $deserialize<T>(
+      this: T,
+      value: Internal<S, B>["Serialized"],
+    ): Internal<S, B>["Inline"];
+    $serialize<T>(
+      this: T,
+      value: Internal<S, B>["Inline"],
+    ): Internal<S, B>["Serialized"];
+    $inline: Internal<S, B>["Inline"];
+  };

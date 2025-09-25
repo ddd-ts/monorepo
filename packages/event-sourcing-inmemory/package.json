@@ -11,7 +11,8 @@
   "dependencies": {
     "@ddd-ts/core": "workspace:*",
     "@ddd-ts/store-inmemory": "workspace:*",
-    "@ddd-ts/types": "workspace:*"
+    "@ddd-ts/types": "workspace:*",
+    "@ddd-ts/shape": "workspace:*"
   },
   "devDependencies": {
     "@ddd-ts/tests": "workspace:*",
