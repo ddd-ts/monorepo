@@ -100,7 +100,7 @@ test.describe(() => {
     expect(report).toEqual([
       "O",
       // 0-99 deposits in any order
-      ...Array.from({ length: 100 }, () => "D").sort(),
+      ...Array.from({ length: 100 }, () => "D"),
       ...Array.from({ length: 50 }, () => "W"),
       "L", // last deposit
     ]);
