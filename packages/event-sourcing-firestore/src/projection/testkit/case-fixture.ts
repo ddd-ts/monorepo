@@ -228,7 +228,7 @@ class CashflowDocStore extends FirestoreStore<Cashflow> {
         all_names: [],
         ops_trace: event ? [event.id.serialize()] : [],
         version: 1,
-      },
+      } as any,
     );
   }
   async increment(
