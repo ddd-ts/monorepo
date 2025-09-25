@@ -1,6 +1,9 @@
 import { ImplementsTrait } from "@ddd-ts/traits";
 import { CashflowOnOpenedHandler } from "./cashflow.projection.OnOpened";
-import { CashflowOnFlowHandler } from "./cashflow.projection.OnFlow";
+import {
+  CashflowOnFlowHandlerParallel,
+  CashflowOnFlowHandlerSequential,
+} from "./cashflow.projection.OnFlow";
 import { CashflowOnRenamedHandler } from "./cashflow.projection.OnRenamed";
 import {
   Account,
@@ -58,12 +61,12 @@ export class CashflowProjection extends ESProjection<
 
     this.registerHandler(
       Deposited,
-      new CashflowOnFlowHandler({ store, transaction }),
+      new CashflowOnFlowHandlerParallel({ store, transaction }),
     );
 
     this.registerHandler(
       Withdrawn,
-      new CashflowOnFlowHandler({ store, transaction }),
+      new CashflowOnFlowHandlerParallel({ store, transaction }),
     );
 
     this.registerHandler(
@@ -88,9 +91,9 @@ export class CashflowProjection extends ESProjection<
     return this.handlers as {
       [K in AccountOpened["name"]]: CashflowOnOpenedHandler;
     } & {
-      [K in Deposited["name"]]: CashflowOnFlowHandler;
+      [K in Deposited["name"]]: CashflowOnFlowHandlerParallel;
     } & {
-      [K in Withdrawn["name"]]: CashflowOnFlowHandler;
+      [K in Withdrawn["name"]]: CashflowOnFlowHandlerParallel;
     } & {
       [K in AccountRenamed["name"]]: CashflowOnRenamedHandler;
     };

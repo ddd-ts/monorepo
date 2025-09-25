@@ -20,6 +20,8 @@ const Registry = new SerializerRegistry()
   .auto(AccountRenamed)
   .auto(Account);
 
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 function ProjectorSuite(
   makePrepare: (registry: typeof Registry) => () => {
     accountStore: EventStreamAggregateStore<Account>;
@@ -837,6 +839,60 @@ AccountRenamed:
     expect(await getFlow(account.id)).toEqual(150);
   }
 
+  async function ImplicitTimeoutDeferRetry() {
+    const n = "ImplicitTimeoutDeferRetry";
+    const {
+      accountStore,
+      projection,
+      projector,
+      cashflowStore,
+      disableUnclaimOnFailure,
+    } = prepare();
+    // Disable unclaiming to simulate a preemption
+
+    disableUnclaimOnFailure();
+
+    const handler = projection.testhandlers.Deposited;
+
+    const getFlow = async (accountId: AccountId) => {
+      const cashflow = await cashflowStore.load(accountId);
+      return cashflow ? cashflow.flow : 0;
+    };
+
+    const [account, opened] = Account.open(n);
+    await accountStore.save(account);
+    await projector.handle(opened);
+
+    // we want to test that when a event is taking too long to process,
+    // it will block other locked events from being processed.
+    handler.allowConcurrent = false;
+
+    const failing = account.deposit(1000);
+    const next = account.deposit(100);
+    await accountStore.save(account);
+
+    const unmarkFailing = handler.markFailing(failing);
+    const handlingFailing = projector.handle(failing);
+    await wait(100);
+
+    const handlingNext = projector.handle(next);
+
+    // We need to wait long enough to ensure that the failing event exceeds
+    // the total local attempts that are perfomed through "breathing" attempts.
+    // This will demonstrate that when the cause of the delay is that the target event is locked
+    // by another event that is taking too long, breathing attempts will continue until the locking event is processed.
+    await wait(10_000);
+
+    expect(await getFlow(account.id)).toEqual(0);
+
+    unmarkFailing();
+
+    await handlingFailing;
+    await handlingNext;
+
+    expect(await getFlow(account.id)).toEqual(1100);
+  }
+
   async function ImplicitTimeoutFailureRetry() {
     const n = "ImplicitTimeoutFailureRetry";
     const {
@@ -857,7 +913,6 @@ AccountRenamed:
 
     const [account, opened] = Account.open(n);
     await accountStore.save(account);
-
     await projector.handle(opened);
 
     const failing = account.deposit(1000);
@@ -865,18 +920,33 @@ AccountRenamed:
     const unmarkFailing =
       projection.testhandlers.Deposited.markFailing(failing);
 
+    console.log("C");
     await accountStore.save(account);
+    console.log("D");
     const first = projector.handle(failing);
+    console.log("E");
     expect(await first.catch((e) => e)).toBeInstanceOf(Error);
 
     expect(await getFlow(account.id)).toEqual(0);
+    console.log("F");
 
     const deposited = account.deposit(100);
     await accountStore.save(account);
-    await projector.handle(deposited);
 
+    console.log("G");
+
+    const depositing = projector.handle(deposited);
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+
+    console.log("unmarkFailing");
+    console.log("unmarkFailing");
+    console.log("unmarkFailing");
+    console.log("unmarkFailing");
+    console.log("unmarkFailing");
+    console.log("unmarkFailing");
     unmarkFailing();
     await new Promise((resolve) => setTimeout(resolve, 4000));
+    await depositing;
 
     const withdrawn = account.withdraw(50);
     await accountStore.save(account);
@@ -904,6 +974,7 @@ AccountRenamed:
     ImplicitFailureSkip,
     ImplicitTimeoutFailureRetry,
     ImplicitTimeoutFailureSkip,
+    ImplicitTimeoutDeferRetry,
   };
 }
 

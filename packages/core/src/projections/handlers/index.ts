@@ -13,6 +13,7 @@ import {
 import { WithSuspense } from "./suspense.handler";
 import { WithLocalTimeout } from "./timeout.handler";
 import { WithTransaction } from "./transaction.handler";
+import { WithDelay } from "./delay.handler";
 
 export const Handler = {
   Base: BaseHandler,
@@ -25,6 +26,7 @@ export const Handler = {
   OnProcessed: WithOnProcessed,
   LocalRetry: WithLocalRetry,
   LocalTimeout: WithLocalTimeout,
+  Delay: WithDelay,
   ClaimTimeout: WithClaimTimeout,
   IsolateAfter: WithIsolateAfter,
   SkipAfter: WithSkipAfter,

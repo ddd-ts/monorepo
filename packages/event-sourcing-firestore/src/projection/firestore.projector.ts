@@ -23,6 +23,13 @@ import {
   FirestoreTransaction,
 } from "@ddd-ts/store-firestore";
 
+const Status = {
+  SUCCESS: "OK",
+  FAILURE: "FAILURE",
+  DEFERRED: "DEFERRED",
+} as const;
+type Status = (typeof Status)[keyof typeof Status];
+
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class FirestoreProjector {
@@ -46,7 +53,12 @@ export class FirestoreProjector {
 
   async *breathe() {
     for (let i = 0; i < this.config.retry.attempts; i++) {
-      yield i;
+      yield [
+        i,
+        () => {
+          i--;
+        },
+      ] as const;
 
       const margin = this.config.retry.maxDelay - this.config.retry.minDelay;
       const jitter = Math.random() * margin;
@@ -75,14 +87,32 @@ export class FirestoreProjector {
 
     const errors = [];
 
-    for await (const attempt of this.breathe()) {
+    for await (const [attempt, defer] of this.breathe()) {
+      console.log(`Attempt ${attempt} for event ${savedChange.id.serialize()}`);
       const source = this.projection.getSource(savedChange);
-      const [ok, message] = await this.attempt(source, checkpointId, target);
+      const [status, message] = await this.attempt(
+        source,
+        checkpointId,
+        target,
+      );
 
-      if (ok) {
+      if (status === Status.DEFERRED) {
+        defer();
+        console.log(
+          `Event ${savedChange.id.serialize()} is deferred (${message})`,
+        );
+        continue;
+      }
+
+      if (status === Status.SUCCESS) {
+        console.log(
+          `Event ${savedChange.id.serialize()} processed successfully`,
+        );
         await this.queue.cleanup(checkpointId);
         return;
       }
+
+      // console.log(`Attempt ${attempt} failed:`, message);
 
       errors.push(message);
     }
@@ -106,29 +136,50 @@ export class FirestoreProjector {
     const headCursor = await this.getQueueHead(checkpointId);
 
     if (!headCursor?.isAfterOrEqual(target)) {
-      const [ok, message] = await this.enqueue(source, checkpointId, target);
-      if (!ok) {
-        return [false, message] as const;
+      const [status, message] = await this.enqueue(
+        source,
+        checkpointId,
+        target,
+      );
+      if (status === Status.DEFERRED) {
+        return [Status.DEFERRED, message] as const;
       }
     }
 
     if (await this.checkIsProcessed(checkpointId, target)) {
-      return [true, "Successfully processed"] as const;
+      return [Status.SUCCESS, "Successfully processed"] as const;
     }
 
     const unprocessed = await this.getUnprocessed(checkpointId);
 
     if (!unprocessed.length) {
-      return [false, "No unprocessed tasks found"] as const;
+      return [Status.FAILURE, "No unprocessed tasks found"] as const;
     }
 
     const batch = Task.batch(unprocessed);
+
+    if (!batch.length) {
+      return [
+        Status.DEFERRED,
+        "No tasks available to claim, deferring",
+      ] as const;
+    }
+
+    console.log(
+      `Claiming batch of ${batch.length} tasks with events:`,
+      batch.map((t) => t.id.serialize()),
+    );
+
     const claimer = ClaimerId.generate();
 
-    const [ok, message] = await this.claimTasks(checkpointId, claimer, batch);
+    const [status, message] = await this.claimTasks(
+      checkpointId,
+      claimer,
+      batch,
+    );
 
-    if (!ok) {
-      return [false, message] as const;
+    if (status === Status.FAILURE) {
+      return [Status.DEFERRED, message] as const;
     }
 
     return await this.processEvents(checkpointId, claimer, target.eventId);
@@ -185,9 +236,9 @@ export class FirestoreProjector {
   ) {
     try {
       await this.queue.claim(checkpointId, claimer, batch);
-      return [true, "Tasks claimed successfully"] as const;
+      return [Status.SUCCESS, "Tasks claimed successfully"] as const;
     } catch (e) {
-      return [false, e] as const;
+      return [Status.FAILURE, e] as const;
     }
   }
 
@@ -204,20 +255,34 @@ export class FirestoreProjector {
     const onProcessed = this.queue.processed.bind(this.queue);
     const context = { onProcessed, checkpointId };
 
+    const hasTarget = tasks.some((t) => t.id.equals(targetEventId));
+
     try {
       const processed = await this.projection.process(filtered, context);
 
       if (processed.some((id) => id?.equals(targetEventId))) {
-        return [true, "Target event processed successfully"] as const;
+        return [Status.SUCCESS, "Target event processed successfully"] as const;
       }
 
-      return [false, "Target event not processed yet"] as const;
+      return [Status.DEFERRED, "Target event not processed yet"] as const;
     } catch (e) {
       this.config.onProcessError(e as Error);
       if (this._unclaim) {
         await this.queue.unclaim(checkpointId, tasks);
       }
-      return [false, e] as const;
+
+      if (!hasTarget) {
+        return [
+          Status.DEFERRED,
+          "Target event not in claimed batch, deferring",
+        ] as const;
+      }
+
+      // console.log(`Processing failed, deferring:`, e);
+
+      // return [Status.DEFERRED, "Error processing events, deferring"] as const;
+
+      return [Status.FAILURE, e] as const;
     }
   }
 }
@@ -255,6 +320,10 @@ export class FirestoreQueueStore {
   }
 
   async enqueue(checkpointId: CheckpointId, tasks: Task<false>[]) {
+    console.log(
+      `Enqueuing ${tasks.length} tasks for checkpoint ${checkpointId.serialize()}`,
+    );
+
     const batch = this.collection.firestore.batch();
 
     for (const task of tasks) {
@@ -267,12 +336,12 @@ export class FirestoreQueueStore {
 
     try {
       await batch.commit();
-      return [true, "Tasks enqueued successfully"] as const;
+      return [Status.SUCCESS, "Tasks enqueued successfully"] as const;
     } catch (err: any) {
       if (err.code === 6) {
-        return [false, new AlreadyEnqueuedError()] as const;
+        return [Status.DEFERRED, new AlreadyEnqueuedError()] as const;
       }
-      return [false, err] as const;
+      return [Status.DEFERRED, err] as const;
     }
   }
 
@@ -291,6 +360,7 @@ export class FirestoreQueueStore {
           claimer: claimer.serialize(),
           claimedAt: FieldValue.serverTimestamp(),
           attempts: FieldValue.increment(1),
+          remaining: FieldValue.increment(-1),
         },
         { lastUpdateTime: this.microsecondsToTimestamp(task.lastUpdateTime) },
       );
@@ -301,7 +371,6 @@ export class FirestoreQueueStore {
 
   async head(checkpointId: CheckpointId) {
     const head = this.queue(checkpointId)
-      .where("skipped", "==", false)
       .orderBy("occurredAt", "desc")
       .orderBy("revision", "desc")
       .limit(1);
@@ -328,9 +397,10 @@ export class FirestoreQueueStore {
   async unprocessed(checkpointId: CheckpointId) {
     const query = this.queue(checkpointId)
       .where("processed", "==", false)
-      .where("skipped", "==", false)
+      .where("remaining", ">", 0)
       .orderBy("occurredAt", "asc")
-      .orderBy("revision", "asc");
+      .orderBy("revision", "asc")
+      .limit(100);
 
     const snapshot = await query.get();
     const tasks = snapshot.docs.map((doc) => {
@@ -362,6 +432,7 @@ export class FirestoreQueueStore {
           claimer: FieldValue.delete(),
           claimedAt: FieldValue.delete(),
           attempts: task.attempts,
+          remaining: task.remaining,
           skipped: task.skipped,
         });
       }
@@ -377,7 +448,6 @@ export class FirestoreQueueStore {
   ): Promise<Task<true>[]> {
     const query = this.queue(checkpointId)
       .where("claimer", "==", claimer.serialize())
-      .where("skipped", "==", false)
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc");
 
@@ -462,7 +532,7 @@ export class FirestoreQueueStore {
 
   async getTailCursor(id: CheckpointId) {
     const tail = this.queue(id)
-      .where("skipped", "==", false)
+      .where("remaining", ">", 0)
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc")
       .limit(1);
@@ -490,7 +560,7 @@ export class FirestoreQueueStore {
     const aDayAgo = MicrosecondTimestamp.now().sub(MicrosecondTimestamp.DAY);
 
     const query = this.queue(id)
-      .where("skipped", "==", false)
+      .where("remaining", ">", 0)
       .where("occurredAt", "<", aDayAgo.serialize()) // Only consider events older than 24 hours
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc");
@@ -548,6 +618,7 @@ export class FirestoreQueueStore {
       claimer: undefined,
       claimedAt: undefined,
       lock: new Lock({}),
+      remaining: 1,
       claimTimeout: 0,
       skipAfter: 0,
       isolateAfter: 0,
@@ -581,6 +652,7 @@ export class Task<Stored extends boolean> extends Shape({
   lock: Lock,
   skipAfter: Number,
   skipped: Boolean,
+  remaining: Number,
   isolateAfter: Number,
   claimTimeout: Number,
   lastUpdateTime: Optional(MicrosecondTimestamp),
@@ -617,6 +689,7 @@ export class Task<Stored extends boolean> extends Shape({
       claimTimeout: config.claimTimeout,
       skipAfter: config.skipAfter,
       isolateAfter: config.isolateAfter,
+      remaining: config.skipAfter,
       skipped: false,
       ref: fact.ref,
       revision: fact.revision,
@@ -650,6 +723,7 @@ export class Task<Stored extends boolean> extends Shape({
       this.claimedAt = undefined;
       this.claimer = undefined;
       this.attempts += 1;
+      this.remaining -= 1;
     }
 
     if (this.attempts > this.skipAfter) {
@@ -670,6 +744,14 @@ export class Task<Stored extends boolean> extends Shape({
   }
 
   static batch(tasks: Task<true>[]) {
+    console.log(
+      JSON.stringify(
+        tasks.map((t) => t.serialize()),
+        null,
+        2,
+      ),
+    );
+
     const locks: Lock[] = [];
     const batchLocks: Lock[] = [];
 

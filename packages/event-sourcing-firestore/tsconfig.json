@@ -8,5 +8,6 @@
   "include": [
     "./src/**/*",
     "./src/**/*.json",
+    "src/projection/cases/.dsl.case.spec.ts",
   ]
 }

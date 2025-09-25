@@ -29,7 +29,7 @@ export class Lock extends Mapping([String, String]) {
     if (onlyLeft.length > 0) {
       if (onlyRight.length === 0) {
         if (bothHaveSameValues) {
-          return false;
+          return true;
         }
       }
     }

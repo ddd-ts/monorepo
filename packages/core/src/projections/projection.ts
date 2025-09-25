@@ -52,34 +52,39 @@ export abstract class ESProjection<E extends IEsEvent, C = any> {
     return {
       lock: handler.locks(event),
       claimTimeout: handler.getClaimTimeout?.(event) || 1000 * 60,
-      skipAfter: handler.getSkipAfter?.(event) || 50,
-      isolateAfter: handler.getIsolateAfter?.(event) || 25,
+      skipAfter: handler.getSkipAfter?.(event) || 10,
+      isolateAfter: handler.getIsolateAfter?.(event) || 3,
     };
   }
 
-  process(events: E[], context: C): Promise<EventId[]> {
-    const byEvent = events.reduce(
-      (acc, event) => {
-        const name = event.name;
-        if (!acc[name]) {
-          acc[name] = [];
-        }
-        acc[name].push(event);
-        return acc;
-      },
-      {} as Record<string, E[]>,
-    );
+  async process(events: E[], context: C): Promise<EventId[]> {
+    const eventIds: EventId[] = [];
 
-    const promises = Object.entries(byEvent).map(async ([name, events]) => {
+    for (const [name, batch] of batched(events)) {
       const handler = this.handlers[name];
-      if (!handler) {
-        throw new Error(`No handler for event ${name}`);
-      }
-      return handler.process(events, context);
-    });
+      if (!handler) throw new Error(`No handler for event ${name}`);
+      const ids = await handler.process(batch, context);
+      eventIds.push(...ids);
+    }
 
-    return Promise.all(promises).then((results) =>
-      results.flat().filter((e) => !!e),
-    );
+    return eventIds;
   }
+}
+
+function* batched<U extends string, T extends IEsEvent<U>>([
+  first,
+  ...rest
+]: T[]) {
+  let current = first;
+  let batch = [first];
+  for (const event of rest) {
+    if (event.name === current.name) {
+      batch.push(event);
+    } else {
+      yield [current.name, batch] as const;
+      current = event;
+      batch = [event];
+    }
+  }
+  yield [current.name, batch] as const;
 }

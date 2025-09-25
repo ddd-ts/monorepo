@@ -14,7 +14,7 @@ import { FirestoreQueueStore, FirestoreProjector } from "./firestore.projector";
 const app = fb.initializeApp({ projectId: "demo-es" });
 const database = app.firestore();
 
-jest.setTimeout(120_000);
+jest.setTimeout(220_000);
 
 const { Account, CashflowProjection } = ProjectorTesting;
 
@@ -54,6 +54,7 @@ describe("Firestore Projector", () => {
             id: accountId.serialize(),
             flow: 0,
             name: accountId.serialize(),
+            ops_trace: [],
             all_names: [],
             version: 1,
           },
@@ -170,6 +171,7 @@ describe("Firestore Projector", () => {
   it("ExplicitTimeoutFailureRetry", () => suite.ExplicitTimeoutFailureRetry());
 
   it("ImplicitTimeoutFailureRetry", () => suite.ImplicitTimeoutFailureRetry());
+  it("ImplicitTimeoutDeferRetry", () => suite.ImplicitTimeoutDeferRetry());
 
   it("ImplicitFailureSkip", () => suite.ImplicitFailureSkip());
 
