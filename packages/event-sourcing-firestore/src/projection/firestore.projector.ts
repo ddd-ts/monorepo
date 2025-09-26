@@ -287,7 +287,7 @@ export class FirestoreQueueStore {
 
   constructor(public db: Firestore) {
     this.collection = db.collection(
-      "projection",
+      "checkpoints",
     ) as FirebaseFirestore.CollectionReference;
   }
 
@@ -476,11 +476,11 @@ export class FirestoreQueueStore {
   }
 
   checkpoint(id: CheckpointId) {
-    return this.collection.doc(id.serialize());
+    return this.collection.doc(id.name).collection(id.shard());
   }
 
   queue(id: CheckpointId) {
-    return this.checkpoint(id).collection("queue");
+    return this.checkpoint(id);
   }
 
   queued(id: CheckpointId, eventId: EventId) {
