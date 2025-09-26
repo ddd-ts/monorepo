@@ -476,11 +476,11 @@ export class FirestoreQueueStore {
   }
 
   checkpoint(id: CheckpointId) {
-    return this.collection.doc(id.name).collection(id.shard());
+    return this.collection.doc(id.name).collection("shards");
   }
 
   queue(id: CheckpointId) {
-    return this.checkpoint(id);
+    return this.checkpoint(id).doc(id.shard()).collection("tasks");
   }
 
   queued(id: CheckpointId, eventId: EventId) {
