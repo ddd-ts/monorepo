@@ -56,7 +56,7 @@ export class FirestoreProjector {
 
     for (let i = 0; i < attempts; i++) {
       const reset = () => {
-        i = 0;
+        i--;
       };
 
       yield [i, reset] as const;
