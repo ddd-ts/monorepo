@@ -55,7 +55,11 @@ export class FirestoreProjector {
     const { attempts, minDelay, maxDelay, backoff } = this.config.retry;
 
     for (let i = 0; i < attempts; i++) {
-      yield [i, () => i--] as const;
+      const reset = () => {
+        i = 0;
+      };
+
+      yield [i, reset] as const;
 
       const margin = maxDelay - minDelay;
       const jitter = Math.random() * margin;
@@ -87,7 +91,7 @@ export class FirestoreProjector {
 
     const errors = [];
 
-    for await (const [attempt, defer] of this.breathe()) {
+    for await (const [attempt, reset] of this.breathe()) {
       // console.log(`Attempt ${attempt} for event ${savedChange.id.serialize()}`);
       const source = this.projection.getSource(savedChange);
       const [status, message] = await this.attempt(
@@ -97,22 +101,14 @@ export class FirestoreProjector {
       );
 
       if (status === Status.DEFERRED) {
-        defer();
-        // console.log(
-        //   `Event ${savedChange.id.serialize()} is deferred (${message})`,
-        // );
+        reset();
         continue;
       }
 
       if (status === Status.SUCCESS) {
-        // console.log(
-        //   `Event ${savedChange.id.serialize()} processed successfully`,
-        // );
         await this.queue.cleanup(checkpointId);
         return;
       }
-
-      // console.log(`Attempt ${attempt} failed:`, message);
 
       errors.push(message);
     }
@@ -164,11 +160,6 @@ export class FirestoreProjector {
         "No tasks available to claim, deferring",
       ] as const;
     }
-
-    // console.log(
-    //   `Claiming batch of ${batch.length} tasks with events:`,
-    //   batch.map((t) => t.id.serialize()),
-    // );
 
     const claimer = ClaimerId.generate();
 
@@ -277,10 +268,6 @@ export class FirestoreProjector {
           "Target event not in claimed batch, deferring",
         ] as const;
       }
-
-      // console.log(`Processing failed, deferring:`, e);
-
-      // return [Status.DEFERRED, "Error processing events, deferring"] as const;
 
       return [Status.FAILURE, e] as const;
     }
