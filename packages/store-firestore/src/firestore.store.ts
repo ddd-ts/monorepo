@@ -92,7 +92,11 @@ export class FirestoreStore<
     for await (const docs of batch(stream, finalPageSize)) {
       const deserializedDocs = await Promise.all(
         docs.map((doc) =>
-          this.serializer.deserialize({ id: doc.id, ...(doc.data() as any) }),
+          this.serializer.deserialize({
+            ...(this.$name ? { $name: this.$name } : {}),
+            id: doc.id,
+            ...(doc.data() as any),
+          }),
         ),
       );
       for (const deserializedDoc of deserializedDocs) {
