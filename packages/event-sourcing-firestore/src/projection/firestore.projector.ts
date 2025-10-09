@@ -134,15 +134,14 @@ export class FirestoreProjector {
     if (!headCursor?.isAfterOrEqual(target)) {
       const [status, message] = await this.enqueue(
         source,
+        headCursor,
         checkpointId,
         target,
       );
       if (status === Status.DEFERRED) {
         return [Status.DEFERRED, message] as const;
       }
-    }
-
-    if (await this.checkIsProcessed(checkpointId, target)) {
+    } else if (await this.checkIsProcessed(checkpointId, target)) {
       return [Status.SUCCESS, "Successfully processed"] as const;
     }
 
@@ -150,7 +149,7 @@ export class FirestoreProjector {
 
     if (!unprocessed.length) {
       return [Status.FAILURE, "No unprocessed tasks found"] as const;
-    }
+    }=
 
     const batch = Task.batch(unprocessed);
 
@@ -184,11 +183,12 @@ export class FirestoreProjector {
   // @Trace("projector.readSourceStream")
   private async readSourceStream(
     source: ProjectedStream,
+    head: Cursor | undefined,
     checkpointId: CheckpointId,
     target: Cursor,
   ) {
     const shard = checkpointId.shard();
-    const headCursor = await this.getQueueHead(checkpointId);
+    const headCursor = head;
     const limit = this.config.enqueue.batchSize;
     return this.reader.slice(source, shard, headCursor, target, limit);
   }
@@ -196,10 +196,16 @@ export class FirestoreProjector {
   // @Trace("projector.enqueue")
   private async enqueue(
     source: ProjectedStream,
+    head: Cursor | undefined,
     checkpointId: CheckpointId,
     target: Cursor,
   ) {
-    const events = await this.readSourceStream(source, checkpointId, target);
+    const events = await this.readSourceStream(
+      source,
+      head,
+      checkpointId,
+      target,
+    );
 
     const tasks = events.map((e) => {
       const settings = this.projection.getTaskSettings(e);
@@ -242,6 +248,14 @@ export class FirestoreProjector {
     const tasks = await this.queue.claimed(checkpointId, claimer);
     const todo = await Promise.all(tasks.map((t) => this.reader.get(t.cursor)));
     const filtered = todo.filter((t) => !!t) as IEsEvent[];
+
+    if (!filtered.length) {
+      // Nothing to process, possibly all tasks were for events that no longer exist
+      return [
+        Status.DEFERRED,
+        "No events to process in claimed tasks",
+      ] as const;
+    }
 
     const onProcessed = this.queue.processed.bind(this.queue);
     const context = { onProcessed, checkpointId };
