@@ -12,6 +12,13 @@ export class FirestoreTransaction implements Transaction {
   commitListeners: CommitListener[] = [];
   constructor(public readonly transaction: FirebaseTransaction) {}
 
+  counter = -1;
+
+  increment() {
+    this.counter++;
+    return this.counter;
+  }
+
   onCommit(callback: CommitListener) {
     this.commitListeners.push(callback);
   }

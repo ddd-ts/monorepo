@@ -39,15 +39,15 @@ export class FirestoreEventLakeStorageLayer implements EventLakeStorageLayer {
 
     const result: ISerializedSavedChange[] = [];
 
-    let revision = 0;
     for (const change of changes) {
+      const revision = trx.increment();
       const storageChange = {
         eventId: change.id,
         name: change.name,
         payload: change.payload,
         occurredAt: serverTimestamp(),
         version: change.version,
-        revision: revision,
+        revision,
       };
 
       const ref = collection.doc(change.id);
@@ -56,11 +56,9 @@ export class FirestoreEventLakeStorageLayer implements EventLakeStorageLayer {
       result.push({
         ...change,
         ref: ref.path,
-        revision: revision,
+        revision,
         occurredAt: undefined,
       });
-
-      revision++;
     }
 
     return result;

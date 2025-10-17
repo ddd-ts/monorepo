@@ -7,6 +7,13 @@ export type CommitListener = () => void;
 export type Transaction = {
   onCommit(listener: CommitListener): void;
   executeCommitListeners(): Promise<void>;
+
+  /**
+   * Each transaction maintains a counter that can be incremented to provide
+   * a unique number for each operation within the transaction.
+   * This is useful for assigning sequential revision to events in event lakes.
+   */
+  increment(): number;
 };
 
 export abstract class TransactionPerformer<
