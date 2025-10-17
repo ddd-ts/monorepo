@@ -9,6 +9,13 @@ export class InMemoryTransaction {
 
   constructor(public readonly transaction: InMemoryUnderlyingTransaction) {}
 
+  counter = -1;
+
+  increment() {
+    this.counter++;
+    return this.counter;
+  }
+
   onCommit(callback: () => void) {
     this.commitListeners.push(callback);
   }

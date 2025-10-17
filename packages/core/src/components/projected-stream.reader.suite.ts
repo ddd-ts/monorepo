@@ -203,4 +203,57 @@ export function ProjectedStreamReaderSuite(config: {
       "Added:50",
     ]);
   });
+
+  it("should not skip events that are written atomically across multiple aggregates", async () => {
+    const bankId = BankId.generate();
+    const accountId = AccountId.generate();
+
+    const lakeId = LakeId.from("Bank", bankId.serialize());
+
+    const batchA = [...Array(10)].map((_, i) =>
+      Added.new({ accountId, bankId, amount: i + 1 }),
+    );
+
+    const batchB = [...Array(10)].map((_, i) =>
+      Added.new({ accountId, bankId, amount: i + 101 }),
+    );
+
+    await transaction.perform(async (t) => {
+      for (const event of batchA) await lakeStore.append(lakeId, [event], t);
+    });
+
+    await transaction.perform(async (t) => {
+      for (const event of batchB) await lakeStore.append(lakeId, [event], t);
+    });
+
+    const projectedStream = new ProjectedStream({
+      sources: [
+        new LakeSource({
+          shardType: "Bank",
+          shardKey: "bankId",
+          events: [Added.name],
+        }),
+      ],
+    });
+
+    const read = async (event: Added) => {
+      const cursor = await reader.getCursor(event as any);
+      const stream = reader.read(projectedStream, bankId.serialize(), cursor);
+      const result = await buffer(stream);
+      return result.map((e) => `${e.name}:${e.payload.amount}`);
+    };
+
+    const afterFirstA = await read(batchA[0] as any);
+    const afterFirstAAgain = await read(batchA[0] as any);
+
+    // Sanity check to ensure that reading from the same cursor gives the same result
+    expect(afterFirstA).toEqual(afterFirstAAgain);
+
+    const expected = batchA
+      .map((e) => `Added:${e.payload.amount}`)
+      .slice(1) // skip the first one because we read after it
+      .concat(batchB.map((e) => `Added:${e.payload.amount}`));
+
+    expect(afterFirstA).toEqual(expected);
+  });
 }
