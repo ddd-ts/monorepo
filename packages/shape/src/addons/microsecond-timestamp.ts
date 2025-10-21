@@ -4,6 +4,8 @@ export class MicrosecondTimestamp {
   static MINUTE = this.SECOND.mult(60);
   static HOUR = this.MINUTE.mult(60);
   static DAY = this.HOUR.mult(24);
+  static WEEK = this.DAY.mult(7);
+  static MONTH = this.DAY.mult(30);
 
   constructor(readonly micros: bigint) {}
 
