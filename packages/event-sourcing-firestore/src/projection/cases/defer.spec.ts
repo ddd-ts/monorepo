@@ -41,12 +41,12 @@ test.describe(() => {
 
     // await control.wait(2_000);
 
-    assert.cashflow(account.id).toHave({ flow: 0 });
+    await assert.cashflow(account.id).toHave({ flow: 0 });
 
     unmark();
     // await h1;
     await h2;
 
-    assert.cashflow(account.id).toHave({ flow: 1100 });
+    await assert.cashflow(account.id).toHave({ flow: 1100 });
   });
 });

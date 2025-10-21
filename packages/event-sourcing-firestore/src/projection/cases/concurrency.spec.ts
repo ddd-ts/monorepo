@@ -43,7 +43,7 @@ test.describe(() => {
 
     await Promise.all([act.handle(withdraw), act.handle(deposit)]);
 
-    assert.cashflow(account.id).toHave({
+    await assert.cashflow(account.id).toHave({
       // But withdraw is first in ops_trace, because it has no delay
       ops_trace: [opened.id, withdraw.id, deposit.id],
       flow: 150,

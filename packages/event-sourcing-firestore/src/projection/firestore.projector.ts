@@ -30,7 +30,16 @@ const Status = {
 } as const;
 type Status = (typeof Status)[keyof typeof Status];
 
+const TaskState = {
+  ENQUEUED: "ENQUEUED",
+  PROCESSED: "PROCESSED",
+  MISSING: "MISSING",
+} as const;
+type TaskState = (typeof TaskState)[keyof typeof TaskState];
+
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const RETENTION = MicrosecondTimestamp.MONTH;
 
 export class FirestoreProjector {
   _unclaim = true;
@@ -131,7 +140,9 @@ export class FirestoreProjector {
   ) {
     const headCursor = await this.getQueueHead(checkpointId);
 
-    if (!headCursor?.isAfterOrEqual(target)) {
+    const isTargetAfterHead = !headCursor || target.isAfter(headCursor);
+
+    if (isTargetAfterHead) {
       const [status, message] = await this.enqueue(
         source,
         headCursor,
@@ -141,8 +152,20 @@ export class FirestoreProjector {
       if (status === Status.DEFERRED) {
         return [Status.DEFERRED, message] as const;
       }
-    } else if (await this.checkIsProcessed(checkpointId, target)) {
-      return [Status.SUCCESS, "Successfully processed"] as const;
+    }
+
+    if (!isTargetAfterHead) {
+      const processed = await this.checkIsProcessed(checkpointId, target);
+      if (processed === TaskState.PROCESSED) {
+        return [Status.SUCCESS, "Target event already processed"] as const;
+      }
+
+      if (processed === TaskState.MISSING) {
+        const [status, message] = await this.enqueueOne(checkpointId, target);
+        if (status === Status.DEFERRED) {
+          return [Status.FAILURE, message] as const;
+        }
+      }
     }
 
     const unprocessed = await this.getUnprocessed(checkpointId);
@@ -213,6 +236,17 @@ export class FirestoreProjector {
     });
 
     return await this.queue.enqueue(checkpointId, tasks);
+  }
+
+  private async enqueueOne(checkpointId: CheckpointId, target: Cursor) {
+    const event = await this.reader.get(target);
+    if (!event) {
+      throw new Error(`Event not found for cursor ${target.ref}`);
+    }
+
+    const settings = this.projection.getTaskSettings(event);
+    const task = Task.new(event, settings);
+    return await this.queue.enqueue(checkpointId, [task]);
   }
 
   // @Trace("projector.queue.isProcessed")
@@ -474,19 +508,27 @@ export class FirestoreQueueStore {
 
     await batch.commit();
   }
+
+  /**
+   * If the task exists, then looks for a processed flag.
+   * If not found, check if the cursor is older than the retention time for processed event.
+   * If so, consider it processed.
+   * Otherwise, consider it missing.
+   */
   async isProcessed(checkpointId: CheckpointId, cursor: Cursor) {
     const doc = await this.queued(checkpointId, cursor.eventId).get();
     if (doc.exists) {
       const data = doc.data();
-      if (!data) return false;
-      if (data.processed === true) return true;
-      return false;
+      if (!data) throw new Error("No data in queued document");
+      if (data.processed === true) return TaskState.PROCESSED;
+      return TaskState.ENQUEUED;
     }
 
-    const tail = await this.getTailCursor(checkpointId);
-    if (tail?.isAfterOrEqual(cursor)) return true;
-
-    return false;
+    const lastRetention = MicrosecondTimestamp.now().sub(RETENTION);
+    if (cursor.isOlderThan(lastRetention)) {
+      return TaskState.PROCESSED;
+    }
+    return TaskState.MISSING;
   }
 
   checkpoint(id: CheckpointId) {
@@ -557,11 +599,13 @@ export class FirestoreQueueStore {
   }
 
   async cleanup(id: CheckpointId) {
-    const aDayAgo = MicrosecondTimestamp.now().sub(MicrosecondTimestamp.DAY);
+    const aMonthAgo = MicrosecondTimestamp.now().sub(
+      MicrosecondTimestamp.WEEK.mult(4),
+    );
 
     const query = this.queue(id)
       .where("remaining", ">", 0)
-      .where("occurredAt", "<", aDayAgo.serialize()) // Only consider events older than 24 hours
+      .where("occurredAt", "<", aMonthAgo.serialize()) // Only consider events older than 4 weeks
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc");
 

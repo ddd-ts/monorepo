@@ -8,9 +8,9 @@ export class Cursor extends Shape({
   revision: Number,
   eventId: EventId,
 }) {
-  isAfterOrEqual(other: Cursor) {
+  isAfter(other: Cursor) {
     if (this.is(other)) {
-      return true;
+      return false;
     }
 
     if (this.occurredAt.isAfter(other.occurredAt)) {
@@ -29,11 +29,15 @@ export class Cursor extends Shape({
       return false;
     }
 
-    return this.ref >= other.ref;
+    return this.ref > other.ref;
   }
 
   is(other: Cursor) {
     return this.ref === other.ref;
+  }
+
+  isOlderThan(microsecondTimestamp: MicrosecondTimestamp) {
+    return this.occurredAt.isBefore(microsecondTimestamp);
   }
 
   static from(fact: IFact) {
