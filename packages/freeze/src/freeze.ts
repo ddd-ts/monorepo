@@ -26,24 +26,7 @@ if (!references) {
   );
 }
 
-export function freeze(
-  file: string,
-  getNode: (file: ts.SourceFile, checker: ts.TypeChecker) => ts.Node,
-) {
-  const program = ts.createProgram([file], {});
-  const checker = program.getTypeChecker();
-  const sourceFile = program
-    .getSourceFiles()
-    .find((s) => s.fileName.includes(file))!;
-  const toFreeze = getNode(sourceFile, checker);
-  const type = checker.getTypeAtLocation(toFreeze);
-
-  // Explore the type definition
-  const other = new Map();
-  const explored = exploreType(type as any, checker as any, other);
-  const typeDefinitions = [...other.values()].join("\n");
-  return `${typeDefinitions}\ntype Output = ${explored};`;
-}
+export { freeze } from "./freeze.fn";
 
 function lowercasefirstletter(str: string) {
   return str.charAt(0).toLowerCase() + str.slice(1);
