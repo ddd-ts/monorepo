@@ -8,7 +8,7 @@
     "url": "git+https://github.com/ddd-ts/monorepo"
   },
 	"bin": {
-		"freeze": "dist/freeze.js"
+		"freeze": "dist/freeze-function.js"
 	},
 	"scripts": {
 		"build": "tsc",
