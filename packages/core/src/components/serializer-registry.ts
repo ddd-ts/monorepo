@@ -92,21 +92,14 @@ export class SerializerRegistry<
     return merged as any;
   }
 
-  serialize<
-    const I extends INamed,
-    const TH extends SerializerRegistry<any, I>,
-  >(
-    this: TH,
-    instance: IsStringLiteral<I["$name"]> extends true ? I : never,
-  ): TH extends SerializerRegistry<infer RRR, any>
-    ? PromiseOr<
-        Pretty<
-          ReturnType<
-            Extract<RRR[number], [INamed<I["$name"]>, any]>[1]["serialize"]
-          >
-        >
-      >
-    : never;
+  serialize(
+    instance: IsStringLiteral<Instances["$name"]> extends true ? Instances : never,
+  ): PromiseOr<
+    {
+      [K in keyof R]: ReturnType<R[K][1]["serialize"]>;
+    }[number]
+  >;
+
   serialize<
     const I extends INamed,
     const TH extends SerializerRegistry<any, I>,
