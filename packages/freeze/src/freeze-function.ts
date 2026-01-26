@@ -1,4 +1,4 @@
-import { Project, ts } from "ts-morph";
+import { Project, ts, type Node, type Type, type TypeAliasDeclaration } from "ts-morph";
 import { relative } from "node:path";
 import { exploreType } from "./freeze.fn";
 import fs from "node:fs";
@@ -39,120 +39,128 @@ for (const ref of references) {
       .getParentIfKind(ts.SyntaxKind.CallExpression);
     if (!callExpression) continue;
 
-    const classImpl = callExpression.getArguments()[0];
-    if (!classImpl) continue;
-
-    const className = classImpl.getText();
-
     const rpath = relative(cwd, callExpression.getSourceFile().getFilePath());
 
-    const typeParameter = callExpression.getTypeArguments()[0];
-    if (typeParameter) {
+    const typeArguments = callExpression.getTypeArguments();
+
+    const freezeParameters = typeArguments[0].asKind(ts.SyntaxKind.TypeLiteral);
+    const alreadyFrozen = typeArguments[1];
+
+    if (!freezeParameters) {
       console.log(
-        `${rpath} - ${className}: Already frozen with <${typeParameter.getText()}>`,
+        `${rpath}:${callExpression.getStartLineNumber()}: No freeze parameters`,
       );
       continue;
     }
 
-    const serializeProperty = classImpl
-      .getType()
-      .getProperty("serialize");
-    if (!serializeProperty) {
+    const nameProperty = freezeParameters.getProperty("name");
+    if (!nameProperty) {
       console.log(
-        `${rpath} - ${className}: No serialize property`,
+        `${rpath}:${callExpression.getStartLineNumber()}: No name property`,
+      );
+      continue;
+    }
+    const name = nameProperty.getType().getLiteralValue();
+    if (typeof name !== "string") {
+      console.log(
+        `${rpath}:${callExpression.getStartLineNumber()}: Name is not a string literal`,
       );
       continue;
     }
 
-    const serializeMethod = project
-      .getTypeChecker()
-      .getTypeOfSymbolAtLocation(serializeProperty, classImpl)
-      .getCallSignatures()[0];
-
-    let serialized = serializeMethod.getReturnType();
-    let serializedArr = [serialized.compilerType];
-    if (serialized.getSymbol()?.getName() === "Promise") {
-      serialized = serialized.getTypeArguments()[0];
-      serializedArr = [serialized.compilerType];
-    }
-    if (serialized.compilerType.aliasSymbol?.getName() === "PromiseOr") {
-      const aliasArg = serialized.compilerType.aliasTypeArguments?.[0];
-      if (aliasArg?.isUnion()) {
-        serializedArr = aliasArg.types;
-      } else if (aliasArg) {
-        serializedArr = [aliasArg]
-      }
-    }
-
-    for (const serialized of serializedArr) {
-      const versionProperty = project.getTypeChecker().compilerObject.getPropertyOfType(serialized, "version");
-      if (!versionProperty) {
-        console.log(
-          `${rpath} - ${className}: No version property`,
-        );
-        continue;
-      }
-      const version = project.getTypeChecker().compilerObject.typeToString(project.getTypeChecker().compilerObject.getTypeOfSymbolAtLocation(
-        versionProperty,
-        classImpl.compilerNode,
-      ))
-
-      if (!version || Number.isNaN(Number(version))) {
-        console.log(
-          `${rpath} - ${className}: No version property (or not a number) : ${version}`,
-        );
-        continue;
-      }
-
+    if (alreadyFrozen) {
       console.log(
-        `${rpath} - ${className}: Freezing with version ${version}`,
+        `${rpath} - ${name}: Already frozen with <${alreadyFrozen.getText()}>`,
       );
-      const other = new Map();
-      const result = exploreType(
-        serialized,
-        project.getTypeChecker().compilerObject,
-        other,
-      );
-
-      project.getTypeChecker().compilerObject.getPropertiesOfType(serialized)
-      const nameProperty = project.getTypeChecker().compilerObject.getPropertyOfType(serialized, "$name");
-      if (!nameProperty) {
-        console.log(
-          `${rpath} - ${className}: Cannot find name of serialized type`,
-        );
-        continue;
-      }
-      const name = JSON.parse(
-        project.getTypeChecker().compilerObject.typeToString(
-          project.getTypeChecker().compilerObject.getTypeOfSymbolAtLocation(
-            nameProperty,
-            classImpl.compilerNode,
-          ),
-        ),
-      ) as string;
-
-      const serializedName = `${name}Serialized${version}n`;
-      const serializedFilename = lowercasefirstletter(
-        `${name}.serialized.${version}n`,
-      );
-
-      const directory = refref.getSourceFile().getDirectory();
-
-      // callExpression.getSourceFile().addImportDeclaration({
-      //   moduleSpecifier: `./${serializedFilename}`,
-      //   namedImports: [serializedName],
-      // });
-
-      // callExpression.addTypeArgument(serializedName);
-
-      // project.saveSync();
-
-      const output = [
-        ...other.values(),
-        `export type ${serializedName} = ${result}`,
-      ].join("\n");
-
-      fs.writeFileSync(`${directory.getPath()}/${serializedFilename}.ts`, output);
+      continue;
     }
+
+    const typeProperty = freezeParameters.getProperty("type");
+    if (!typeProperty) {
+      console.log(
+        `${rpath} - ${name}: No type property`,
+      );
+      continue;
+    }
+    const type = typeProperty.getType();
+
+    using prettyType = getPrettyType(type, callExpression);
+
+    const other = new Map();
+    let result = exploreType(
+      prettyType.type.compilerType,
+      project.getTypeChecker().compilerObject,
+      other,
+    );
+    const aliasName = prettyType.alias.getName();
+    for (const [key, value] of other) {
+      if (key.name !== aliasName) continue;
+      result = result.replace(new RegExp(`\\b${aliasName}\\b`, "g"), value.replace(new RegExp(`^type ${aliasName} = `), ""));
+      other.delete(key);
+    }
+
+    const serializedName = name;
+    const serializedFilename = lowercasefirstletter(
+      `${name}.serialized`,
+    );
+
+    const directory = refref.getSourceFile().getDirectory();
+
+    callExpression.getSourceFile().addImportDeclaration({
+      moduleSpecifier: `./${serializedFilename}`,
+      namedImports: [serializedName],
+    });
+
+    callExpression.addTypeArgument(serializedName);
+
+    project.saveSync();
+
+    const output = [
+      ...other.values(),
+      `export type ${serializedName} = ${result}`,
+    ].join("\n");
+
+    fs.writeFileSync(`${directory.getPath()}/${serializedFilename}.ts`, output);
+
+    console.log(
+      `${rpath} - ${name}: Frozen as ${serializedName} in ${serializedFilename}.ts`,
+    );
   }
+}
+
+function getPrettyType(type: Type, contextNode: Node): {
+  type: Type;
+  alias: TypeAliasDeclaration;
+  dispose: () => void;
+} {
+  const project: Project = contextNode.getProject();
+  const checker = project.getTypeChecker().compilerObject;
+
+  const typeTextForEmbedding = checker.typeToString(
+    type.compilerType,
+    contextNode.compilerNode,
+    ts.TypeFormatFlags.NoTruncation |
+    ts.TypeFormatFlags.UseFullyQualifiedType |
+    ts.TypeFormatFlags.InTypeAlias
+  );
+
+  const fileName = `__pretty_${Date.now()}_${Math.random().toString(16).slice(2)}.ts`;
+  const sf = project.createSourceFile(
+    fileName,
+    `
+      type Pretty<T> = { [K in keyof T]: T[K] } & {};
+      declare const __v: ${typeTextForEmbedding};
+      export type __X = Pretty<typeof __v>;
+    `,
+    { overwrite: true }
+  );
+
+  const alias = sf.getTypeAliasOrThrow("__X");
+  const pretty = alias.getType();
+
+  const dispose = () => {
+    project.removeSourceFile(sf);
+  };
+
+  return { type: pretty, alias, dispose };
 }
