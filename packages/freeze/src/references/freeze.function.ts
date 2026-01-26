@@ -1,4 +1,4 @@
-import type { Divergence, Expand, IsNever } from "./divergence";
+import type { Divergence, Expand, IsNever } from "../divergence/divergence";
 
 type FreezeParameters<T, NAME extends string> = {
   type: T;

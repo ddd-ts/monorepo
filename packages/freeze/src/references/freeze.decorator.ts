@@ -1,4 +1,4 @@
-import { Divergence, Expand, IsNever } from "./divergence";
+import type { Divergence, Expand, IsNever } from "../divergence/divergence";
 
 type Freezable<T> = {
   serialize(...args: any[]): T;

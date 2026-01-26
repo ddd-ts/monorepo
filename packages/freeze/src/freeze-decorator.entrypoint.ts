@@ -1,6 +1,6 @@
 import { Project, ts } from "ts-morph";
 import { relative } from "node:path";
-import { exploreType } from "./freeze.fn";
+import { exploreType } from "./utils/explore-type";
 import fs from "node:fs";
 
 const cwd = process.cwd();
@@ -10,23 +10,18 @@ const project = new Project({
   tsConfigFilePath,
 });
 
-const decoratorfile = project.getSourceFile(
-  `${__dirname}/freeze.decorator.d.ts`,
-);
-
-if (!decoratorfile) {
+const decoratorFile = project.getSourceFile(`${__dirname}/references/freeze.decorator.d.ts`);
+if (!decoratorFile) {
   throw new Error("The @Freeze decorator is not used in the project.");
 }
 
-const references = decoratorfile.getFunction("Freeze")?.findReferences();
+const references = decoratorFile.getFunction("Freeze")?.findReferences();
 
 if (!references) {
   throw new Error(
     "The @Freeze decorator is imported, but not used in the project.",
   );
 }
-
-export { freeze } from "./freeze.fn";
 
 function lowercasefirstletter(str: string) {
   return str.charAt(0).toLowerCase() + str.slice(1);
