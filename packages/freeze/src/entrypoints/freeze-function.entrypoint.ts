@@ -1,17 +1,13 @@
-import { Project, ts } from "ts-morph";
+import { ts } from "ts-morph";
 import { relative } from "node:path";
 import fs from "node:fs";
-import { exploreType } from "./utils/explore-type";
-import { getPrettyType } from "./utils/get-pretty-type";
+import { exploreType } from "../utils/explore-type";
+import { getPrettyType } from "../utils/get-pretty-type";
+import { project } from "./project";
 
 const cwd = process.cwd();
-const tsConfigFilePath = `${cwd}/tsconfig.json`;
 
-const project = new Project({
-  tsConfigFilePath,
-});
-
-const functionFile = project.getSourceFile(`${__dirname}/references/freeze.function.d.ts`);
+const functionFile = project.getSourceFile(`${__dirname}/../references/freeze.function.d.ts`);
 if (!functionFile) {
   throw new Error("The freeze function is not used in the project.");
 }
