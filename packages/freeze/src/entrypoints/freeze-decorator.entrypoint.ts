@@ -1,16 +1,12 @@
-import { Project, ts } from "ts-morph";
+import { ts } from "ts-morph";
 import { relative } from "node:path";
-import { exploreType } from "./utils/explore-type";
+import { exploreType } from "../utils/explore-type";
 import fs from "node:fs";
+import { project } from "./project";
 
 const cwd = process.cwd();
-const tsConfigFilePath = `${cwd}/tsconfig.json`;
 
-const project = new Project({
-  tsConfigFilePath,
-});
-
-const decoratorFile = project.getSourceFile(`${__dirname}/references/freeze.decorator.d.ts`);
+const decoratorFile = project.getSourceFile(`${__dirname}/../references/freeze.decorator.d.ts`);
 if (!decoratorFile) {
   throw new Error("The @Freeze decorator is not used in the project.");
 }
