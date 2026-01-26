@@ -1,3 +1,3 @@
-export * from "./freeze.decorator";
-export { freeze } from "./freeze-function-2";
-export { type Divergence } from "./divergence";
+export { Freeze } from "./references/freeze.decorator";
+export { freeze } from "./references/freeze.function";
+export { type Divergence } from "./divergence/divergence";

@@ -1,7 +1,8 @@
-import { Project, ts, type Node, type Type, type TypeAliasDeclaration } from "ts-morph";
+import { Project, ts } from "ts-morph";
 import { relative } from "node:path";
-import { exploreType } from "./freeze.fn";
 import fs from "node:fs";
+import { exploreType } from "./utils/explore-type";
+import { getPrettyType } from "./utils/get-pretty-type";
 
 const cwd = process.cwd();
 const tsConfigFilePath = `${cwd}/tsconfig.json`;
@@ -10,23 +11,18 @@ const project = new Project({
   tsConfigFilePath,
 });
 
-const functionfile = project.getSourceFile(
-  `${__dirname}/freeze-function-2.d.ts`,
-);
-
-if (!functionfile) {
+const functionFile = project.getSourceFile(`${__dirname}/references/freeze.function.d.ts`);
+if (!functionFile) {
   throw new Error("The freeze function is not used in the project.");
 }
 
-const references = functionfile.getFunction("freeze")?.findReferences();
+const references = functionFile.getFunction("freeze")?.findReferences();
 
 if (!references) {
   throw new Error(
     "The freeze function is imported, but not used in the project.",
   );
 }
-
-export { freeze } from "./freeze.fn";
 
 function lowercasefirstletter(str: string) {
   return str.charAt(0).toLowerCase() + str.slice(1);
@@ -84,7 +80,7 @@ for (const ref of references) {
     }
     const type = typeProperty.getType();
 
-    using prettyType = getPrettyType(type, callExpression);
+    const prettyType = getPrettyType(type, callExpression);
 
     const other = new Map();
     let result = exploreType(
@@ -93,6 +89,7 @@ for (const ref of references) {
       other,
     );
     const aliasName = prettyType.alias.getName();
+    prettyType.dispose();
     for (const [key, value] of other) {
       if (key.name !== aliasName) continue;
       result = result.replace(new RegExp(`\\b${aliasName}\\b`, "g"), value.replace(new RegExp(`^type ${aliasName} = `), ""));
@@ -126,41 +123,4 @@ for (const ref of references) {
       `${rpath} - ${name}: Frozen as ${serializedName} in ${serializedFilename}.ts`,
     );
   }
-}
-
-function getPrettyType(type: Type, contextNode: Node): {
-  type: Type;
-  alias: TypeAliasDeclaration;
-  dispose: () => void;
-} {
-  const project: Project = contextNode.getProject();
-  const checker = project.getTypeChecker().compilerObject;
-
-  const typeTextForEmbedding = checker.typeToString(
-    type.compilerType,
-    contextNode.compilerNode,
-    ts.TypeFormatFlags.NoTruncation |
-    ts.TypeFormatFlags.UseFullyQualifiedType |
-    ts.TypeFormatFlags.InTypeAlias
-  );
-
-  const fileName = `__pretty_${Date.now()}_${Math.random().toString(16).slice(2)}.ts`;
-  const sf = project.createSourceFile(
-    fileName,
-    `
-      type Pretty<T> = { [K in keyof T]: T[K] } & {};
-      declare const __v: ${typeTextForEmbedding};
-      export type __X = Pretty<typeof __v>;
-    `,
-    { overwrite: true }
-  );
-
-  const alias = sf.getTypeAliasOrThrow("__X");
-  const pretty = alias.getType();
-
-  const dispose = () => {
-    project.removeSourceFile(sf);
-  };
-
-  return { type: pretty, alias, dispose };
 }
