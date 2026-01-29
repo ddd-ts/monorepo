@@ -1,0 +1,29 @@
+name: "Setup"
+
+description: "Checkout, install Node/npm/pnpm and dependencies"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        registry-url: https://registry.npmjs.org/
+        scope: "@ddd-ts"
+
+    - name: Install npm
+      shell: bash
+      run: npm i -g npm@11
+
+    - uses: pnpm/action-setup@v3
+      with:
+        version: 9
+        cache: true
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm i --frozen-lockfile
+
+    - name: Build
+      shell: bash
+      run: pnpm build
