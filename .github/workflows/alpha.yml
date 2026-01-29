@@ -42,5 +42,3 @@ jobs:
 
       - name: Release Alpha
         run: sh .github/workflows/release-alpha.sh
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
