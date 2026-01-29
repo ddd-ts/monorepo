@@ -5,6 +5,10 @@ on:
     branches-ignore:
       - main
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   check:
     runs-on: ubuntu-latest
