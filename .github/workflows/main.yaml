@@ -23,6 +23,9 @@ jobs:
           registry-url: https://registry.npmjs.org/
           scope: "@ddd-ts"
 
+      - name: Install npm
+        run: npm install -g npm@11
+
       - name: Install pnpm
         uses: pnpm/action-setup@v3
         with:
