@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - run: pnpm test
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Release main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: sh .github/workflows/release-main.sh
+
+      - name: Release alpha
+        if: >
+          github.event_name == 'pull_request' &&
+          (
+            github.event.pull_request.author_association == 'OWNER' ||
+            github.event.pull_request.author_association == 'MEMBER' ||
+            github.event.pull_request.author_association == 'COLLABORATOR'
+          )
+        run: sh .github/workflows/release-alpha.sh
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
