@@ -5,6 +5,8 @@ slugify() {
   echo $1 | iconv -t ascii//TRANSLIT | sed -E -e 's/[^[:alnum:]]+/-/g' -e 's/^-+|-+$//g' | tr '[:upper:]' '[:lower:]'
 }
 
+npm --version
+
 latest_upstream=$(npm view @ddd-ts/shape "dist-tags.latest")
 
 next_version=$(echo $latest_upstream | awk -F'[.-]' '{ print $1 "." $2 "." $3+1 }')

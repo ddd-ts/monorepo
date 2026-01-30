@@ -5,6 +5,8 @@ slugify() {
   echo $1 | iconv -t ascii//TRANSLIT | sed -E -e 's/[^[:alnum:]]+/-/g' -e 's/^-+|-+$//g' | tr '[:upper:]' '[:lower:]'
 }
 
+npm --version
+
 branch=${BRANCH_NAME:-$(git branch --show-current)}
 branch_slug=$(slugify $branch)
 
