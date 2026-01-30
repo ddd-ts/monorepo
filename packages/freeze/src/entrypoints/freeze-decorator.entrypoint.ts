@@ -1,48 +1,22 @@
-import { Project, ts } from "ts-morph";
+import { ts } from "ts-morph";
 import { relative } from "node:path";
-import { exploreType } from "./freeze.fn";
+import { exploreType } from "../utils/explore-type";
 import fs from "node:fs";
+import { project } from "./project";
 
 const cwd = process.cwd();
-const tsConfigFilePath = `${cwd}/tsconfig.json`;
 
-const project = new Project({
-  tsConfigFilePath,
-});
-
-const decoratorfile = project.getSourceFile(
-  `${__dirname}/freeze.decorator.d.ts`,
-);
-
-if (!decoratorfile) {
+const decoratorFile = project.getSourceFile(`${__dirname}/../references/freeze.decorator.d.ts`);
+if (!decoratorFile) {
   throw new Error("The @Freeze decorator is not used in the project.");
 }
 
-const references = decoratorfile.getFunction("Freeze")?.findReferences();
+const references = decoratorFile.getFunction("Freeze")?.findReferences();
 
 if (!references) {
   throw new Error(
     "The @Freeze decorator is imported, but not used in the project.",
   );
-}
-
-export function freeze(
-  file: string,
-  getNode: (file: ts.SourceFile, checker: ts.TypeChecker) => ts.Node,
-) {
-  const program = ts.createProgram([file], {});
-  const checker = program.getTypeChecker();
-  const sourceFile = program
-    .getSourceFiles()
-    .find((s) => s.fileName.includes(file))!;
-  const toFreeze = getNode(sourceFile, checker);
-  const type = checker.getTypeAtLocation(toFreeze);
-
-  // Explore the type definition
-  const other = new Map();
-  const explored = exploreType(type as any, checker as any, other);
-  const typeDefinitions = [...other.values()].join("\n");
-  return `${typeDefinitions}\ntype Output = ${explored};`;
 }
 
 function lowercasefirstletter(str: string) {

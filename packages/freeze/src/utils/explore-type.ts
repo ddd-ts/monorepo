@@ -1,44 +1,5 @@
 import * as ts from "typescript";
 
-export function freeze(
-  file: string,
-  getNode: (file: ts.SourceFile, checker: ts.TypeChecker) => ts.Node,
-) {
-  const program = ts.createProgram([file], { strictNullChecks: true });
-  const checker = program.getTypeChecker();
-  // biome-ignore lint/style/noNonNullAssertion: <explanation>
-  const sourceFile = program
-    .getSourceFiles()
-    .find((s) => s.fileName.includes(file))!;
-  const toFreeze = getNode(sourceFile, checker);
-  const type = checker.getTypeAtLocation(toFreeze);
-
-  // Explore the type definition
-  const other = new Map();
-  const explored = exploreType(type, checker, other);
-  const typeDefinitions = [...other.values()].join("\n");
-  return `${typeDefinitions}\ntype Output = ${explored};`;
-}
-
-function listTypeFlagsNames(flags: number) {
-  const names = [];
-  for (const flagName in ts.TypeFlags) {
-    if ((ts.TypeFlags[flagName as any] as any) & flags) {
-      names.push([flagName, ts.TypeFlags[flagName as any]]);
-    }
-  }
-  return names;
-}
-function listSymbolFlagsNames(flags: number) {
-  const names = [];
-  for (const flagName in ts.TypeFlags) {
-    if ((ts.TypeFlags[flagName as any] as any) & flags) {
-      names.push([flagName, ts.TypeFlags[flagName as any]]);
-    }
-  }
-  return names;
-}
-
 export function exploreType(
   type: ts.Type,
   checker: ts.TypeChecker,
@@ -198,4 +159,14 @@ function exploreNativeType(
     name: checker.typeToString(type),
     flags: listTypeFlagsNames(type.flags),
   });
+}
+
+function listTypeFlagsNames(flags: number) {
+  const names = [];
+  for (const flagName in ts.TypeFlags) {
+    if ((ts.TypeFlags[flagName as any] as any) & flags) {
+      names.push([flagName, ts.TypeFlags[flagName as any]]);
+    }
+  }
+  return names;
 }

@@ -1,5 +1,6 @@
 import * as ts from "typescript";
-import { freeze } from "./freeze.fn";
+import { exploreType } from "./utils/explore-type";
+import assert from "node:assert";
 
 function findCalls(source: ts.Node): ts.CallExpression[] {
   const children = source.getChildren();
@@ -13,17 +14,29 @@ function findCalls(source: ts.Node): ts.CallExpression[] {
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 function testFreeze(id: string, value: any) {
   const file = __filename;
-  return freeze(file, (source, checker) => {
-    const tests = findCalls(source).filter((c) =>
-      c.getText().startsWith("testFreeze"),
-    );
-    const test = tests.find((t) => t.arguments[0].getText().includes(id));
-    if (!test) {
-      throw new Error(`Could not find testFreeze call with id ${id}`);
-    }
 
-    return test.arguments[1];
-  });
+  const program = ts.createProgram([file], { strictNullChecks: true });
+  const checker = program.getTypeChecker();
+
+  // biome-ignore lint/style/noNonNullAssertion: <explanation>
+  const sourceFile = program
+    .getSourceFiles()
+    .find((s) => s.fileName.includes(file))!;
+
+  const test = findCalls(sourceFile).find((c) =>
+    c.getText().startsWith("testFreeze") &&
+    c.arguments[0].getText().includes(id),
+  );
+  assert.ok(test, `Could not find testFreeze call with id ${id}`);
+  const toFreeze = test.arguments[1];
+
+  const type = checker.getTypeAtLocation(toFreeze);
+
+  // Explore the type definition
+  const other = new Map();
+  const explored = exploreType(type, checker, other);
+  const typeDefinitions = [...other.values()].join("\n");
+  return `${typeDefinitions}\ntype Output = ${explored};`;
 }
 
 describe("freeze", () => {

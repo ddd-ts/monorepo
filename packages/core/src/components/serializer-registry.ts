@@ -159,6 +159,11 @@ export class SerializerRegistry<
   }
 }
 
+// We put this type here to avoid circular references of `Serialized` if we put it in the namespace
+type SerializerRegistrySerialized<R extends SerializerRegistry> =
+  R extends SerializerRegistry<infer RR, any>
+    ? Serialized<Extract<RR[number], [any, any]>[1]>
+    : never;
 export namespace SerializerRegistry {
   export type For<T extends INamed[]> = SerializerRegistry<{
     [K in keyof T]: [T[K], ISerializer<T[K], INamed<T[K]["$name"]>>];
@@ -168,4 +173,6 @@ export namespace SerializerRegistry {
     T extends HasTrait<typeof Named> & HasTrait<typeof EventSourced>,
   > = SerializerRegistry.For<[InstanceType<T>]> &
     SerializerRegistry.For<EventsOf<T>>;
+
+  export type Serialized<R extends SerializerRegistry> = SerializerRegistrySerialized<R>;
 }
