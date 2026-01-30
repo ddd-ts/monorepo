@@ -5,7 +5,7 @@ slugify() {
   echo $1 | iconv -t ascii//TRANSLIT | sed -E -e 's/[^[:alnum:]]+/-/g' -e 's/^-+|-+$//g' | tr '[:upper:]' '[:lower:]'
 }
 
-branch=$(git branch --show-current)
+branch=${BRANCH_NAME:-$(git branch --show-current)}
 branch_slug=$(slugify $branch)
 
 latest_upstream=$(npm view @ddd-ts/shape "dist-tags.$branch_slug" | awk -F'[.]' '{ print $NF }')
