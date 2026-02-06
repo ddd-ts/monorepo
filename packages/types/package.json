@@ -7,7 +7,7 @@
     "url": "git+https://github.com/ddd-ts/monorepo"
   },
   "scripts": {
-    "build": "tsdown --config ../../tools/tsdown.config.ts"
+    "build": "tsdown --config ../../tools/tsdown.config.js"
   },
   "devDependencies": {
     "@ddd-ts/tools": "workspace:*"

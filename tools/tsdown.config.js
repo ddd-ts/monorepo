@@ -1,6 +1,7 @@
-import { defineConfig } from "tsdown";
+// @ts-check
 
-export default defineConfig({
+/** @type {import("tsdown").UserConfig} */
+export default {
   cwd: process.cwd(),
   unbundle: true,
   dts: {
@@ -10,4 +11,4 @@ export default defineConfig({
     devExports: true,
   },
   outExtensions: () => ({ js: ".js", dts: ".d.ts" }),
-});
+};

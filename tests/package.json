@@ -4,7 +4,7 @@
 	"private": true,
 	"license": "MIT",
 	"scripts": {
-		"build": "tsdown --config ../tools/tsdown.config.ts",
+		"build": "tsdown --config ../tools/tsdown.config.js",
 		"pretest": "docker compose -f docker/docker-compose.yml up -d",
 		"wait": "sh -c 'until curl --silent localhost:8080; do sleep 1; done;'",
 		"test": "pnpm pretest; pnpm wait; pnpm testrun; e=$?; pnpm posttest; exit $e",
