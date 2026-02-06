@@ -2,10 +2,9 @@
 	"name": "@ddd-ts/tests",
 	"version": "0.0.0",
 	"private": true,
-	"main": "dist/index.js",
 	"license": "MIT",
 	"scripts": {
-		"build": "tsc",
+		"build": "tsdown --config ../tools/tsdown.config.ts",
 		"pretest": "docker compose -f docker/docker-compose.yml up -d",
 		"wait": "sh -c 'until curl --silent localhost:8080; do sleep 1; done;'",
 		"test": "pnpm pretest; pnpm wait; pnpm testrun; e=$?; pnpm posttest; exit $e",
@@ -26,5 +25,15 @@
 		"@ddd-ts/types": "workspace:*",
 		"@types/jest": "^29.5.12",
 		"@types/uuid": "^8.3.4"
+	},
+	"exports": {
+		".": "./src/index.ts",
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"exports": {
+			".": "./dist/index.js",
+			"./package.json": "./package.json"
+		}
 	}
 }
