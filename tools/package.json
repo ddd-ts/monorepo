@@ -5,7 +5,8 @@
   "bin": {
     "tsc": "./node_modules/typescript/bin/tsc",
     "jest": "./node_modules/jest/bin/jest.js",
-    "ts-node": "./node_modules/ts-node/dist/bin.js"
+    "ts-node": "./node_modules/ts-node/dist/bin.js",
+    "tsdown": "./node_modules/tsdown/dist/run.mjs"
   },
   "dependencies": {
     "@swc/core": "^1.6.3",
@@ -15,6 +16,7 @@
     "jest": "^29.7.0",
     "ts-jest": "^29.1.5",
     "ts-node": "^10.9.2",
+    "tsdown": "^0.20.3",
     "typescript": "^5.7.3",
     "workspace-tools": "^0.36.4",
     "@opentelemetry/api": "1.6.0"

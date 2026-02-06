@@ -1,7 +1,6 @@
 {
   "name": "@ddd-ts/core",
   "version": "0.0.2",
-  "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
   "repository": {
@@ -9,7 +8,7 @@
   },
   "scripts": {
     "test": "jest --passWithNoTests --config node_modules/@ddd-ts/tools/jest.config.js",
-    "build": "tsc"
+    "build": "tsdown --config ../../tools/tsdown.config.ts --no-exports"
   },
   "dependencies": {
     "nanoid": "^3.3.2",
@@ -22,5 +21,20 @@
     "@types/uuid": "^8.3.4",
     "@types/jest": "^29.5.1",
     "@types/node": "^22.14.1"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./dist/*": "./src/*.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": "./dist/index.js",
+      "./dist/*": {
+        "default": "./dist/*.js",
+        "types": "./dist/*.d.ts"
+      },
+      "./package.json": "./package.json"
+    }
   }
 }

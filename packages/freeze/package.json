@@ -1,7 +1,6 @@
 {
 	"name": "@ddd-ts/freeze",
 	"version": "0.0.2",
-	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"license": "MIT",
 	"repository": {
@@ -11,7 +10,7 @@
 		"freeze": "dist/entrypoints/freeze.entrypoint.js"
 	},
 	"scripts": {
-		"build": "tsc",
+		"build": "tsdown --config ../../tools/tsdown.config.ts",
 		"test": "jest --config node_modules/@ddd-ts/tools/jest.config.js"
 	},
 	"peerDependencies": {
@@ -28,5 +27,15 @@
 		"@ddd-ts/tools": "workspace:*",
 		"@types/jest": "^29.5.1",
 		"@types/node": "^17.0.13"
+	},
+	"exports": {
+		".": "./src/index.ts",
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"exports": {
+			".": "./dist/index.js",
+			"./package.json": "./package.json"
+		}
 	}
 }

@@ -1,16 +1,25 @@
 {
   "name": "@ddd-ts/types",
   "version": "0.0.2",
-  "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
   "repository": {
     "url": "git+https://github.com/ddd-ts/monorepo"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsdown --config ../../tools/tsdown.config.ts"
   },
   "devDependencies": {
     "@ddd-ts/tools": "workspace:*"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": "./dist/index.js",
+      "./package.json": "./package.json"
+    }
   }
 }

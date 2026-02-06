@@ -1,7 +1,6 @@
 {
 	"name": "@ddd-ts/event-sourcing-firestore",
 	"version": "0.0.2",
-	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"license": "MIT",
 	"repository": {
@@ -12,7 +11,7 @@
 		"wait": "sh -c 'until curl --silent localhost:8080; do sleep 1; done;'",
 		"test": "jest --config node_modules/@ddd-ts/tools/jest.config.js --runInBand",
 		"posttest": "docker compose -f docker/docker-compose.yml down",
-		"build": "tsc"
+		"build": "tsdown --config ../../tools/tsdown.config.ts"
 	},
 	"dependencies": {
 		"@ddd-ts/core": "workspace:*",
@@ -29,5 +28,15 @@
 		"@ddd-ts/types": "workspace:*",
 		"@ddd-ts/shape": "workspace:*",
 		"@types/jest": "^29.5.1"
+	},
+	"exports": {
+		".": "./src/index.ts",
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"exports": {
+			".": "./dist/index.js",
+			"./package.json": "./package.json"
+		}
 	}
 }
