@@ -463,12 +463,16 @@ export class FirestoreQueueStore {
       const batch = this.collection.firestore.batch();
       for (const task of expiredTasks) {
         const ref = this.queued(checkpointId, task.id);
-        batch.update(ref, {
-          claimer: FieldValue.delete(),
-          claimedAt: FieldValue.delete(),
-          attempts: task.attempts,
-          remaining: task.remaining,
-        });
+        batch.update(
+          ref,
+          {
+            claimer: FieldValue.delete(),
+            claimedAt: FieldValue.delete(),
+            attempts: task.attempts,
+            remaining: task.remaining,
+          },
+          { lastUpdateTime: this.microsecondsToTimestamp(task.lastUpdateTime) },
+        );
       }
       await batch.commit();
     }
@@ -500,10 +504,14 @@ export class FirestoreQueueStore {
 
     for (const task of tasks) {
       const ref = this.queued(checkpointId, task.id);
-      batch.update(ref, {
-        claimer: FieldValue.delete(),
-        claimedAt: FieldValue.delete(),
-      });
+      batch.update(
+        ref,
+        {
+          claimer: FieldValue.delete(),
+          claimedAt: FieldValue.delete(),
+        },
+        { lastUpdateTime: this.microsecondsToTimestamp(task.lastUpdateTime) },
+      );
     }
 
     await batch.commit();
