@@ -292,7 +292,8 @@ export class FirestoreProjector {
     }
 
     const onProcessed = this.queue.processed.bind(this.queue);
-    const context = { onProcessed, checkpointId };
+    const assertBeforeInsert = this.assertBeforeInsert.bind(this, checkpointId, claimer, filtered, tasks);
+    const context = { onProcessed, checkpointId, assertBeforeInsert };
 
     const hasTarget = tasks.some((t) => t.id.equals(targetEventId));
 
@@ -318,6 +319,38 @@ export class FirestoreProjector {
       }
 
       return [Status.FAILURE, e] as const;
+    }
+  }
+
+  private async assertBeforeInsert(
+    checkpointId: CheckpointId,
+    claimer: ClaimerId,
+    events: IEsEvent[],
+    originalTasks: Task<true>[],
+  ) {
+    for (const event of events) {
+      const taskSnap = await this.queue.queued(checkpointId, event.id).get();
+      if (!taskSnap.exists) {
+        throw new Error(`Task not found for event ${event.id.serialize()}`);
+      }
+
+      const taskData = taskSnap.data();
+      if (!taskData) {
+        throw new Error(`No data in task document for event ${event.id.serialize()}`);
+      }
+
+      if (taskData.claimer !== undefined && taskData.claimer !== claimer.serialize()) {
+        throw new Error(`Task ${taskData.id} is not claimed by ${claimer.serialize()}`);
+      }
+
+      const oldTask = originalTasks.find((t) => t.cursor.eventId.equals(event.id));
+      if (!oldTask) {
+        throw new Error(`Task not found in original batch for event ${event.id.serialize()}`);
+      }
+
+      if (oldTask.claimer !== claimer.serialize()) {
+        throw new Error(`Task ${oldTask.id.serialize()} was claimed by ${oldTask.claimer} instead of ${claimer.serialize()}`);
+      }
     }
   }
 }
