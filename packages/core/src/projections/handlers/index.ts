@@ -14,10 +14,12 @@ import { WithSuspense } from "./suspense.handler";
 import { WithLocalTimeout } from "./timeout.handler";
 import { WithTransaction } from "./transaction.handler";
 import { WithDelay } from "./delay.handler";
+import { WithCancellable } from "./cancellable.handler";
 
 export const Handler = {
   Base: BaseHandler,
   Transaction: WithTransaction,
+  Cancellable: WithCancellable,
   Suspense: WithSuspense,
   Parallel: WithParallel,
   Sequential: WithSequential,
