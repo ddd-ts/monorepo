@@ -500,8 +500,6 @@ export class FirestoreQueueStore {
           {
             /** @deprecated */ claimer: FieldValue.delete(),
             /** @deprecated */ claimedAt: FieldValue.delete(),
-            attempts: task.attempts,
-            remaining: task.remaining,
             claimIds: task.claimIds,
           },
           { lastUpdateTime: this.microsecondsToTimestamp(task.lastUpdateTime) },
@@ -848,8 +846,6 @@ export class Task<Stored extends boolean> extends Shape({
 
     if (elapsedMicros > timeoutMicros) {
       this.claimIds = this.claimIds.filter((id) => id !== claimer);
-      this.attempts += 1;
-      this.remaining -= 1;
     }
   }
 
