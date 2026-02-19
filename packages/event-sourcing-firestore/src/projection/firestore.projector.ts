@@ -17,7 +17,7 @@ import {
   Serialized,
   Lock,
 } from "@ddd-ts/core";
-import { MicrosecondTimestamp, Optional, Shape } from "@ddd-ts/shape";
+import { Mapping, MicrosecondTimestamp, Optional, Shape } from "@ddd-ts/shape";
 import {
   DefaultConverter,
   FirestoreTransaction,
@@ -291,7 +291,7 @@ export class FirestoreProjector {
       ] as const;
     }
 
-    const onProcessed = this.queue.processed.bind(this.queue);
+    const onProcessed = this.queue.processed.bind(this.queue, claimer);
     const assertBeforeInsert = this.assertBeforeInsert.bind(this, checkpointId, claimer, filtered, tasks);
     const context = { onProcessed, checkpointId, assertBeforeInsert };
 
@@ -427,6 +427,9 @@ export class FirestoreQueueStore {
         {
           claimer: claimer.serialize(),
           claimedAt: FieldValue.serverTimestamp(),
+          [`claimsMetadata.${claimer.serialize()}`]: {
+            claimedAt: FieldValue.serverTimestamp(),
+          },
           attempts: FieldValue.increment(1),
           remaining: FieldValue.increment(-1),
         },
@@ -453,11 +456,11 @@ export class FirestoreQueueStore {
     }
     const headCursor = headDoc
       ? Cursor.deserialize({
-          ref: headData.ref,
-          occurredAt: headData.occurredAt,
-          revision: headData.revision,
-          eventId: headData.id,
-        })
+        ref: headData.ref,
+        occurredAt: headData.occurredAt,
+        revision: headData.revision,
+        eventId: headData.id,
+      })
       : undefined;
     return headCursor;
   }
@@ -507,7 +510,7 @@ export class FirestoreQueueStore {
           { lastUpdateTime: this.microsecondsToTimestamp(task.lastUpdateTime) },
         );
       }
-      await batch.commit();
+        await batch.commit();
     }
 
     return tasks;
@@ -547,7 +550,7 @@ export class FirestoreQueueStore {
       );
     }
 
-    await batch.commit();
+      await batch.commit();
   }
 
   /**
@@ -585,6 +588,7 @@ export class FirestoreQueueStore {
   }
 
   async processed(
+    claimerId: ClaimerId,
     id: CheckpointId,
     eventIds: EventId[],
     context: {
@@ -597,7 +601,10 @@ export class FirestoreQueueStore {
     if (trx) {
       for (const eventId of eventIds) {
         const ref = this.queued(id, eventId);
-        trx.transaction.update(ref, { processed: true });
+        trx.transaction.update(ref, {
+          processed: true,
+          [`claimsMetadata.${claimerId.serialize()}.processedAt`]: FieldValue.serverTimestamp(),
+        });
       }
       return;
     }
@@ -606,6 +613,7 @@ export class FirestoreQueueStore {
       eventIds.map((eventId) =>
         this.queued(id, eventId).update({
           processed: true,
+          [`claimsMetadata.${claimerId.serialize()}.processedAt`]: FieldValue.serverTimestamp(),
         }),
       ),
     );
@@ -630,11 +638,11 @@ export class FirestoreQueueStore {
     }
     const tailCursor = tailDoc
       ? Cursor.deserialize({
-          ref: tailData.ref,
-          occurredAt: tailData.occurredAt,
-          revision: tailData.revision,
-          eventId: tailData.id,
-        })
+        ref: tailData.ref,
+        occurredAt: tailData.occurredAt,
+        revision: tailData.revision,
+        eventId: tailData.id,
+      })
       : undefined;
     return tailCursor;
   }
@@ -702,6 +710,7 @@ export class FirestoreQueueStore {
       processed: true,
       claimer: undefined,
       claimedAt: undefined,
+      claimsMetadata: {},
       lock: new Lock({}),
       remaining: 1,
       claimTimeout: 0,
@@ -731,8 +740,12 @@ export class Task<Stored extends boolean> extends Shape({
   revision: Number,
   attempts: Number,
   processed: Boolean,
-  claimer: Optional(String),
-  claimedAt: Optional(MicrosecondTimestamp),
+  /** @deprecated */ claimer: Optional(String),
+  /** @deprecated */ claimedAt: Optional(MicrosecondTimestamp),
+  claimsMetadata: Mapping([{
+    claimedAt: MicrosecondTimestamp,
+    processedAt: Optional(MicrosecondTimestamp),
+  }]),
   lock: Lock,
   skipAfter: Number,
   remaining: Number,
@@ -768,6 +781,7 @@ export class Task<Stored extends boolean> extends Shape({
       claimer: undefined,
       processed: false,
       claimedAt: undefined,
+      claimsMetadata: {},
       lock: config.lock,
       claimTimeout: config.claimTimeout,
       skipAfter: config.skipAfter,
