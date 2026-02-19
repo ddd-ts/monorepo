@@ -411,6 +411,11 @@ export class FirestoreQueueStore {
     const batch = this.collection.firestore.batch();
 
     for (const task of tasks) {
+      if (task.claimIds.length > 0) {
+        throw new Error(
+          `Task ${task.id.serialize()} is already claimed by ${task.claimIds.join(", ")}`,
+        );
+      }
       const ref = this.queued(checkpointId, task.id);
       batch.update(
         ref,
