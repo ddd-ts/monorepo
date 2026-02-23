@@ -542,15 +542,7 @@ export class FirestoreQueueStore {
         );
       }
 
-      try {
-        await batch.commit();
-      } catch (err: any) {
-        if (err.code === 9) {
-          // TODO: the lastUpdateTime precondition failed for one or more tasks
-          // Handle this case
-        }
-        throw err;
-      }
+      await batch.commit();
     }
 
     return tasks;
@@ -593,15 +585,7 @@ export class FirestoreQueueStore {
       );
     }
 
-    try {
-      await batch.commit();
-    } catch (err: any) {
-      if (err.code === 9) {
-        // TODO: the lastUpdateTime precondition failed for one or more tasks
-        // Handle this case
-      }
-      throw err;
-    }
+    await batch.commit();
   }
 
   /**
