@@ -93,8 +93,13 @@ for (const ref of references) {
     }
 
     const serializedName = name;
-    const serializedFilename = lowercasefirstletter(
-      `${name}.serialized`,
+    
+    const filenameProperty = freezeParameters.getProperty("filename");
+    const filenamePropertyValue = filenameProperty?.getType().getLiteralValue() as string | undefined;
+    
+    const serializedFilename = (
+      filenamePropertyValue ??
+      lowercasefirstletter(`${serializedName}.serialized`)
     );
 
     const directory = refref.getSourceFile().getDirectory();

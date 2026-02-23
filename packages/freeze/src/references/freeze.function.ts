@@ -3,6 +3,7 @@ import type { Divergence, Expand, IsNever } from "../divergence/divergence";
 type FreezeParameters<T, NAME extends string> = {
   type: T;
   name: NAME;
+  filename?: string;
 }
 
 export function freeze<
