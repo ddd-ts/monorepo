@@ -50,6 +50,7 @@ export class FirestoreProjector {
     public readonly queue: FirestoreQueueStore,
     public config = {
       retry: { attempts: 10, minDelay: 10, maxDelay: 200, backoff: 1.5 },
+      debounce: { delayMs: 0 },
       enqueue: { batchSize: 100 },
       onProcessError: (error: Error) => {
         console.error("Error processing event:", error);
@@ -80,6 +81,24 @@ export class FirestoreProjector {
     }
   }
 
+  private checkpointTsTriggered: Map<string, BigInt> = new Map();
+  private async shouldProceedAfterDebounce(event: ISavedChange<IEsEvent>) {
+    const debounceDelay = this.config.debounce.delayMs;
+    if (!debounceDelay) return true;
+
+    const checkpointId = this.projection.getCheckpointId(event).serialize();
+
+    const currentTs = process.hrtime.bigint();
+    this.checkpointTsTriggered.set(checkpointId, currentTs);
+
+    await wait(debounceDelay);
+
+    const latestTs = this.checkpointTsTriggered.get(checkpointId);
+
+    const shouldContinue = latestTs === currentTs;
+    return shouldContinue;
+  }
+
   // @Trace("projector.handle", ($, e) => ({
   //   eventId: e.id.serialize(),
   //   eventName: e.name,
@@ -89,6 +108,8 @@ export class FirestoreProjector {
   //   checkpointId: $.projection.getCheckpointId(e).serialize(),
   // }))
   async handle(savedChange: ISavedChange<IEsEvent>) {
+    if (await this.shouldProceedAfterDebounce(savedChange) === false) return;
+
     const checkpointId = this.projection.getCheckpointId(savedChange);
     const target = await this.getCursor(savedChange);
 
