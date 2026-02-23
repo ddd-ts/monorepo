@@ -365,19 +365,17 @@ export class FirestoreProjector {
     claimer: ClaimerId,
     events: IEsEvent[],
   ) {
+    const claimedTasks = await this.queue.claimed(checkpointId, claimer);
+    const claimedTasksMap = new Map(claimedTasks.map((t) => [t.id.serialize(), t]));
+
     for (const event of events) {
-      const taskSnap = await this.queue.queued(checkpointId, event.id).get();
-      if (!taskSnap.exists) {
-        throw new Error(`Task not found for event ${event.id.serialize()}`);
+      const task = claimedTasksMap.get(event.id.serialize());
+      if (!task) {
+        throw new Error(`Task not found for event ${event.id.serialize()} in claimer ${claimer.serialize()}`);
       }
 
-      const taskData = taskSnap.data();
-      if (!taskData) {
-        throw new Error(`No data in task document for event ${event.id.serialize()}`);
-      }
-
-      if (taskData.claimIds?.[0] !== claimer.serialize()) {
-        throw new Error(`Task ${taskData.id} claimer mismatch: expected ${claimer.serialize()}, found ${taskData.claimIds?.[0]}`);
+      if (task.claimIds?.[0] !== claimer.serialize()) {
+        throw new Error(`Task ${task.id.serialize()} claimer mismatch: expected ${claimer.serialize()}, found ${task.claimIds?.[0]}`);
       }
     }
   }
