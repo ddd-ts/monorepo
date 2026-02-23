@@ -41,6 +41,23 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const RETENTION = MicrosecondTimestamp.MONTH;
 
+interface FirestoreProjectorConfig {
+  retry: {
+    attempts: number;
+    minDelay: number;
+    maxDelay: number;
+    backoff: number;
+  };
+  enqueue: {
+    batchSize: number;
+  };
+  onProcessError: (error: Error) => void;
+  onEnqueueError: (error: Error) => void;
+  debounce?: {
+    delayMs: number;
+  };
+}
+
 export class FirestoreProjector {
   _unclaim = true;
 
@@ -48,7 +65,7 @@ export class FirestoreProjector {
     public readonly projection: ESProjection<IEsEvent>,
     public readonly reader: ProjectedStreamReader<IEsEvent>,
     public readonly queue: FirestoreQueueStore,
-    public config = {
+    public config: FirestoreProjectorConfig = {
       retry: { attempts: 10, minDelay: 10, maxDelay: 200, backoff: 1.5 },
       debounce: { delayMs: 0 },
       enqueue: { batchSize: 100 },
@@ -83,7 +100,7 @@ export class FirestoreProjector {
 
   private checkpointTsTriggered: Map<string, BigInt> = new Map();
   private async shouldProceedAfterDebounce(event: ISavedChange<IEsEvent>) {
-    const debounceDelay = this.config.debounce.delayMs;
+    const debounceDelay = this.config.debounce?.delayMs;
     if (!debounceDelay) return true;
 
     const checkpointId = this.projection.getCheckpointId(event).serialize();
