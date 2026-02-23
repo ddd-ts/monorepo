@@ -51,9 +51,9 @@ export abstract class ESProjection<E extends IEsEvent, C = any> {
 
     return {
       lock: handler.locks(event),
-      claimTimeout: handler.getClaimTimeout?.(event) || 1000 * 60,
-      skipAfter: handler.getSkipAfter?.(event) || 10,
-      isolateAfter: handler.getIsolateAfter?.(event) || 3,
+      claimTimeout: handler.getClaimTimeout?.(event) ?? 1000 * 60,
+      skipAfter: handler.getSkipAfter?.(event) ?? 10,
+      isolateAfter: handler.getIsolateAfter?.(event) ?? 3,
     };
   }
 
