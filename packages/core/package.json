@@ -31,9 +31,16 @@
   },
   "publishConfig": {
     "exports": {
-      ".": "./dist/index.js",
+      ".": {
+        "default": "./dist/index.js",
+        "import": "./dist/index.mjs",
+        "require": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      },
       "./dist/*": {
         "default": "./dist/*.js",
+        "import": "./dist/*.mjs",
+        "require": "./dist/*.js",
         "types": "./dist/*.d.ts"
       },
       "./package.json": "./package.json"

@@ -10,5 +10,9 @@ export default {
   exports: {
     devExports: true,
   },
-  outExtensions: () => ({ js: ".js", dts: ".d.ts" }),
+  format: ["cjs", "esm"],
+  outExtensions: (ctx) => ({
+    js: ctx.format === "es" ? ".mjs" : ".js",
+    dts: ".d.ts",
+  })
 };
