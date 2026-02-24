@@ -1,13 +1,13 @@
 import {
   EventId,
-  ISerializedFact,
+  type ISerializedFact,
   LakeId,
   LakeSource,
   ProjectedStream,
-  ProjectedStreamStorageLayer,
+  type ProjectedStreamStorageLayer,
   StreamSource,
   Cursor,
-  ISerializedSavedChange,
+  type ISerializedSavedChange,
 } from "@ddd-ts/core";
 import { InMemoryDatabase } from "@ddd-ts/store-inmemory";
 import { MicrosecondTimestamp } from "@ddd-ts/shape";

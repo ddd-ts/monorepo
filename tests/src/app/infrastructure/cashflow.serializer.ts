@@ -1,4 +1,4 @@
-import { Serialized, type ISerializer } from "@ddd-ts/core";
+import type { Serialized, ISerializer } from "@ddd-ts/core";
 import { Cashflow } from "../domain/read/cashflow/cashflow";
 
 export class CashflowSerializer implements ISerializer<Cashflow> {

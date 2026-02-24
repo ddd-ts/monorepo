@@ -11,7 +11,7 @@ describe("FirestoreEventStreamStore", () => {
   const transaction = new InMemoryTransactionPerformer(database);
 
   EventStreamStoreSuite({
-    transaction: transaction,
+    transaction: transaction as any,
     streamStorageLayer: new InMemoryEventStreamStorageLayer(database),
   });
 });

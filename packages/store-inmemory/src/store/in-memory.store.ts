@@ -1,4 +1,4 @@
-import { ISerializer, Store, type IIdentifiable } from "@ddd-ts/core";
+import type { ISerializer, Store, IIdentifiable } from "@ddd-ts/core";
 import { InMemoryDatabase } from "./in-memory.database";
 import { InMemoryTransaction } from "../in-memory.transaction";
 /**

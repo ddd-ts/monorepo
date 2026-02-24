@@ -1,4 +1,4 @@
-import { ImplementsTrait } from "@ddd-ts/traits";
+import type { ImplementsTrait } from "@ddd-ts/traits";
 import { CashflowOnOpenedHandler } from "./cashflow.projection.OnOpened";
 import {
   CashflowOnFlowHandlerParallel,
@@ -14,14 +14,14 @@ import {
 } from "../account/account";
 import { StableId } from "../account/stable-id";
 import { TransactionPerformer } from "../../../components/transaction";
-import { IEsEvent } from "../../../interfaces/es-event";
+import type { IEsEvent } from "../../../interfaces/es-event";
 import { Handler } from "../../handlers";
 import {
   ProjectedStream,
   StreamSource,
 } from "../../../components/projected-stream";
 import { ESProjection } from "../../projection";
-import { CashflowStore } from "./cashflow.store";
+import type { CashflowStore } from "./cashflow.store";
 import { CheckpointId } from "../../checkpoint";
 
 export class CashflowStream extends ProjectedStream {

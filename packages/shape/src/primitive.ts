@@ -1,4 +1,4 @@
-import { AbstractConstructor, Concrete, Constructor, Empty, Expand } from "./_";
+import { type AbstractConstructor, type Concrete, type Constructor, Empty, type Expand } from "./_";
 
 type PrimitiveMap = [
   [StringConstructor, string],

@@ -15,7 +15,7 @@ describe("FirestoreProjectedStreamReader", () => {
   const firestore = app.firestore();
 
   ProjectedStreamReaderSuite({
-    transaction: new FirestoreTransactionPerformer(firestore),
+    transaction: new FirestoreTransactionPerformer(firestore) as any,
     lakeStorageLayer: new FirestoreEventLakeStorageLayer(firestore),
     streamStorageLayer: new FirestoreEventStreamStorageLayer(firestore),
     readerStorageLayer: new FirestoreProjectedStreamStorageLayer(firestore),

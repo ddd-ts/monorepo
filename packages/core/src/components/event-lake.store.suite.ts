@@ -2,7 +2,7 @@ import { Primitive } from "@ddd-ts/shape";
 import { EsEvent } from "../makers/es-event";
 import { SerializerRegistry } from "./serializer-registry";
 import { TransactionPerformer } from "./transaction";
-import { EventLakeStorageLayer, EventLakeStore } from "./event-lake.store";
+import { type EventLakeStorageLayer, EventLakeStore } from "./event-lake.store";
 import { LakeId } from "./stream-id";
 import { EventId } from "./event-id";
 import { buffer } from "../tools/iterator";

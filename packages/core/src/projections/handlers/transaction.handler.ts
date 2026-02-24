@@ -2,7 +2,7 @@ import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
 import type { Description } from "./description";
 import {
-  Transaction,
+  type Transaction,
   TransactionPerformer,
 } from "../../components/transaction";
 

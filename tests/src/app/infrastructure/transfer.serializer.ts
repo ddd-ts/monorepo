@@ -1,4 +1,4 @@
-import { Serialized, type ISerializer, AutoSerializer } from "@ddd-ts/core";
+import { type Serialized, type ISerializer, AutoSerializer } from "@ddd-ts/core";
 import { AccountId } from "../domain/write/account/account-id";
 import {
   Transfer,

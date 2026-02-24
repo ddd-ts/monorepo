@@ -2,7 +2,7 @@ import { Account } from "../domain/write/account/account";
 import { AccountId } from "../domain/write/account/account-id";
 
 import { Deposited, Withdrawn } from "../domain/write/account/deposited.event";
-import { Serialized, ISerializer, AutoSerializer } from "@ddd-ts/core";
+import { type Serialized, type ISerializer, AutoSerializer } from "@ddd-ts/core";
 
 export class AccountSerializer implements ISerializer<Account> {
   serialize(value: Account) {

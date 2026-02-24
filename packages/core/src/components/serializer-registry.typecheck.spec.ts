@@ -1,6 +1,6 @@
 import { Derive } from "@ddd-ts/traits";
 import type { INamed } from "../interfaces/named";
-import { ISerializer, type Serialized } from "../interfaces/serializer";
+import { type ISerializer, type Serialized } from "../interfaces/serializer";
 import { SerializerRegistry } from "./serializer-registry";
 import { AutoSerializer } from "./auto-serializer";
 import { NamedShape } from "../traits/shaped";

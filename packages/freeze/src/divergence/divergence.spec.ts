@@ -1,4 +1,4 @@
-import { Divergence, type UnionDivergence } from "./divergence";
+import type { Divergence, UnionDivergence } from "./divergence";
 
 type Equals<X, Y> = [X] extends [Y] ? ([Y] extends [X] ? true : false) : false;
 

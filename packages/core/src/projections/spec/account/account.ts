@@ -3,7 +3,7 @@ import { StableId } from "./stable-id";
 import { EsEvent } from "../../../makers/es-event";
 import { On } from "../../../decorators/handlers";
 import { EsAggregate } from "../../../makers/es-aggregate";
-import { ISavedChange } from "../../../interfaces/es-event";
+import type { ISavedChange } from "../../../interfaces/es-event";
 
 export class AccountId extends Primitive(String) {
   static generate(test: string) {

@@ -1,12 +1,12 @@
 import {
-  ISerializer,
-  IEventSourced,
-  IIdentifiable,
-  EventOf,
+  type ISerializer,
+  type IEventSourced,
+  type IIdentifiable,
+  type EventOf,
   EventLakeStore,
   LakeId,
-  IChange,
-  IEventBus,
+  type IChange,
+  type IEventBus,
   EventSourced,
   Identifiable,
 } from "@ddd-ts/core";
@@ -18,7 +18,7 @@ import {
 
 import { CollectionReference } from "firebase-admin/firestore";
 import { FirestoreEventLakeStorageLayer } from "./firestore.event-lake.storage-layer";
-import { HasTrait } from "@ddd-ts/traits";
+import type { HasTrait } from "@ddd-ts/traits";
 
 export const MakeFirestoreEventLakeAggregateStore = <
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,

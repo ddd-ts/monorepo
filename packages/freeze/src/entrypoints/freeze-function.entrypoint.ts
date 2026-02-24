@@ -81,8 +81,8 @@ for (const ref of references) {
 
     const other = new Map();
     let result = exploreType(
-      prettyType.type.compilerType,
-      project.getTypeChecker().compilerObject,
+      prettyType.type.compilerType as any,
+      project.getTypeChecker().compilerObject as any,
       other,
     );
     const aliasName = prettyType.alias.getName();

@@ -3,7 +3,7 @@ import * as fb from "firebase-admin";
 
 import {
   EventStreamAggregateStoreSuite,
-  IIdentifiable,
+  type IIdentifiable,
   type ISerializer,
 } from "@ddd-ts/core";
 import {
@@ -19,7 +19,7 @@ describe("FirestoreEventStreamAggregateStore", () => {
   const database = app.firestore();
 
   EventStreamAggregateStoreSuite({
-    transaction: new FirestoreTransactionPerformer(database),
+    transaction: new FirestoreTransactionPerformer(database) as any,
     getAggregateStore: (AGGREGATE, serializer, eventBus) => {
       const Store = MakeFirestoreEventStreamAggregateStore(AGGREGATE);
       return new Store(database, serializer, eventBus);

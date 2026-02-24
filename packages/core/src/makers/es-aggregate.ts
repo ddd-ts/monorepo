@@ -6,10 +6,10 @@ import type { IEsEvent } from "../interfaces/es-event";
 import { Named } from "../traits/named";
 import { Shape, type DictShorthand } from "@ddd-ts/shape";
 import { Identifiable } from "../traits/identifiable";
-import { Identifier } from "../interfaces/identifiable";
-import { TypedAutoSerializable } from "../components/auto-serializer";
-import { INamedContructor } from "../interfaces/named";
-import { Serialized } from "../interfaces/serializer";
+import type { Identifier } from "../interfaces/identifiable";
+import type { TypedAutoSerializable } from "../components/auto-serializer";
+import type { INamedContructor } from "../interfaces/named";
+import type { Serialized } from "../interfaces/serializer";
 
 export const BasicEsAggregate = <
   const Name extends string,

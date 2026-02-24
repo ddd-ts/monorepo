@@ -1,4 +1,4 @@
-import { Transaction } from "@ddd-ts/core";
+import type { Transaction } from "@ddd-ts/core";
 
 import { Cashflow } from "../domain/read/cashflow/cashflow";
 

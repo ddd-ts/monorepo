@@ -1,4 +1,4 @@
-import { Constructor, Expand } from "@ddd-ts/shape";
+import type { Constructor, Expand } from "@ddd-ts/shape";
 
 type IfEquals<T, U, Y = unknown, N = never> = (<G>() => G extends T
   ? 1

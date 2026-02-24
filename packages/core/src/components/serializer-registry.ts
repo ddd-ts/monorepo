@@ -1,12 +1,12 @@
-import { HasTrait } from "@ddd-ts/traits";
+import type { HasTrait } from "@ddd-ts/traits";
 import type { INamed, INamedContructor } from "../interfaces/named";
-import {
+import type {
   ISerializer,
   PromiseOr,
-  type Serialized,
+  Serialized,
 } from "../interfaces/serializer";
-import { AutoSerializable, AutoSerializer } from "./auto-serializer";
-import { EventsOf, EventSourced } from "../traits/event-sourced";
+import { type AutoSerializable, AutoSerializer } from "./auto-serializer";
+import { type EventsOf, EventSourced } from "../traits/event-sourced";
 import { Named } from "../traits/named";
 
 type IsStringLiteral<T> = [string] extends [T] ? false : true;
