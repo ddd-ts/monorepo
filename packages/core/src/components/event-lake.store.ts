@@ -1,15 +1,15 @@
-import {
+import type {
   IEsEvent,
   ISavedChange,
   ISerializedChange,
   ISerializedFact,
   ISerializedSavedChange,
 } from "../interfaces/es-event";
-import { IEventBus } from "../interfaces/event-bus";
-import { ISerializer } from "../interfaces/serializer";
+import type { IEventBus } from "../interfaces/event-bus";
+import type { ISerializer } from "../interfaces/serializer";
 import { EventId } from "./event-id";
 import { LakeId } from "./stream-id";
-import { Transaction } from "./transaction";
+import type { Transaction } from "./transaction";
 
 export interface EventLakeStorageLayer {
   append(

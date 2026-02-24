@@ -3,9 +3,9 @@ import {
   EventId,
   type ISerializedChange,
   type ISerializedFact,
-  EventLakeStorageLayer,
+  type EventLakeStorageLayer,
 } from "@ddd-ts/core";
-import { ISerializedSavedChange } from "@ddd-ts/core/dist/interfaces/es-event";
+import type { ISerializedSavedChange } from "@ddd-ts/core/dist/interfaces/es-event";
 
 import {
   DefaultConverter,

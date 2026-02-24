@@ -1,14 +1,14 @@
-import { HasTrait } from "@ddd-ts/traits";
-import { IEsAggregateStore } from "../interfaces/es-aggregate-store";
-import { IChange, IFact } from "../interfaces/es-event";
-import { Store } from "../interfaces/store";
-import { EventOf, EventSourced, EventsOf } from "../traits/event-sourced";
+import type { HasTrait } from "@ddd-ts/traits";
+import type { IEsAggregateStore } from "../interfaces/es-aggregate-store";
+import type { IChange, IFact } from "../interfaces/es-event";
+import type { Store } from "../interfaces/store";
+import { type EventOf, EventSourced, type EventsOf } from "../traits/event-sourced";
 import { Identifiable } from "../traits/identifiable";
 import { EventStreamStore } from "./event-stream.store";
 import { StreamId } from "./stream-id";
-import { TransactionPerformer, Transaction } from "./transaction";
-import { IEventSourced } from "../interfaces/event-sourced";
-import { IIdentifiable } from "../interfaces/identifiable";
+import { TransactionPerformer, type Transaction } from "./transaction";
+import type { IEventSourced } from "../interfaces/event-sourced";
+import type { IIdentifiable } from "../interfaces/identifiable";
 
 export const MakeEventStreamAggregateStore = <
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,
