@@ -1,7 +1,7 @@
 import { EventId } from "../../components/event-id";
 import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
-import { Description } from "./description";
+import type { Description } from "./description";
 
 export const WithLocalTimeout = <const D extends number>(timeout: D) =>
   Subtrait([{} as typeof BaseHandler], (base) => {

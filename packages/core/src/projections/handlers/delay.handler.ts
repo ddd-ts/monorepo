@@ -1,6 +1,6 @@
 import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
-import { Description } from "./description";
+import type { Description } from "./description";
 
 export const WithDelay = <const D extends number>(delayMs: D) =>
   Subtrait([{} as typeof BaseHandler], (base) => {
