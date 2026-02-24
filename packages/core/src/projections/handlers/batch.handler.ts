@@ -1,8 +1,8 @@
 import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
-import { Description } from "./description";
+import type { Description } from "./description";
 import { CheckpointId } from "../checkpoint";
-import { Transaction } from "../../components/transaction";
+import type { Transaction } from "../../components/transaction";
 
 export const WithBatchLast = Subtrait([{} as typeof BaseHandler], (base) => {
   abstract class WithBatchLast extends base {

@@ -1,8 +1,8 @@
 import {
   EventStreamStore,
-  IEsEvent,
-  IEventBus,
-  ISerializer,
+  type IEsEvent,
+  type IEventBus,
+  type ISerializer,
 } from "@ddd-ts/core";
 import { FirestoreEventStreamStorageLayer } from "./firestore.event-stream.storage-layer";
 import { Firestore } from "firebase-admin/firestore";

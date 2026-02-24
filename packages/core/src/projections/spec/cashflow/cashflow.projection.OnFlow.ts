@@ -1,13 +1,13 @@
 import { Derive, Trait } from "@ddd-ts/traits";
 import { Handler } from "../../handlers";
 import { Deposited, Withdrawn } from "../account/account";
-import { CashflowStore } from "./cashflow.store";
+import type { CashflowStore } from "./cashflow.store";
 import {
-  Transaction,
+  type Transaction,
   TransactionPerformer,
 } from "../../../components/transaction";
 import { Lock } from "../../lock";
-import { DerivedDescription, Description } from "../../handlers/description";
+import type { DerivedDescription, Description } from "../../handlers/description";
 
 export class CashflowOnFlowHandlerParallel extends Derive(
   Handler.Base,

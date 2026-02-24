@@ -1,6 +1,6 @@
 import type { AbstractConstructor, Constructor } from "@ddd-ts/types";
 import type { ISerializer, Serialized } from "../interfaces/serializer";
-import { INamed } from "../interfaces/named";
+import type { INamed } from "../interfaces/named";
 
 export type AutoSerializable = AbstractConstructor<{ serialize(): any }> & {
   deserialize(value: any): any;

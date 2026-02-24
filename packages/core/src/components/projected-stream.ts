@@ -1,12 +1,12 @@
 import { Either, Multiple, Shape } from "@ddd-ts/shape";
-import {
+import type {
   IEsEvent,
   IFact,
   ISavedChange,
   ISerializedFact,
   ISerializedSavedChange,
 } from "../interfaces/es-event";
-import { ISerializer } from "../interfaces/serializer";
+import type { ISerializer } from "../interfaces/serializer";
 import { Cursor } from "./cursor";
 
 export class StreamSource extends Shape({

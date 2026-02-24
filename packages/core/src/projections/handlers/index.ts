@@ -35,6 +35,6 @@ export const Handler = {
   WithProps: WithProps,
 } as const;
 
-export { DerivedDescription } from "./description";
+export { type DerivedDescription } from "./description";
 
 export { ProjectionContext } from "./context.handler";

@@ -1,23 +1,23 @@
 import "./metadata.polyfill";
 export { StreamId, LakeId } from "./components/stream-id";
-export { AutoSerializable, AutoSerializer } from "./components/auto-serializer";
+export { type AutoSerializable, AutoSerializer } from "./components/auto-serializer";
 export { EventBusProjectionProcessor } from "./components/event-bus.projection-processor";
 export { EventId } from "./components/event-id";
 export {
   EventLakeStore,
-  EventLakeStorageLayer,
+  type EventLakeStorageLayer,
 } from "./components/event-lake.store";
 export { EventLakeStoreSuite } from "./components/event-lake.store.suite";
 export {
   EventStreamStore,
-  EventStreamStorageLayer,
+  type EventStreamStorageLayer,
 } from "./components/event-stream.store";
 export { EventStreamStoreSuite } from "./components/event-stream.store.suite";
 export {
   LakeSource,
   StreamSource,
   ProjectedStream,
-  ProjectedStreamStorageLayer,
+  type ProjectedStreamStorageLayer,
   ProjectedStreamReader,
 } from "./components/projected-stream";
 export { ProjectedStreamReaderSuite } from "./components/projected-stream.reader.suite";
@@ -28,9 +28,9 @@ export { SerializerRegistry } from "./components/serializer-registry";
 export { DetachedEventBus } from "./components/detached.event-bus";
 export { ConcurrencyError } from "./components/concurrency-error";
 export {
-  Transaction,
-  CommitListener,
-  TransactionEffect,
+  type Transaction,
+  type CommitListener,
+  type TransactionEffect,
   TransactionPerformer,
 } from "./components/transaction";
 

@@ -1,12 +1,12 @@
 import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
-import { IEsEvent } from "../../interfaces/es-event";
+import type { IEsEvent } from "../../interfaces/es-event";
 import { EventId } from "../../components/event-id";
 import {
-  Transaction,
+  type Transaction,
   TransactionPerformer,
 } from "../../components/transaction";
-import { Description } from "./description";
+import type { Description } from "./description";
 
 export const WithSuspense = Subtrait([{} as typeof BaseHandler], (base) => {
   abstract class WithSuspense extends base {

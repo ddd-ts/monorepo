@@ -1,6 +1,6 @@
 import { Primitive } from "@ddd-ts/shape";
 import { customAlphabet } from "nanoid";
-import { Identifier } from "../interfaces/identifiable";
+import type { Identifier } from "../interfaces/identifiable";
 
 const alphabet =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";

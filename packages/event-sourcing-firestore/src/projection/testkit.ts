@@ -4,7 +4,7 @@ import type { Firestore } from "firebase-admin/firestore";
 import { FirestoreProjector, FirestoreQueueStore } from "./firestore.projector";
 import { FirestoreProjectedStreamReader } from "../firestore.projected-stream.reader";
 import { MakeFirestoreEventStreamAggregateStore } from "../firestore.event-stream.aggregate-store";
-import { IEventBus, ProjectorTesting } from "@ddd-ts/core";
+import { type IEventBus, ProjectorTesting } from "@ddd-ts/core";
 import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
 
 // Common registry for account events used across tests
