@@ -6,6 +6,7 @@
 	"repository": {
     "url": "git+https://github.com/ddd-ts/monorepo"
   },
+	"files": ["dist"],
 	"scripts": {
 		"pretest:disabled": "docker compose -f docker/docker-compose.yml up -d",
 		"wait:disabled": "sh -c 'until curl --silent localhost:2113/health; do sleep 1; done;'",

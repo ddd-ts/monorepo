@@ -6,6 +6,7 @@
 	"repository": {
     "url": "git+https://github.com/ddd-ts/monorepo"
   },
+	"files": ["dist"],
 	"bin": {
 		"freeze": "dist/entrypoints/freeze.entrypoint.js"
 	},
