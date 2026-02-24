@@ -25,6 +25,6 @@ reminder:
 
 
 # Release
-npm dist-tags @ddd-ts/core | grep latest | awk '{ print $2 }'
-npm version -ws 0.0.3-x 
-npm publish --access public --workspaces
+pnpm dist-tags @ddd-ts/core | grep latest | awk '{ print $2 }'
+pnpm version -ws 0.0.3-x 
+pnpm publish --access public --r
