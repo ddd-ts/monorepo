@@ -1,4 +1,4 @@
-import { EventLakeStore, IEsEvent, IEventBus, ISerializer } from "@ddd-ts/core";
+import { EventLakeStore, type IEsEvent, type IEventBus, type ISerializer } from "@ddd-ts/core";
 import { FirestoreEventLakeStorageLayer } from "./firestore.event-lake.storage-layer";
 import { Firestore } from "firebase-admin/firestore";
 

@@ -1,4 +1,4 @@
-import { Multiple, MultipleConfiguration } from "./multiple";
+import { Multiple, type MultipleConfiguration } from "./multiple";
 import { Dict } from "./dict";
 import { ex } from "./test";
 

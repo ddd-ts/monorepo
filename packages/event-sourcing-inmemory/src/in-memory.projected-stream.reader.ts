@@ -1,4 +1,4 @@
-import { IEsEvent, ISerializer, ProjectedStreamReader } from "@ddd-ts/core";
+import { type IEsEvent, type ISerializer, ProjectedStreamReader } from "@ddd-ts/core";
 import { InMemoryDatabase } from "@ddd-ts/store-inmemory";
 import { InMemoryProjectedStreamStorageLayer } from "./in-memory.projected-stream.storage-layer";
 

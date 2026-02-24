@@ -5,18 +5,18 @@ import { On } from "../decorators/handlers";
 import { EventId } from "./event-id";
 import { SerializerRegistry } from "./serializer-registry";
 import { TransactionPerformer } from "./transaction";
-import { ISerializer } from "../interfaces/serializer";
-import { Store } from "../interfaces/store";
-import { IIdentifiable } from "../interfaces/identifiable";
-import { EventOf, EventSourced } from "../traits/event-sourced";
-import { IEventBus } from "../interfaces/event-bus";
+import type { ISerializer } from "../interfaces/serializer";
+import type { Store } from "../interfaces/store";
+import type { IIdentifiable } from "../interfaces/identifiable";
+import { type EventOf, EventSourced } from "../traits/event-sourced";
+import type { IEventBus } from "../interfaces/event-bus";
 import { AutoSerializer } from "./auto-serializer";
 import { Shaped } from "../traits/shaped";
-import { Derive, HasTrait } from "@ddd-ts/traits";
+import { Derive, type HasTrait } from "@ddd-ts/traits";
 import { Named } from "../traits/named";
-import { IEvent } from "../interfaces/event";
+import type { IEvent } from "../interfaces/event";
 import { Identifiable } from "../traits/identifiable";
-import { IEsAggregateStore } from "../interfaces/es-aggregate-store";
+import type { IEsAggregateStore } from "../interfaces/es-aggregate-store";
 
 export function EventStreamAggregateStoreSuite(config: {
   transaction: TransactionPerformer;

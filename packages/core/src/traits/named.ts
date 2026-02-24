@@ -1,5 +1,5 @@
-import { AbstractConstructor, Trait } from "@ddd-ts/traits";
-import { INamed } from "../interfaces/named";
+import { type AbstractConstructor, Trait } from "@ddd-ts/traits";
+import type { INamed } from "../interfaces/named";
 
 export const Named = <const Name extends string>(name: Name) =>
   Trait((base) => ExtendsNamed(name, base));

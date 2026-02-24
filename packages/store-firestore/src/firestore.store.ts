@@ -1,15 +1,15 @@
 import {
   CollectionReference,
-  DocumentData,
+  type DocumentData,
   QueryDocumentSnapshot,
   DocumentSnapshot,
 } from "firebase-admin/firestore";
 
-import {
+import type {
   Store,
   ISerializer,
-  type IIdentifiable,
-  Serialized,
+  IIdentifiable,
+  Serialized
 } from "@ddd-ts/core";
 
 import { FirestoreTransaction } from "./firestore.transaction";

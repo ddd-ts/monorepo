@@ -1,13 +1,13 @@
 import {
-  Constructor,
-  Expand,
-  DefinitionOf,
+  type Constructor,
+  type Expand,
+  type DefinitionOf,
   Shape,
-  AbstractConstructor,
+  type AbstractConstructor,
   Empty,
 } from "./_";
-import { ClassShorthand } from "./class";
-import { PrimitiveShorthand } from "./primitive";
+import type { ClassShorthand } from "./class";
+import type { PrimitiveShorthand } from "./primitive";
 
 type Config = { [key: string]: any };
 

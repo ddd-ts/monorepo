@@ -1,12 +1,12 @@
 import {
-  Definition,
-  Expand,
-  Shorthand,
-  DefinitionOf,
+  type Definition,
+  type Expand,
+  type Shorthand,
+  type DefinitionOf,
   Shape,
-  AbstractConstructor,
+  type AbstractConstructor,
   Empty,
-  Constructor,
+  type Constructor,
 } from "./_";
 import { Primitive } from "./primitive";
 

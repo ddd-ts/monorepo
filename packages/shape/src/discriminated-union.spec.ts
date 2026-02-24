@@ -2,7 +2,7 @@ import { Dict } from "./dict";
 import { ex, type Equals } from "./test";
 import {
   DiscriminatedUnion,
-  DiscriminatedUnionConfiguration,
+  type DiscriminatedUnionConfiguration,
 } from "./discriminated-union";
 
 describe("DiscriminatedUnion", () => {

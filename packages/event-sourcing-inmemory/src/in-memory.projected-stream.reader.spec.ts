@@ -12,7 +12,7 @@ describe("InMemoryProjectedStreamReader", () => {
   const database = new InMemoryDatabase();
 
   ProjectedStreamReaderSuite({
-    transaction: new InMemoryTransactionPerformer(database),
+    transaction: new InMemoryTransactionPerformer(database) as any,
     lakeStorageLayer: new InMemoryEventLakeStorageLayer(database),
     streamStorageLayer: new InMemoryEventStreamStorageLayer(database),
     readerStorageLayer: new InMemoryProjectedStreamStorageLayer(database),

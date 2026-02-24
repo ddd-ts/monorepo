@@ -1,16 +1,16 @@
-import { HasTrait } from "@ddd-ts/traits";
+import type { HasTrait } from "@ddd-ts/traits";
 import {
   StreamId,
-  EventsOf,
+  type EventsOf,
   EventSourced,
   type Identifiable,
   type IEventBus,
   EventStreamStore,
   EventStreamAggregateStore,
-  ISerializer,
-  IEventSourced,
-  IIdentifiable,
-  EventOf,
+  type ISerializer,
+  type IEventSourced,
+  type IIdentifiable,
+  type EventOf,
 } from "@ddd-ts/core";
 import { FirestoreTransactionPerformer } from "@ddd-ts/store-firestore";
 
@@ -66,6 +66,6 @@ export abstract class FirestoreEventStreamAggregateStore<
       serializer,
       eventBus,
     );
-    super(streamStore, transaction, snapshotter);
+    super(streamStore, transaction as any, snapshotter);
   }
 }

@@ -7,14 +7,14 @@ import {
   LakeSource,
   ProjectedStream,
   ProjectedStreamReader,
-  ProjectedStreamStorageLayer,
+  type ProjectedStreamStorageLayer,
   StreamSource,
 } from "./projected-stream";
 import {
-  EventStreamStorageLayer,
+  type EventStreamStorageLayer,
   EventStreamStore,
 } from "./event-stream.store";
-import { EventLakeStorageLayer, EventLakeStore } from "./event-lake.store";
+import { type EventLakeStorageLayer, EventLakeStore } from "./event-lake.store";
 import { LakeId, StreamId } from "./stream-id";
 import { buffer } from "../tools/iterator";
 

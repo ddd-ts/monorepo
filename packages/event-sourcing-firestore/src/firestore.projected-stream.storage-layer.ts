@@ -1,9 +1,9 @@
 import {
-  ISerializedFact,
-  ISerializedSavedChange,
+  type ISerializedFact,
+  type ISerializedSavedChange,
   LakeSource,
   ProjectedStream,
-  ProjectedStreamStorageLayer,
+  type ProjectedStreamStorageLayer,
   StreamSource,
 } from "@ddd-ts/core";
 import { DefaultConverter } from "@ddd-ts/store-firestore";

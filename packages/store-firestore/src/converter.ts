@@ -1,7 +1,7 @@
 import { MicrosecondTimestamp } from "@ddd-ts/shape";
 import {
   FieldValue,
-  FirestoreDataConverter,
+  type FirestoreDataConverter,
   Timestamp,
 } from "firebase-admin/firestore";
 

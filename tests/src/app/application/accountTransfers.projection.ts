@@ -1,6 +1,6 @@
-import { On, Projection, Transaction } from "@ddd-ts/core";
+import { On, Projection } from "@ddd-ts/core";
 import { TransferInitiated } from "../domain/write/transfer/transfer";
-import { AccountTransfersStore } from "./accountTransfers.store";
+import type { AccountTransfersStore } from "./accountTransfers.store";
 
 export class InitiatedTransfersProjection extends Projection(
   "InitiatedTransfers",

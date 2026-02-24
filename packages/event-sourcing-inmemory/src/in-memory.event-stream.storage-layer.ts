@@ -2,10 +2,10 @@ import {
   StreamId,
   type ISerializedChange,
   type ISerializedFact,
-  EventStreamStorageLayer,
+  type EventStreamStorageLayer,
   ConcurrencyError,
 } from "@ddd-ts/core";
-import { ISerializedSavedChange } from "@ddd-ts/core/dist/interfaces/es-event";
+import type { ISerializedSavedChange } from "@ddd-ts/core/dist/interfaces/es-event";
 import { InMemoryDatabase, InMemoryTransaction } from "@ddd-ts/store-inmemory";
 
 export class InMemoryEventStreamStorageLayer

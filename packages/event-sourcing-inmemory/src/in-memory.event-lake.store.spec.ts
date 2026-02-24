@@ -11,7 +11,7 @@ describe("FirestoreEventLakeStore", () => {
   const transaction = new InMemoryTransactionPerformer(database);
 
   EventLakeStoreSuite({
-    transaction: transaction,
+    transaction: transaction as any,
     lakeStorageLayer: new InMemoryEventLakeStorageLayer(database),
   });
 });

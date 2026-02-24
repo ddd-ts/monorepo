@@ -1,4 +1,4 @@
-import { AbstractConstructor, Constructor, Empty, Expand } from "./_";
+import { type AbstractConstructor, type Constructor, Empty, type Expand } from "./_";
 
 export type LiteralShorthand = string | number;
 

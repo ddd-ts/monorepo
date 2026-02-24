@@ -1,4 +1,4 @@
-import { Optional, Dict, OptionalConfiguration } from "@ddd-ts/shape";
+import { Optional, Dict, type OptionalConfiguration } from "@ddd-ts/shape";
 import { ex } from "./test";
 
 describe("Optional", () => {

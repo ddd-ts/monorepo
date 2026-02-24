@@ -1,4 +1,4 @@
-import { IEsEvent } from "./es-event";
+import type { IEsEvent } from "./es-event";
 
 export interface IEventSourced<E extends IEsEvent = IEsEvent> {
   changes: E[];

@@ -1,7 +1,9 @@
 declare global {
   interface SymbolConstructor {
-    metadata: symbol;
+    readonly metadata: unique symbol;
   }
 }
 
-Symbol.metadata = Symbol.for("metadata");
+(Symbol as any).metadata = Symbol.for("metadata");
+
+export {};

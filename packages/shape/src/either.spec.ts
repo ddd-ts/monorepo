@@ -1,4 +1,4 @@
-import { Either, EitherConfiguration } from "./either";
+import { Either, type EitherConfiguration } from "./either";
 import { Dict } from "./dict";
 import { ex } from "./test";
 import { Shape } from "./_";
