@@ -1,6 +1,6 @@
 import { AccountId } from "../account/account";
 import { Cashflow } from "./cashflow";
-import { Transaction } from "../../../components/transaction";
+import type { Transaction } from "../../../components/transaction";
 import { AutoSerializer } from "../../../components/auto-serializer";
 
 export class CashflowSerializer extends AutoSerializer.First(Cashflow) {}

@@ -1,9 +1,9 @@
 import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
-import { Description } from "./description";
+import type { Description } from "./description";
 import { CheckpointId } from "../checkpoint";
 import { EventId } from "../../components/event-id";
-import { Transaction } from "../../components/transaction";
+import type { Transaction } from "../../components/transaction";
 
 export const WithOnProcessed = Subtrait([{} as typeof BaseHandler], (base) => {
   abstract class WithOnProcessed extends base {

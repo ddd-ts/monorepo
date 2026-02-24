@@ -1,5 +1,5 @@
 import { Subtrait, Trait } from "@ddd-ts/traits";
-import { IEsEvent } from "../../interfaces/es-event";
+import type { IEsEvent } from "../../interfaces/es-event";
 import { EventId } from "../../components/event-id";
 
 export const WithProps = <A extends {}>() =>
