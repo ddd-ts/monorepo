@@ -39,7 +39,7 @@ describe("FirestoreStore", () => {
     };
   }
 
-  StoreSuite(getStore);
+  StoreSuite(getStore as any);
 
   it("streams all the database 10 by 10", async () => {
     const { store } = getStore();

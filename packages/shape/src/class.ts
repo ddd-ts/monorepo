@@ -1,4 +1,4 @@
-import { AbstractConstructor, Empty, Constructor, Expand } from "./_";
+import { type AbstractConstructor, Empty, type Constructor, type Expand } from "./_";
 
 export type ClassShorthand = Constructor<{ serialize(): any }> & {
   deserialize(value: any): any;

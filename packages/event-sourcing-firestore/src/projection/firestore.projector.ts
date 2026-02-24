@@ -5,16 +5,16 @@ import {
   WriteBatch,
 } from "firebase-admin/firestore";
 import {
-  IEsEvent,
-  ISavedChange,
+  type IEsEvent,
+  type ISavedChange,
   EventId,
   ProjectedStreamReader,
   Cursor,
   CheckpointId,
   ESProjection,
   ProjectedStream,
-  IFact,
-  Serialized,
+  type IFact,
+  type Serialized,
   Lock,
 } from "@ddd-ts/core";
 import { Mapping, MicrosecondTimestamp, Optional, Shape } from "@ddd-ts/shape";

@@ -1,4 +1,4 @@
-import { AbstractConstructor, Empty, Expand, Constructor } from "./_";
+import { type AbstractConstructor, Empty, type Expand, type Constructor } from "./_";
 
 export type ChoiceMatcher<S extends string[]> =
   | {

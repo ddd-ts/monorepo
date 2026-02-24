@@ -1,6 +1,6 @@
 import {
   AutoSerializer,
-  EventsOf,
+  type EventsOf,
   SerializerRegistry,
   type EventSourced,
   type Identifiable,

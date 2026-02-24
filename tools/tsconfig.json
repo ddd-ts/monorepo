@@ -3,6 +3,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "target": "ES2022",
+    "lib": ["ESNext"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,

@@ -1,7 +1,7 @@
 import { Derive } from "@ddd-ts/traits";
 import { AccountRenamed } from "../account/account";
-import { CashflowStore } from "./cashflow.store";
-import { Transaction } from "../../../components/transaction";
+import type { CashflowStore } from "./cashflow.store";
+import type { Transaction } from "../../../components/transaction";
 import { Handler } from "../../handlers";
 import { Lock } from "../../lock";
 

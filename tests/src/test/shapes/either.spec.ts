@@ -1,4 +1,4 @@
-import { Shape, Either, Dict, EitherConfiguration } from "@ddd-ts/shape";
+import { Shape, Either, Dict, type EitherConfiguration } from "@ddd-ts/shape";
 import { ex } from "./test";
 
 describe("Either", () => {

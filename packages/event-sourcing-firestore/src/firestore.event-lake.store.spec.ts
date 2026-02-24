@@ -12,7 +12,7 @@ describe("FirestoreEventLakeStore", () => {
   const firestore = app.firestore();
 
   EventLakeStoreSuite({
-    transaction: new FirestoreTransactionPerformer(firestore),
+    transaction: new FirestoreTransactionPerformer(firestore) as any,
     lakeStorageLayer: new FirestoreEventLakeStorageLayer(firestore),
   });
 });

@@ -1,4 +1,4 @@
-import { Mapping, Primitive, Dict, MappingConfiguration } from "@ddd-ts/shape";
+import { Mapping, Primitive, Dict, type MappingConfiguration } from "@ddd-ts/shape";
 import { ex } from "./test";
 
 describe("Mapping", () => {

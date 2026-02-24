@@ -1,4 +1,4 @@
-import { EventStreamStore, IEsEvent, INamed, ISerializer } from "@ddd-ts/core";
+import { EventStreamStore, type IEsEvent, type INamed, type ISerializer } from "@ddd-ts/core";
 import type { InMemoryDatabase } from "@ddd-ts/store-inmemory";
 import { InMemoryEventStreamStorageLayer } from "./in-memory.event-stream.storage-layer";
 

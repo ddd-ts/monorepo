@@ -1,6 +1,6 @@
 import { Dict } from "./dict";
 import { Primitive } from "./primitive";
-import { Mapping, MappingConfiguration } from "./mapping";
+import { Mapping, type MappingConfiguration } from "./mapping";
 import { ex } from "./test";
 
 describe("Mapping", () => {

@@ -1,5 +1,5 @@
 import { Primitive } from "@ddd-ts/shape";
-import { Constructor } from "@ddd-ts/types";
+import type { Constructor } from "@ddd-ts/types";
 
 export class PairId extends Primitive(String) {
   static separator = "@@" as const;

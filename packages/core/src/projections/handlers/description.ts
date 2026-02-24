@@ -1,4 +1,4 @@
-import { Expand } from "@ddd-ts/shape";
+import type { Expand } from "@ddd-ts/shape";
 import { Trait } from "@ddd-ts/traits";
 
 type GetDescription<D extends Description<any>> = D[keyof D];

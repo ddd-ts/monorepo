@@ -12,7 +12,7 @@ describe("FirestoreEventStreamStore", () => {
   const firestore = app.firestore();
 
   EventStreamStoreSuite({
-    transaction: new FirestoreTransactionPerformer(firestore),
+    transaction: new FirestoreTransactionPerformer(firestore) as any,
     streamStorageLayer: new FirestoreEventStreamStorageLayer(firestore),
   });
 });

@@ -1,4 +1,4 @@
-import { Constructor, Expand } from "./_";
+import { type Constructor } from "./_";
 
 type IfEquals<T, U, Y = unknown, N = never> = (<G>() => G extends T
   ? 1

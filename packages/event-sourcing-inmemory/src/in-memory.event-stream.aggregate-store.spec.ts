@@ -10,7 +10,7 @@ describe("InMemoryEventStreamAggregateStore", () => {
   const database = new InMemoryDatabase();
 
   EventStreamAggregateStoreSuite({
-    transaction: new InMemoryTransactionPerformer(database),
+    transaction: new InMemoryTransactionPerformer(database) as any,
     getAggregateStore: (AGGREGATE, serializer, eventBus) => {
       const Store = MakeInMemoryEventStreamAggregateStore(AGGREGATE);
       return new Store(database, serializer, eventBus);

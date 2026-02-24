@@ -2,11 +2,11 @@ import {
   LakeId,
   type IEventBus,
   EventLakeStore,
-  EventOf,
-  ISerializer,
-  IEventSourced,
-  IIdentifiable,
-  IChange,
+  type EventOf,
+  type ISerializer,
+  type IEventSourced,
+  type IIdentifiable,
+  type IChange,
   EventSourced,
   Identifiable,
 } from "@ddd-ts/core";
@@ -17,7 +17,7 @@ import {
   InMemoryTransactionPerformer,
 } from "@ddd-ts/store-inmemory";
 import { InMemoryEventLakeStorageLayer } from "./in-memory.event-lake.storage-layer";
-import { HasTrait } from "@ddd-ts/traits";
+import type { HasTrait } from "@ddd-ts/traits";
 
 export const MakeInMemoryEventLakeAggregateStore = <
   A extends HasTrait<typeof EventSourced> & HasTrait<typeof Identifiable>,

@@ -1,4 +1,4 @@
-import { Dict, DictShorthand } from "./dict";
+import { Dict, type DictShorthand } from "./dict";
 import { Primitive } from "./primitive";
 import { ex } from "./test";
 

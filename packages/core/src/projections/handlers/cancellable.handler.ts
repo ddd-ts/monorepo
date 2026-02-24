@@ -1,6 +1,6 @@
 import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
-import { Description } from "./description";
+import type { Description } from "./description";
 import type { IEsEvent } from "../../interfaces/es-event";
 
 export const WithCancellable = Subtrait([{} as typeof BaseHandler], (base, Props) => {

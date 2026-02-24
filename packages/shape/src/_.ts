@@ -1,9 +1,9 @@
-import { Class, IClass, ClassShorthand } from "./class";
-import { Dict, IDict, DictShorthand } from "./dict";
-import { Primitive, PrimitiveShorthand } from "./primitive";
-import { Multiple, IMultiple, MultipleShorthand } from "./multiple";
-import { Nothing, NothingShorthand } from "./nothing";
-import { Literal, ILiteral, LiteralShorthand } from "./literal";
+import { Class, type IClass, type ClassShorthand } from "./class";
+import { Dict, type IDict, type DictShorthand } from "./dict";
+import { Primitive, type PrimitiveShorthand } from "./primitive";
+import { Multiple, type IMultiple, type MultipleShorthand } from "./multiple";
+import { Nothing, type NothingShorthand } from "./nothing";
+import { Literal, type ILiteral, type LiteralShorthand } from "./literal";
 
 export abstract class Empty {}
 

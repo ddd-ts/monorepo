@@ -3,8 +3,8 @@ import * as fb from "firebase-admin";
 
 import {
   EventLakeAggregateStoreSuite,
-  IEventSourced,
-  IIdentifiable,
+  type IEventSourced,
+  type IIdentifiable,
   LakeId,
   type ISerializer,
 } from "@ddd-ts/core";
@@ -29,7 +29,7 @@ describe("FirestoreEventLakeAggregateStore", () => {
   }
 
   EventLakeAggregateStoreSuite({
-    transaction: new FirestoreTransactionPerformer(database),
+    transaction: new FirestoreTransactionPerformer(database) as any,
     getAggregateStore: (AGGREGATE, serializer, eventBus) => {
       return new AggregateStore(
         database.collection(AGGREGATE.name),

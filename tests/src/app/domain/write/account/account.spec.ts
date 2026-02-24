@@ -1,5 +1,5 @@
 import { EventId, type IEsEvent } from "@ddd-ts/core";
-import { Constructor } from "@ddd-ts/types";
+import type { Constructor } from "@ddd-ts/types";
 import { Account, AccountOpened } from "./account";
 import { Deposited } from "./deposited.event";
 import { MicrosecondTimestamp } from "@ddd-ts/shape";

@@ -1,4 +1,4 @@
-import { EsAggregate, EsEvent, On } from "@ddd-ts/core";
+import { EsAggregate, EsEvent, On, type Identifier } from "@ddd-ts/core";
 import { AccountId } from "../account/account-id";
 
 import { v4 } from "uuid";
@@ -20,6 +20,8 @@ export class TransferAmountClaimed extends EsEvent("TransferAmountClaimed", {
 export class Transfer extends EsAggregate("Transfer", {
   events: [TransferInitiated, TransferAmountClaimed],
 }) {
+  id: Identifier<string>;
+
   constructor(
     public transferId: TransferId,
     public from: AccountId,
