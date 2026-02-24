@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { BaseHandler } from "./base.handler";
 import { Subtrait } from "@ddd-ts/traits";
-import { Description } from "./description";
+import type { Description } from "./description";
 
 export class ProjectionContext {
   static storage = new AsyncLocalStorage<any>();

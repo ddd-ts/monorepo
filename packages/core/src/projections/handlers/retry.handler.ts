@@ -1,6 +1,6 @@
 import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
-import { Description } from "./description";
+import type { Description } from "./description";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
