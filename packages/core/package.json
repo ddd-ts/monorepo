@@ -32,13 +32,13 @@
   "publishConfig": {
     "exports": {
       ".": {
-        "default": "./dist/index.js",
+        "default": "./dist/index.mjs",
         "import": "./dist/index.mjs",
         "require": "./dist/index.js",
         "types": "./dist/index.d.ts"
       },
       "./dist/*": {
-        "default": "./dist/*.js",
+        "default": "./dist/*.mjs",
         "import": "./dist/*.mjs",
         "require": "./dist/*.js",
         "types": "./dist/*.d.ts"
