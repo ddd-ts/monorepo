@@ -22,6 +22,7 @@ import {
   DefaultConverter,
   FirestoreTransaction,
 } from "@ddd-ts/store-firestore";
+import { EventCoordinator } from "./event-coordinator";
 
 const Status = {
   SUCCESS: "OK",
@@ -53,9 +54,6 @@ interface FirestoreProjectorConfig {
   };
   onProcessError: (error: Error) => void;
   onEnqueueError: (error: Error) => void;
-  debounce?: {
-    delayMs: number;
-  };
 }
 
 export class FirestoreProjector {
@@ -67,7 +65,6 @@ export class FirestoreProjector {
     public readonly queue: FirestoreQueueStore,
     public config: FirestoreProjectorConfig = {
       retry: { attempts: 10, minDelay: 10, maxDelay: 200, backoff: 1.5 },
-      debounce: { delayMs: 0 },
       enqueue: { batchSize: 100 },
       onProcessError: (error: Error) => {
         console.error("Error processing event:", error);
@@ -98,22 +95,15 @@ export class FirestoreProjector {
     }
   }
 
-  private checkpointTsTriggered: Map<string, BigInt> = new Map();
-  private async shouldProceedAfterDebounce(event: ISavedChange<IEsEvent>) {
-    const debounceDelay = this.config.debounce?.delayMs;
-    if (!debounceDelay) return true;
-
-    const checkpointId = this.projection.getCheckpointId(event).serialize();
-
-    const currentTs = process.hrtime.bigint();
-    this.checkpointTsTriggered.set(checkpointId, currentTs);
-
-    await wait(debounceDelay);
-
-    const latestTs = this.checkpointTsTriggered.get(checkpointId);
-
-    const shouldContinue = latestTs === currentTs;
-    return shouldContinue;
+  private eventCoordinators: Map<string, EventCoordinator> = new Map();
+  private getEventCoordinator(checkpointId: CheckpointId) {
+    const key = checkpointId.serialize();
+    let coordinator = this.eventCoordinators.get(key);
+    if (!coordinator) {
+      coordinator = new EventCoordinator();
+      this.eventCoordinators.set(key, coordinator);
+    }
+    return coordinator;
   }
 
   // @Trace("projector.handle", ($, e) => ({
@@ -125,12 +115,21 @@ export class FirestoreProjector {
   //   checkpointId: $.projection.getCheckpointId(e).serialize(),
   // }))
   async handle(savedChange: ISavedChange<IEsEvent>) {
-    if (await this.shouldProceedAfterDebounce(savedChange) === false) return;
-
     const checkpointId = this.projection.getCheckpointId(savedChange);
+
+    const eventCoordinator = this.getEventCoordinator(checkpointId);
+    eventCoordinator.addEvent(savedChange);
+
+    await eventCoordinator.waitCurrentEvent();
+
+    if (!eventCoordinator.canProceed(savedChange)) return;
+
+    const disposeEventCoordinator = eventCoordinator.start(savedChange);
+
     const target = await this.getCursor(savedChange);
 
     if (!target) {
+      disposeEventCoordinator();
       throw new Error(
         `Cursor not found for event ${savedChange.id.serialize()}`,
       );
@@ -154,12 +153,14 @@ export class FirestoreProjector {
 
       if (status === Status.SUCCESS) {
         await this.queue.cleanup(checkpointId);
+        disposeEventCoordinator();
         return;
       }
 
       errors.push(message);
     }
 
+    disposeEventCoordinator();
     throw new Error(
       `Failed to handle event ${savedChange.id.serialize()}: ${errors.join(", ")}`,
     );
