@@ -4,13 +4,19 @@ import { promiseWithResolvers, type PromiseResolvers } from "../utils/promise-wi
 export class EventCoordinator {
   private eventProcessing: Map<string, PromiseResolvers<void>> = new Map();
   private currentEventId: string | null = null;
-  private eventStack: ISavedChange<IEsEvent>[] = [];
+  private lastEvent: ISavedChange<IEsEvent> | null = null;
   private isRunning = false;
 
   addEvent(event: ISavedChange<IEsEvent>) {
     const eventId = event.id.serialize();
     this.eventProcessing.set(eventId, promiseWithResolvers());
-    this.eventStack.push(event);
+
+    if (
+      this.lastEvent === null ||
+      this.lastEvent.revision < event.revision
+    ) {
+      this.lastEvent = event;
+    }
   }
 
   start(event: ISavedChange<IEsEvent>) {
@@ -19,9 +25,8 @@ export class EventCoordinator {
     }
 
     this.currentEventId = event.id.serialize();
-    this.eventStack = [];
     this.isRunning = true;
-    return () => this.end(event);
+    return () => this.cleanEvent(event);
   }
 
   async waitCurrentEvent() {
@@ -30,21 +35,19 @@ export class EventCoordinator {
     await resolvers?.promise;
   }
 
-  end(event: ISavedChange<IEsEvent>) {
+  cleanEvent(event: ISavedChange<IEsEvent>) {
     const eventId = event.id.serialize();
+
     this.eventProcessing.get(eventId)?.resolve();
-    
     this.eventProcessing.delete(eventId);
+
     this.isRunning = false;
     this.currentEventId = null;
   }
 
   canProceed(event: ISavedChange<IEsEvent>) {
+    if (this.isRunning) return false;
     const eventId = event.id.serialize();
-    const lastStackEvent = this.eventStack.at(-1);
-    if (lastStackEvent && lastStackEvent.id.serialize() !== eventId) {
-      return false;
-    }
-    return true;
+    return this.lastEvent?.id.serialize() === eventId;
   }
 }
