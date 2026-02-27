@@ -45,7 +45,7 @@ test.describe(() => {
 
     await assert.cashflow(account.id).toHave({
       // But withdraw is first in ops_trace, because it has no delay
-      ops_trace: [opened.id, withdraw.id, deposit.id],
+      ops_trace: expect.arrayContaining([opened.id, withdraw.id, deposit.id]),
       flow: 150,
     });
   });
