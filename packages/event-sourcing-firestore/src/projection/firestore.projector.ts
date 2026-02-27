@@ -122,7 +122,10 @@ export class FirestoreProjector {
 
     await eventCoordinator.waitCurrentEvent();
 
-    if (!eventCoordinator.canProceed(savedChange)) return;
+    if (!eventCoordinator.canProceed(savedChange)) {
+      eventCoordinator.cleanEvent(savedChange);
+      return;
+    }
 
     const disposeEventCoordinator = eventCoordinator.start(savedChange);
 
@@ -138,7 +141,6 @@ export class FirestoreProjector {
     const errors = [];
 
     for await (const [attempt, reset] of this.breathe()) {
-      // console.log(`Attempt ${attempt} for event ${savedChange.id.serialize()}`);
       const source = this.projection.getSource(savedChange);
       const [status, message] = await this.attempt(
         source,
