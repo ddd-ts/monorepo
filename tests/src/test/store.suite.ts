@@ -1,7 +1,7 @@
 import {
-  ISerializer,
-  Serialized,
-  Store,
+  type ISerializer,
+  type Serialized,
+  type Store,
   TransactionPerformer,
 } from "@ddd-ts/core";
 import { Primitive } from "@ddd-ts/shape";

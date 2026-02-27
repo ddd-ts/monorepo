@@ -7,10 +7,10 @@ import {
   Deposited,
   Withdrawn,
 } from "./account/account";
-import { Projector } from "../projector";
+import type { Projector } from "../projector";
 import { SerializerRegistry } from "../../components/serializer-registry";
 import { EventStreamAggregateStore } from "../../components/event-stream.aggregate-store";
-import { CashflowSerializer, CashflowStore } from "./cashflow/cashflow.store";
+import { CashflowSerializer, type CashflowStore } from "./cashflow/cashflow.store";
 import { Cashflow } from "./cashflow/cashflow";
 
 const Registry = new SerializerRegistry()

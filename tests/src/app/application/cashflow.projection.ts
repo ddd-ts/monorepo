@@ -1,4 +1,4 @@
-import { On, Projection, Transaction } from "@ddd-ts/core";
+import { On, Projection, type Transaction } from "@ddd-ts/core";
 
 import { Deposited } from "../domain/write/account/deposited.event";
 import { Cashflow } from "../domain/read/cashflow/cashflow";

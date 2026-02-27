@@ -1,10 +1,10 @@
 import {
-  DefinitionOf,
-  Shorthand,
+  type DefinitionOf,
+  type Shorthand,
   Shape,
-  Expand,
-  AbstractConstructor,
-  Constructor,
+  type Expand,
+  type AbstractConstructor,
+  type Constructor,
   Empty,
 } from "./_";
 

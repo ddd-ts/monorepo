@@ -1,4 +1,4 @@
-import {
+import type {
   IEsEvent,
   IFact,
   ISavedChange,
@@ -6,10 +6,10 @@ import {
   ISerializedFact,
   ISerializedSavedChange,
 } from "../interfaces/es-event";
-import { IEventBus } from "../interfaces/event-bus";
-import { ISerializer } from "../interfaces/serializer";
+import type { IEventBus } from "../interfaces/event-bus";
+import type { ISerializer } from "../interfaces/serializer";
 import { StreamId } from "./stream-id";
-import { Transaction } from "./transaction";
+import type { Transaction } from "./transaction";
 
 export interface EventStreamStorageLayer {
   isLocalRevisionOutdatedError(error: unknown): boolean;

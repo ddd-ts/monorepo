@@ -4,8 +4,11 @@
 	"types": "dist/index.d.ts",
 	"license": "MIT",
 	"repository": {
-    "url": "git+https://github.com/ddd-ts/monorepo"
-  },
+		"url": "git+https://github.com/ddd-ts/monorepo"
+	},
+	"files": [
+		"dist"
+	],
 	"bin": {
 		"freeze": "dist/entrypoints/freeze.entrypoint.js"
 	},
@@ -34,8 +37,13 @@
 	},
 	"publishConfig": {
 		"exports": {
-			".": "./dist/index.js",
+			".": {
+				"import": "./dist/index.mjs",
+				"require": "./dist/index.js"
+			},
 			"./package.json": "./package.json"
 		}
-	}
+	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs"
 }

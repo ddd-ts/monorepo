@@ -1,9 +1,9 @@
-import { ImplementsTrait } from "@ddd-ts/traits";
+import type { ImplementsTrait } from "@ddd-ts/traits";
 import { EventId } from "../components/event-id";
-import { IEsEvent } from "../interfaces/es-event";
+import type { IEsEvent } from "../interfaces/es-event";
 import { Lock } from "./lock";
-import { INamed } from "../interfaces/named";
-import { Constructor } from "@ddd-ts/types";
+import type { INamed } from "../interfaces/named";
+import type { Constructor } from "@ddd-ts/types";
 import { ProjectedStream } from "../components/projected-stream";
 import { CheckpointId } from "./checkpoint";
 import {
@@ -51,9 +51,9 @@ export abstract class ESProjection<E extends IEsEvent, C = any> {
 
     return {
       lock: handler.locks(event),
-      claimTimeout: handler.getClaimTimeout?.(event) || 1000 * 60,
-      skipAfter: handler.getSkipAfter?.(event) || 10,
-      isolateAfter: handler.getIsolateAfter?.(event) || 3,
+      claimTimeout: handler.getClaimTimeout?.(event) ?? 1000 * 60,
+      skipAfter: handler.getSkipAfter?.(event) ?? 10,
+      isolateAfter: handler.getIsolateAfter?.(event) ?? 3,
     };
   }
 

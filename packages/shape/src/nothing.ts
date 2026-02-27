@@ -1,4 +1,4 @@
-import { AbstractConstructor, Constructor, Definition, Empty } from "./_";
+import { type AbstractConstructor, type Constructor, type Definition, Empty } from "./_";
 
 export type NothingShorthand = undefined;
 

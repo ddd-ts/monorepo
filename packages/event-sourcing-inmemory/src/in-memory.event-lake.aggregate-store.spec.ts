@@ -1,7 +1,7 @@
 import {
   EventLakeAggregateStoreSuite,
-  IEventSourced,
-  IIdentifiable,
+  type IEventSourced,
+  type IIdentifiable,
   LakeId,
 } from "@ddd-ts/core";
 import {
@@ -23,7 +23,7 @@ describe("InMemoryEventLakeAggregateStore", () => {
   }
 
   EventLakeAggregateStoreSuite({
-    transaction: new InMemoryTransactionPerformer(database),
+    transaction: new InMemoryTransactionPerformer(database) as any,
     getAggregateStore: (AGGREGATE, serializer, eventBus) => {
       return new AggregateStore<InstanceType<typeof AGGREGATE>>(
         database,

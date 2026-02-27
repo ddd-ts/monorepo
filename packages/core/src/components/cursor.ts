@@ -1,6 +1,6 @@
 import { MicrosecondTimestamp, Shape } from "@ddd-ts/shape";
 import { EventId } from "./event-id";
-import { IFact } from "../interfaces/es-event";
+import type { IFact } from "../interfaces/es-event";
 
 export class Cursor extends Shape({
   ref: String,

@@ -3,7 +3,7 @@ import { EsEvent } from "../makers/es-event";
 import { SerializerRegistry } from "./serializer-registry";
 import { TransactionPerformer } from "./transaction";
 import {
-  EventStreamStorageLayer,
+  type EventStreamStorageLayer,
   EventStreamStore,
 } from "./event-stream.store";
 import { StreamId } from "./stream-id";

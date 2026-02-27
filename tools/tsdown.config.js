@@ -1,14 +1,24 @@
 // @ts-check
 
+import { execSync } from "node:child_process";
+
 /** @type {import("tsdown").UserConfig} */
 export default {
   cwd: process.cwd(),
   unbundle: true,
-  dts: {
-    eager: true,
-  },
+  dts: false,
   exports: {
     devExports: true,
   },
-  outExtensions: () => ({ js: ".js", dts: ".d.ts" }),
+  format: ["cjs", "esm"],
+  outExtensions: (ctx) => ({
+    js: ctx.format === "es" ? ".mjs" : ".js",
+  }),
+  hooks: {
+    "build:done": async ({ options: { outDir } }) => {
+      execSync(`tsc --declaration --emitDeclarationOnly --outDir ${outDir}`, {
+        stdio: "inherit",
+      });
+    },
+  },
 };

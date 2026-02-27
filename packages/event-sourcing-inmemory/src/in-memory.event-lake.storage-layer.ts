@@ -2,10 +2,10 @@ import {
   LakeId,
   type ISerializedChange,
   type ISerializedFact,
-  EventLakeStorageLayer,
+  type EventLakeStorageLayer,
   EventId,
 } from "@ddd-ts/core";
-import { ISerializedSavedChange } from "@ddd-ts/core/dist/interfaces/es-event";
+import type { ISerializedSavedChange } from "@ddd-ts/core/dist/interfaces/es-event";
 import { InMemoryDatabase, InMemoryTransaction } from "@ddd-ts/store-inmemory";
 
 export class InMemoryEventLakeStorageLayer implements EventLakeStorageLayer {

@@ -1,11 +1,13 @@
 {
   "name": "@ddd-ts/core",
   "version": "0.0.2",
+  "type": "module",
   "types": "dist/index.d.ts",
   "license": "MIT",
   "repository": {
     "url": "git+https://github.com/ddd-ts/monorepo"
   },
+  "files": ["dist"],
   "scripts": {
     "test": "jest --passWithNoTests --config node_modules/@ddd-ts/tools/jest.config.js",
     "build": "tsdown --config node_modules/@ddd-ts/tools/tsdown.config.js --no-exports"
@@ -29,9 +31,16 @@
   },
   "publishConfig": {
     "exports": {
-      ".": "./dist/index.js",
+      ".": {
+        "default": "./dist/index.mjs",
+        "import": "./dist/index.mjs",
+        "require": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      },
       "./dist/*": {
-        "default": "./dist/*.js",
+        "default": "./dist/*.mjs",
+        "import": "./dist/*.mjs",
+        "require": "./dist/*.js",
         "types": "./dist/*.d.ts"
       },
       "./package.json": "./package.json"

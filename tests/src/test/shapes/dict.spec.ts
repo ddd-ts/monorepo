@@ -1,4 +1,4 @@
-import { Dict, DictShorthand, Primitive } from "@ddd-ts/shape";
+import { Dict, type DictShorthand, Primitive } from "@ddd-ts/shape";
 import { ex } from "./test";
 
 describe("Dict", () => {

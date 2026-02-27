@@ -1,14 +1,14 @@
 import {
-  Constructor,
-  Expand,
-  DefinitionOf,
-  AbstractConstructor,
+  type Constructor,
+  type Expand,
+  type DefinitionOf,
+  type AbstractConstructor,
   Empty,
   type Shorthand,
   Shape,
   type Definition,
 } from "./_";
-import { ClassShorthand } from "./class";
+import type { ClassShorthand } from "./class";
 import { type DictShorthand } from "./dict";
 
 type UnionToIntersection<U> = (

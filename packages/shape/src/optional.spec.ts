@@ -1,4 +1,4 @@
-import { Optional, OptionalConfiguration } from "./optional";
+import { Optional, type OptionalConfiguration } from "./optional";
 import { Dict } from "./dict";
 import { ex } from "./test";
 

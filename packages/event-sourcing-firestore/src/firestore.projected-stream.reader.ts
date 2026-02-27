@@ -1,10 +1,10 @@
 import {
   Cursor,
-  IEsEvent,
-  IFact,
-  ISavedChange,
-  ISerializedSavedChange,
-  ISerializer,
+  type IEsEvent,
+  type IFact,
+  type ISavedChange,
+  type ISerializedSavedChange,
+  type ISerializer,
   ProjectedStream,
   ProjectedStreamReader,
 } from "@ddd-ts/core";

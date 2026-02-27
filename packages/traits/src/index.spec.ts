@@ -1,7 +1,7 @@
 import {
-  Constructor,
+  type Constructor,
   Derive,
-  Props,
+  type Props,
   Subtrait,
   Trait,
   WithDerivations,

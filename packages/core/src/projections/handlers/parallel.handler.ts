@@ -1,6 +1,6 @@
 import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
-import { Description } from "./description";
+import type { Description } from "./description";
 
 export const WithParallel = Subtrait([{} as typeof BaseHandler], (base) => {
   abstract class WithParallel extends base {

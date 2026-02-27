@@ -4,8 +4,11 @@
 	"types": "dist/index.d.ts",
 	"license": "MIT",
 	"repository": {
-    "url": "git+https://github.com/ddd-ts/monorepo"
-  },
+		"url": "git+https://github.com/ddd-ts/monorepo"
+	},
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"pretest:disabled": "docker compose -f docker/docker-compose.yml up -d",
 		"wait:disabled": "sh -c 'until curl --silent localhost:2113/health; do sleep 1; done;'",
@@ -31,8 +34,13 @@
 	},
 	"publishConfig": {
 		"exports": {
-			".": "./dist/index.js",
+			".": {
+				"import": "./dist/index.mjs",
+				"require": "./dist/index.js"
+			},
 			"./package.json": "./package.json"
 		}
-	}
+	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs"
 }

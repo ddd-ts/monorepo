@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
-    "module": "NodeNext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "target": "ES2022",
+    "lib": ["ESNext"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -12,6 +14,7 @@
     "skipLibCheck": true,
     "noErrorTruncation": true,
     "experimentalDecorators": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true
   }
 }

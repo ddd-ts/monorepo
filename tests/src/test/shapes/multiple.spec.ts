@@ -1,4 +1,4 @@
-import { Dict, Multiple, MultipleConfiguration } from "@ddd-ts/shape";
+import { Dict, Multiple, type MultipleConfiguration } from "@ddd-ts/shape";
 import { ex } from "./test";
 
 describe("Multiple", () => {

@@ -26,7 +26,7 @@ describe("InMemoryStore", () => {
 		};
 	}
 
-	StoreSuite(getStore);
+	StoreSuite(getStore as any);
 
 	it("fails transactionally read after write", async () => {
 		const { store, transactionPerformer } = getStore();
