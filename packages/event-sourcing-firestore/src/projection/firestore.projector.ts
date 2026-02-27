@@ -101,6 +101,7 @@ export class FirestoreProjector {
     let coordinator = this.eventCoordinators.get(key);
     if (!coordinator) {
       coordinator = new EventCoordinator();
+      coordinator.onEmpty(() => this.eventCoordinators.delete(key)); // prevent memory leak by cleaning up coordinators when they are empty
       this.eventCoordinators.set(key, coordinator);
     }
     return coordinator;

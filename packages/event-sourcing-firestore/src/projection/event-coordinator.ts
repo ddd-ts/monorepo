@@ -6,6 +6,7 @@ export class EventCoordinator {
   private currentEventId: string | null = null;
   private lastEvent: ISavedChange<IEsEvent> | null = null;
   private isRunning = false;
+  private _onEmpty = () => {};
 
   addEvent(event: ISavedChange<IEsEvent>) {
     const eventId = event.id.serialize();
@@ -43,11 +44,23 @@ export class EventCoordinator {
 
     this.isRunning = false;
     this.currentEventId = null;
+
+    this.checkEmpty();
   }
 
   canProceed(event: ISavedChange<IEsEvent>) {
     if (this.isRunning) return false;
     const eventId = event.id.serialize();
     return this.lastEvent?.id.serialize() === eventId;
+  }
+
+  onEmpty(callback: () => void) {
+    this._onEmpty = callback;
+  }
+
+  checkEmpty() {
+    if (this.eventProcessing.size === 0) {
+      this._onEmpty();
+    }
   }
 }
