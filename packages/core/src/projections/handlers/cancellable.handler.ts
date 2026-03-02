@@ -1,6 +1,7 @@
 import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
-import { Description } from "./description";
+import { type Description } from "./description";
+import type { IEvent } from "../../interfaces/event";
 
 export const WithCancellable = Subtrait([{} as typeof BaseHandler], (base, Props) => {
   abstract class WithCancellable extends base {
@@ -11,15 +12,13 @@ export const WithCancellable = Subtrait([{} as typeof BaseHandler], (base, Props
     }>;
 
     declare context: {
-      assertBeforeInsert: (events: this["event"][]) => Promise<void>;
+      assertBeforeInsert: (events: IEvent[]) => Promise<void>;
     };
 
     async process(events: this["event"][], context: {
-      assertBeforeInsert: (events: this["event"][]) => Promise<void>;
+      assertBeforeInsert: (events: IEvent[]) => Promise<void>;
     }) {
-      // debugger;
       await super.process(events, context);
-      // debugger;
       await context.assertBeforeInsert(events);
       return events.map((event) => event.id);
     }
