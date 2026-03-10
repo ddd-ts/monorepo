@@ -28,8 +28,8 @@ type MappingOf<C extends MappingConfiguration> = C extends [
 ]
   ? { key: K; value: DefinitionOf<V> }
   : C extends [infer V extends Definition | Shorthand]
-  ? { key: StringConstructor; value: DefinitionOf<V> }
-  : never;
+    ? { key: StringConstructor; value: DefinitionOf<V> }
+    : never;
 
 type Internal<
   C extends MappingConfiguration,
@@ -86,21 +86,21 @@ export const Mapping = <
     static $shape = "mapping" as const;
 
     serialize(): Expand<Serialized> {
-      return $Mapping.$serialize(this.value || {}) as any;
+      return $Mapping.$serialize(this.value) as any;
     }
 
     static deserialize<T extends typeof $Mapping>(
       this: T,
       value: Expand<Serialized>,
     ): InstanceType<T> {
-      return new (this as any)(($Mapping as any).$deserialize(value || {})) as any;
+      return new (this as any)(($Mapping as any).$deserialize(value)) as any;
     }
 
     static $deserialize<T extends typeof $Mapping>(
       this: T,
       value: Serialized,
     ): Inline {
-      const split = Object.entries(value || {});
+      const split = Object.entries(value);
       const transform = split.map(([key, child]) => {
         const longhand = Shape(_value) as any;
         const deserialized = longhand.$deserialize(child as any);
@@ -113,7 +113,7 @@ export const Mapping = <
       this: T,
       value: Inline,
     ): Serialized {
-      const split = Object.entries(value || {});
+      const split = Object.entries(value);
       const transform = split.map(([key, child]) => {
         const longhand = Shape($value) as any;
         const serialized = longhand.$serialize(child as any);
