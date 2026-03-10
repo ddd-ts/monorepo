@@ -73,7 +73,7 @@ export class FirestoreProjector {
         console.error("Error enqueuing tasks:", error);
       },
     },
-  ) {}
+  ) { }
 
   async *breathe() {
     const { attempts, minDelay, maxDelay, backoff } = this.config.retry;
@@ -528,6 +528,11 @@ export class FirestoreQueueStore {
       if (originalClaimIds.length > task.claimIds.length) {
         expiredTasks.push(task);
       }
+
+      // Also consider tasks with old claim fields as expired (10-03-2026 migration fix)
+      if (task.claimedAt || task.claimer) {
+        expiredTasks.push(task);
+      }
     }
 
     // Update expired tasks in the database
@@ -772,7 +777,7 @@ export class FirestoreQueueStore {
   }
 }
 
-export class ClaimerId extends EventId {}
+export class ClaimerId extends EventId { }
 export class Task<Stored extends boolean> extends Shape({
   id: EventId,
   ref: String,
