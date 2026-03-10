@@ -33,19 +33,19 @@ export const Multiple = <
     static $shape = "multiple" as const;
 
     serialize() {
-      return $Multiple.$serialize(this.value || [])
+      return $Multiple.$serialize(this.value);
     }
 
     static deserialize(value: any) {
-      return new (this as any)(($Multiple as any).$deserialize(value || []));
+      return new (this as any)(($Multiple as any).$deserialize(value));
     }
 
     static $deserialize(value: any) {
-      return (value || []).map(longhand.$deserialize);
+      return (value as any).map(longhand.$deserialize);
     }
 
     static $serialize(value: any) {
-      return (value || []).map(longhand.$serialize as any);
+      return (value as any).map(longhand.$serialize as any);
     }
 
     [Symbol.iterator]() {
@@ -217,15 +217,15 @@ export type IMultiple<
       value: Internal<S>["Inline"];
       serialize(): Expand<Internal<S>["Serialized"]>;
     }) & {
-      $shape: "multiple";
-      deserialize<T extends Constructor>(
-        this: T,
-        value: Expand<Internal<S>["Serialized"]>,
-      ): InstanceType<T>;
-      $deserialize<T extends Constructor>(
-        this: T,
-        value: Internal<S>["Serialized"],
-      ): InstanceType<T>;
-      $serialize(value: Internal<S>["Inline"]): Internal<S>["Serialized"];
-      $inline: Internal<S>["Inline"];
-    };
+    $shape: "multiple";
+    deserialize<T extends Constructor>(
+      this: T,
+      value: Expand<Internal<S>["Serialized"]>,
+    ): InstanceType<T>;
+    $deserialize<T extends Constructor>(
+      this: T,
+      value: Internal<S>["Serialized"],
+    ): InstanceType<T>;
+    $serialize(value: Internal<S>["Inline"]): Internal<S>["Serialized"];
+    $inline: Internal<S>["Inline"];
+  };
