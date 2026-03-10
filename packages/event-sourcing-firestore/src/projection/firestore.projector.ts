@@ -73,7 +73,7 @@ export class FirestoreProjector {
         console.error("Error enqueuing tasks:", error);
       },
     },
-  ) {}
+  ) { }
 
   async *breathe() {
     const { attempts, minDelay, maxDelay, backoff } = this.config.retry;
@@ -772,7 +772,7 @@ export class FirestoreQueueStore {
   }
 }
 
-export class ClaimerId extends EventId {}
+export class ClaimerId extends EventId { }
 export class Task<Stored extends boolean> extends Shape({
   id: EventId,
   ref: String,
@@ -880,6 +880,8 @@ export class Task<Stored extends boolean> extends Shape({
     const task = Task.deserialize({
       ...data,
       lastUpdateTime: timestamp as any,
+      claimIds: data.claimIds || [],
+      claimsMetadata: data.claimsMetadata || {},
     }) as Task<true>;
 
     return task;
