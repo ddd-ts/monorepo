@@ -32,13 +32,7 @@ jobs:
         run: sh .github/workflows/release-main.sh
 
       - name: Release alpha
-        if: >
-          github.event_name == 'pull_request' &&
-          (
-            github.event.pull_request.author_association == 'OWNER' ||
-            github.event.pull_request.author_association == 'MEMBER' ||
-            github.event.pull_request.author_association == 'COLLABORATOR'
-          )
+        if: github.event_name == 'pull_request'
         run: sh .github/workflows/release-alpha.sh
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
