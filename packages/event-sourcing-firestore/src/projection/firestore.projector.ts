@@ -120,6 +120,7 @@ export class FirestoreProjector {
   // null = processing with no pending re-run.
   // { savedChange, cursor } = a newer event arrived; re-run targeting the max cursor seen.
   private processingCheckpoints: Map<string, { savedChange: ISavedChange<IEsEvent>; cursor: Cursor } | null> = new Map();
+  private coalescedCounts: Map<string, number> = new Map();
 
   async handle(savedChange: ISavedChange<IEsEvent>) {
     const checkpointId = this.projection.getCheckpointId(savedChange);
@@ -139,7 +140,13 @@ export class FirestoreProjector {
       if (!existing || cursor.isAfter(existing.cursor)) {
         this.processingCheckpoints.set(key, { savedChange, cursor });
       }
-      this.logger.debug("debounced", { checkpointId: key, eventId: savedChange.id.serialize() });
+      const coalesced = (this.coalescedCounts.get(key) ?? 0) + 1;
+      this.coalescedCounts.set(key, coalesced);
+      const eventId = savedChange.id.serialize();
+      this.logger.debug(
+        `debounced: Checkpoint<${key}> is processing, Event<${eventId}> coalesced (${coalesced} pending)`,
+        { checkpointId: key, eventId, coalesced },
+      );
       return;
     }
 
@@ -156,6 +163,7 @@ export class FirestoreProjector {
       }
     } finally {
       this.processingCheckpoints.delete(key);
+      this.coalescedCounts.delete(key);
     }
   }
 
@@ -163,8 +171,12 @@ export class FirestoreProjector {
     const checkpointId = this.projection.getCheckpointId(savedChange);
     const eventId = savedChange.id.serialize();
     const checkpointKey = checkpointId.serialize();
+    const startedAt = Date.now();
 
-    this.logger.info("processing", { checkpointId: checkpointKey, eventId, target: target.toString() });
+    this.logger.info(
+      `processing: Checkpoint<${checkpointKey}> targeting Event<${eventId}>`,
+      { checkpointId: checkpointKey, eventId, target: target.toString(), targetRef: target.ref },
+    );
 
     const errors = [];
 
@@ -183,14 +195,22 @@ export class FirestoreProjector {
 
       if (status === Status.SUCCESS) {
         await this.queue.cleanup(checkpointId);
-        this.logger.info("processed", { checkpointId: checkpointKey, eventId });
+        const durationMs = Date.now() - startedAt;
+        this.logger.info(
+          `processed: Checkpoint<${checkpointKey}> caught up to Event<${eventId}> in ${durationMs}ms`,
+          { checkpointId: checkpointKey, eventId, durationMs },
+        );
         return;
       }
 
       errors.push(message);
     }
 
-    this.logger.error("failed after retries", { checkpointId: checkpointKey, eventId, errors });
+    const { attempts } = this.config.retry;
+    this.logger.error(
+      `failed: Checkpoint<${checkpointKey}> exhausted ${attempts} retries for Event<${eventId}>`,
+      { checkpointId: checkpointKey, eventId, attempts, errors },
+    );
 
     throw new Error(
       `Failed to handle event ${eventId}: ${errors.join(", ")}`,
@@ -307,7 +327,11 @@ export class FirestoreProjector {
 
     const result = await this.queue.enqueue(checkpointId, tasks);
 
-    this.logger.debug("enqueued", { checkpointId: checkpointId.serialize(), count: tasks.length });
+    const checkpointKey = checkpointId.serialize();
+    this.logger.debug(
+      `enqueued: Checkpoint<${checkpointKey}> added ${tasks.length} tasks to queue`,
+      { checkpointId: checkpointKey, count: tasks.length },
+    );
 
     return result;
   }
@@ -380,7 +404,13 @@ export class FirestoreProjector {
 
       return [Status.DEFERRED, "Target event not processed yet"] as const;
     } catch (e) {
-      this.logger.error("process error", { checkpointId: checkpointId.serialize(), error: e });
+      const checkpointKey = checkpointId.serialize();
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      const truncated = errorMessage.length > 200 ? `${errorMessage.slice(0, 200)}...` : errorMessage;
+      this.logger.error(
+        `error: Checkpoint<${checkpointKey}> processing failed: ${truncated}`,
+        { checkpointId: checkpointKey, error: e },
+      );
       this.config.onProcessError(e as Error);
       if (this._unclaim) {
         await this.queue.unclaim(checkpointId, tasks);
