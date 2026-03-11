@@ -93,45 +93,51 @@ export class FirestoreProjector {
     }
   }
 
-  // Debounce map: tracks whether a checkpoint is currently being processed,
-  // and whether new events arrived during processing (true = pending events).
-  private processingCheckpoints: Map<string, boolean> = new Map();
+  // Debounce map: tracks per-checkpoint processing state.
+  // When a checkpoint key is present, processing is active.
+  // null = processing with no pending re-run.
+  // { savedChange, cursor } = a newer event arrived; re-run targeting the max cursor seen.
+  private processingCheckpoints: Map<string, { savedChange: ISavedChange<IEsEvent>; cursor: Cursor } | null> = new Map();
 
   async handle(savedChange: ISavedChange<IEsEvent>) {
     const checkpointId = this.projection.getCheckpointId(savedChange);
     const key = checkpointId.serialize();
 
-    if (this.processingCheckpoints.get(key) !== undefined) {
-      // Already processing this checkpoint — mark that new events arrived
-      this.processingCheckpoints.set(key, true);
+    // Eagerly resolve the cursor so we can compare ordering
+    const cursor = await this.getCursor(savedChange);
+    if (!cursor) {
+      throw new Error(
+        `Cursor not found for event ${savedChange.id.serialize()}`,
+      );
+    }
+
+    if (this.processingCheckpoints.has(key)) {
+      // Already processing this checkpoint — keep the event with the highest cursor
+      const existing = this.processingCheckpoints.get(key);
+      if (!existing || cursor.isAfter(existing.cursor)) {
+        this.processingCheckpoints.set(key, { savedChange, cursor });
+      }
       return;
     }
 
-    this.processingCheckpoints.set(key, false);
+    this.processingCheckpoints.set(key, null);
 
     try {
-      await this.handleOne(savedChange);
+      await this.handleOne(savedChange, cursor);
 
-      // Re-run if new events arrived while processing
-      while (this.processingCheckpoints.get(key)) {
-        this.processingCheckpoints.set(key, false);
-        await this.handleOne(savedChange);
+      // Re-run with the latest event if new events arrived while processing
+      while (this.processingCheckpoints.get(key) !== null) {
+        const pending = this.processingCheckpoints.get(key)!;
+        this.processingCheckpoints.set(key, null);
+        await this.handleOne(pending.savedChange, pending.cursor);
       }
     } finally {
       this.processingCheckpoints.delete(key);
     }
   }
 
-  private async handleOne(savedChange: ISavedChange<IEsEvent>) {
+  private async handleOne(savedChange: ISavedChange<IEsEvent>, target: Cursor) {
     const checkpointId = this.projection.getCheckpointId(savedChange);
-
-    const target = await this.getCursor(savedChange);
-
-    if (!target) {
-      throw new Error(
-        `Cursor not found for event ${savedChange.id.serialize()}`,
-      );
-    }
 
     const errors = [];
 
