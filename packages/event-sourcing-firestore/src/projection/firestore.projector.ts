@@ -185,48 +185,66 @@ export class FirestoreProjector {
     try {
       await this.handleOne(savedChange, cursor);
 
-      let iterations = 0;
-      while (true) {
-        // 1. Check for a debounced re-run (higher cursor arrived during processing)
-        const pending = this.processingCheckpoints.get(key);
-        if (pending) {
+      // Returns the next event to process: either a debounced re-run
+      // (higher cursor arrived during processing) or a straggler
+      // (event not covered by any slice). Returns null when done.
+      const nextPending = (): {
+        type: "debounced" | "straggler";
+        savedChange: ISavedChange<IEsEvent>;
+        cursor: Cursor;
+        eventId: string;
+      } | null => {
+        const debounced = this.processingCheckpoints.get(key);
+        if (debounced) {
           this.processingCheckpoints.set(key, null);
-          iterations++;
-          if (iterations > 10) {
-            this.logger.warn(
-              `high-iteration: Checkpoint<${key}> re-run loop at iteration ${iterations}`,
-              { checkpointId: key, iterations },
-            );
-          }
-          this.logger.debug(
-            `re-run: Checkpoint<${key}> iteration ${iterations}, targeting Event<${pending.savedChange.id.serialize()}>`,
-            {
-              checkpointId: key,
-              iterations,
-              eventId: pending.savedChange.id.serialize(),
-            },
-          );
-          await this.handleOne(pending.savedChange, pending.cursor);
-          continue;
+          return {
+            type: "debounced",
+            savedChange: debounced.savedChange,
+            cursor: debounced.cursor,
+            eventId: debounced.savedChange.id.serialize(),
+          };
         }
-
-        // 2. Check for stragglers — events debounced but never covered by a slice
-        //    (e.g. not yet visible in the stream when the slice query ran)
         const remaining = this.pendingCursors.get(key);
         if (remaining && remaining.size > 0) {
           const next = remaining.entries().next().value!;
           const [eventId, straggler] = next;
           remaining.delete(eventId);
-          iterations++;
-          this.logger.info(
-            `straggler: Checkpoint<${key}> handling Event<${eventId}> not covered by any slice (${remaining.size} remaining)`,
-            { checkpointId: key, eventId, remainingStragglers: remaining.size },
-          );
-          await this.handleOne(straggler.savedChange, straggler.cursor);
-          continue;
+          return {
+            type: "straggler",
+            savedChange: straggler.savedChange,
+            cursor: straggler.cursor,
+            eventId,
+          };
         }
+        return null;
+      };
 
-        break;
+      let iterations = 0;
+      for (let next = nextPending(); next; next = nextPending()) {
+        iterations++;
+        if (iterations > 10) {
+          this.logger.warn(
+            `high-iteration: Checkpoint<${key}> re-run loop at iteration ${iterations}`,
+            { checkpointId: key, iterations },
+          );
+        }
+        if (next.type === "debounced") {
+          this.logger.debug(
+            `re-run: Checkpoint<${key}> iteration ${iterations}, targeting Event<${next.eventId}>`,
+            { checkpointId: key, iterations, eventId: next.eventId },
+          );
+        } else {
+          const remaining = this.pendingCursors.get(key);
+          this.logger.info(
+            `straggler: Checkpoint<${key}> handling Event<${next.eventId}> not covered by any slice (${remaining?.size ?? 0} remaining)`,
+            {
+              checkpointId: key,
+              eventId: next.eventId,
+              remainingStragglers: remaining?.size ?? 0,
+            },
+          );
+        }
+        await this.handleOne(next.savedChange, next.cursor);
       }
     } finally {
       this.processingCheckpoints.delete(key);
