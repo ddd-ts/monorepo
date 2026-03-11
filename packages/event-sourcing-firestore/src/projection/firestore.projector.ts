@@ -22,8 +22,6 @@ import {
   DefaultConverter,
   FirestoreTransaction,
 } from "@ddd-ts/store-firestore";
-import { EventCoordinator } from "./event-coordinator";
-
 const Status = {
   SUCCESS: "OK",
   FAILURE: "FAILURE",
@@ -95,45 +93,41 @@ export class FirestoreProjector {
     }
   }
 
-  private eventCoordinators: Map<string, EventCoordinator> = new Map();
-  private getEventCoordinator(checkpointId: CheckpointId) {
-    const key = checkpointId.serialize();
-    let coordinator = this.eventCoordinators.get(key);
-    if (!coordinator) {
-      coordinator = new EventCoordinator();
-      coordinator.onEmpty(() => this.eventCoordinators.delete(key)); // prevent memory leak by cleaning up coordinators when they are empty
-      this.eventCoordinators.set(key, coordinator);
-    }
-    return coordinator;
-  }
+  // Debounce map: tracks whether a checkpoint is currently being processed,
+  // and whether new events arrived during processing (true = pending events).
+  private processingCheckpoints: Map<string, boolean> = new Map();
 
-  // @Trace("projector.handle", ($, e) => ({
-  //   eventId: e.id.serialize(),
-  //   eventName: e.name,
-  //   eventRevision: e.revision,
-  //   eventReference: e.ref,
-  //   projectionName: $.projection.constructor.name,
-  //   checkpointId: $.projection.getCheckpointId(e).serialize(),
-  // }))
   async handle(savedChange: ISavedChange<IEsEvent>) {
     const checkpointId = this.projection.getCheckpointId(savedChange);
+    const key = checkpointId.serialize();
 
-    const eventCoordinator = this.getEventCoordinator(checkpointId);
-    eventCoordinator.addEvent(savedChange);
-
-    await eventCoordinator.waitCurrentEvent();
-
-    if (!eventCoordinator.canProceed(savedChange)) {
-      eventCoordinator.cleanEvent(savedChange);
+    if (this.processingCheckpoints.get(key) !== undefined) {
+      // Already processing this checkpoint — mark that new events arrived
+      this.processingCheckpoints.set(key, true);
       return;
     }
 
-    const disposeEventCoordinator = eventCoordinator.start(savedChange);
+    this.processingCheckpoints.set(key, false);
+
+    try {
+      await this.handleOne(savedChange);
+
+      // Re-run if new events arrived while processing
+      while (this.processingCheckpoints.get(key)) {
+        this.processingCheckpoints.set(key, false);
+        await this.handleOne(savedChange);
+      }
+    } finally {
+      this.processingCheckpoints.delete(key);
+    }
+  }
+
+  private async handleOne(savedChange: ISavedChange<IEsEvent>) {
+    const checkpointId = this.projection.getCheckpointId(savedChange);
 
     const target = await this.getCursor(savedChange);
 
     if (!target) {
-      disposeEventCoordinator();
       throw new Error(
         `Cursor not found for event ${savedChange.id.serialize()}`,
       );
@@ -156,14 +150,12 @@ export class FirestoreProjector {
 
       if (status === Status.SUCCESS) {
         await this.queue.cleanup(checkpointId);
-        disposeEventCoordinator();
         return;
       }
 
       errors.push(message);
     }
 
-    disposeEventCoordinator();
     throw new Error(
       `Failed to handle event ${savedChange.id.serialize()}: ${errors.join(", ")}`,
     );
