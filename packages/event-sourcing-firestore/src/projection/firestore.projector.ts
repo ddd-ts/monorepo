@@ -40,6 +40,20 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const RETENTION = MicrosecondTimestamp.MONTH;
 
+export interface ProjectorLogger {
+  debug(message: string, context?: Record<string, unknown>): void;
+  info(message: string, context?: Record<string, unknown>): void;
+  warn(message: string, context?: Record<string, unknown>): void;
+  error(message: string, context?: Record<string, unknown>): void;
+}
+
+const defaultLogger: ProjectorLogger = {
+  debug: (msg, ctx) => console.debug(msg, ctx ?? ""),
+  info: (msg, ctx) => console.info(msg, ctx ?? ""),
+  warn: (msg, ctx) => console.warn(msg, ctx ?? ""),
+  error: (msg, ctx) => console.error(msg, ctx ?? ""),
+};
+
 interface FirestoreProjectorConfig {
   retry: {
     attempts: number;
@@ -50,7 +64,10 @@ interface FirestoreProjectorConfig {
   enqueue: {
     batchSize: number;
   };
+  logger?: ProjectorLogger;
+  /** @deprecated Use `logger.error` instead */
   onProcessError: (error: Error) => void;
+  /** @deprecated Use `logger.error` instead */
   onEnqueueError: (error: Error) => void;
 }
 
@@ -64,6 +81,7 @@ export class FirestoreProjector {
     public config: FirestoreProjectorConfig = {
       retry: { attempts: 10, minDelay: 10, maxDelay: 200, backoff: 1.5 },
       enqueue: { batchSize: 100 },
+      logger: defaultLogger,
       onProcessError: (error: Error) => {
         console.error("Error processing event:", error);
       },
@@ -72,6 +90,10 @@ export class FirestoreProjector {
       },
     },
   ) { }
+
+  private get logger(): ProjectorLogger {
+    return this.config.logger ?? defaultLogger;
+  }
 
   async *breathe() {
     const { attempts, minDelay, maxDelay, backoff } = this.config.retry;
@@ -117,6 +139,7 @@ export class FirestoreProjector {
       if (!existing || cursor.isAfter(existing.cursor)) {
         this.processingCheckpoints.set(key, { savedChange, cursor });
       }
+      this.logger.debug("debounced", { checkpointId: key, eventId: savedChange.id.serialize() });
       return;
     }
 
@@ -138,6 +161,10 @@ export class FirestoreProjector {
 
   private async handleOne(savedChange: ISavedChange<IEsEvent>, target: Cursor) {
     const checkpointId = this.projection.getCheckpointId(savedChange);
+    const eventId = savedChange.id.serialize();
+    const checkpointKey = checkpointId.serialize();
+
+    this.logger.info("processing", { checkpointId: checkpointKey, eventId, target: target.toString() });
 
     const errors = [];
 
@@ -156,14 +183,17 @@ export class FirestoreProjector {
 
       if (status === Status.SUCCESS) {
         await this.queue.cleanup(checkpointId);
+        this.logger.info("processed", { checkpointId: checkpointKey, eventId });
         return;
       }
 
       errors.push(message);
     }
 
+    this.logger.error("failed after retries", { checkpointId: checkpointKey, eventId, errors });
+
     throw new Error(
-      `Failed to handle event ${savedChange.id.serialize()}: ${errors.join(", ")}`,
+      `Failed to handle event ${eventId}: ${errors.join(", ")}`,
     );
   }
 
@@ -275,7 +305,11 @@ export class FirestoreProjector {
       return Task.new(e, settings);
     });
 
-    return await this.queue.enqueue(checkpointId, tasks);
+    const result = await this.queue.enqueue(checkpointId, tasks);
+
+    this.logger.debug("enqueued", { checkpointId: checkpointId.serialize(), count: tasks.length });
+
+    return result;
   }
 
   private async enqueueOne(checkpointId: CheckpointId, target: Cursor) {
@@ -346,6 +380,7 @@ export class FirestoreProjector {
 
       return [Status.DEFERRED, "Target event not processed yet"] as const;
     } catch (e) {
+      this.logger.error("process error", { checkpointId: checkpointId.serialize(), error: e });
       this.config.onProcessError(e as Error);
       if (this._unclaim) {
         await this.queue.unclaim(checkpointId, tasks);
