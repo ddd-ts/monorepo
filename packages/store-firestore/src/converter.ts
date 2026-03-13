@@ -40,8 +40,15 @@ export function toFirestore<T>(obj: T): T {
       typeof (obj as any).microseconds === "bigint"
     ) {
       const microseconds = (obj as any).microseconds as bigint;
-      const seconds = microseconds / 1_000_000n;
-      const micros = microseconds % 1_000_000n;
+      let seconds = microseconds / 1_000_000n;
+      let micros = microseconds % 1_000_000n;
+
+      // handle negative microseconds, dates before 1970-01-01
+      if (micros < 0n) {
+        seconds -= 1n;
+        micros += 1_000_000n;
+      }
+
       const nanoseconds = micros * 1000n; // Convert to nanoseconds
       return new Timestamp(
         Number(seconds),
