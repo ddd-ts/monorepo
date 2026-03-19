@@ -1,29 +1,27 @@
 import {
-  FieldValue,
-  Firestore,
-  Timestamp,
-  WriteBatch,
-} from "firebase-admin/firestore";
-import {
-  type IEsEvent,
-  type ISavedChange,
-  EventId,
-  ProjectedStreamReader,
-  Cursor,
   CheckpointId,
+  Cursor,
   ESProjection,
-  ProjectedStream,
+  EventId,
+  type IEsEvent,
   type IFact,
-  type Serialized,
+  type ISavedChange,
   Lock,
+  ProjectedStream,
+  ProjectedStreamReader,
+  type Serialized,
 } from "@ddd-ts/core";
 import { Mapping, MicrosecondTimestamp, Optional, Shape } from "@ddd-ts/shape";
 import {
   DefaultConverter,
   FirestoreTransaction,
 } from "@ddd-ts/store-firestore";
-import { EventCoordinator } from "./event-coordinator";
-
+import {
+  FieldValue,
+  Firestore,
+  Timestamp,
+  WriteBatch,
+} from "firebase-admin/firestore";
 const Status = {
   SUCCESS: "OK",
   FAILURE: "FAILURE",
@@ -42,6 +40,20 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const RETENTION = MicrosecondTimestamp.MONTH;
 
+export interface ProjectorLogger {
+  debug(message: string, context?: Record<string, unknown>): void;
+  info(message: string, context?: Record<string, unknown>): void;
+  warn(message: string, context?: Record<string, unknown>): void;
+  error(message: string, context?: Record<string, unknown>): void;
+}
+
+const defaultLogger: ProjectorLogger = {
+  debug: (msg, ctx) => console.debug(msg, ctx ?? ""),
+  info: (msg, ctx) => console.info(msg, ctx ?? ""),
+  warn: (msg, ctx) => console.warn(msg, ctx ?? ""),
+  error: (msg, ctx) => console.error(msg, ctx ?? ""),
+};
+
 interface FirestoreProjectorConfig {
   retry: {
     attempts: number;
@@ -52,7 +64,10 @@ interface FirestoreProjectorConfig {
   enqueue: {
     batchSize: number;
   };
+  logger?: ProjectorLogger;
+  /** @deprecated Use `logger.error` instead */
   onProcessError: (error: Error) => void;
+  /** @deprecated Use `logger.error` instead */
   onEnqueueError: (error: Error) => void;
 }
 
@@ -66,6 +81,7 @@ export class FirestoreProjector {
     public config: FirestoreProjectorConfig = {
       retry: { attempts: 10, minDelay: 10, maxDelay: 200, backoff: 1.5 },
       enqueue: { batchSize: 100 },
+      logger: defaultLogger,
       onProcessError: (error: Error) => {
         console.error("Error processing event:", error);
       },
@@ -74,6 +90,10 @@ export class FirestoreProjector {
       },
     },
   ) {}
+
+  private get logger(): ProjectorLogger {
+    return this.config.logger ?? defaultLogger;
+  }
 
   async *breathe() {
     const { attempts, minDelay, maxDelay, backoff } = this.config.retry;
@@ -95,49 +115,159 @@ export class FirestoreProjector {
     }
   }
 
-  private eventCoordinators: Map<string, EventCoordinator> = new Map();
-  private getEventCoordinator(checkpointId: CheckpointId) {
+  // Debounce map: tracks per-checkpoint processing state.
+  // When a checkpoint key is present, processing is active.
+  // null = processing with no pending re-run.
+  // { savedChange, cursor } = a newer event arrived; re-run targeting the max cursor seen.
+  private processingCheckpoints: Map<
+    string,
+    { savedChange: ISavedChange<IEsEvent>; cursor: Cursor } | null
+  > = new Map();
+  private coalescedCounts: Map<string, number> = new Map();
+
+  // Tracks all events that arrived while a checkpoint was processing.
+  // After each enqueue/slice, covered event IDs are pruned.
+  // Any remaining after processing are "stragglers" — events not covered
+  // by any slice (e.g. not yet visible in the stream at query time).
+  private pendingCursors: Map<
+    string,
+    Map<string, { savedChange: ISavedChange<IEsEvent>; cursor: Cursor }>
+  > = new Map();
+
+  private prunePendingCursors(checkpointId: CheckpointId, eventIds: EventId[]) {
     const key = checkpointId.serialize();
-    let coordinator = this.eventCoordinators.get(key);
-    if (!coordinator) {
-      coordinator = new EventCoordinator();
-      coordinator.onEmpty(() => this.eventCoordinators.delete(key)); // prevent memory leak by cleaning up coordinators when they are empty
-      this.eventCoordinators.set(key, coordinator);
+    const pending = this.pendingCursors.get(key);
+    if (!pending) return;
+    for (const eventId of eventIds) {
+      pending.delete(eventId.serialize());
     }
-    return coordinator;
   }
 
-  // @Trace("projector.handle", ($, e) => ({
-  //   eventId: e.id.serialize(),
-  //   eventName: e.name,
-  //   eventRevision: e.revision,
-  //   eventReference: e.ref,
-  //   projectionName: $.projection.constructor.name,
-  //   checkpointId: $.projection.getCheckpointId(e).serialize(),
-  // }))
   async handle(savedChange: ISavedChange<IEsEvent>) {
     const checkpointId = this.projection.getCheckpointId(savedChange);
+    const key = checkpointId.serialize();
 
-    const eventCoordinator = this.getEventCoordinator(checkpointId);
-    eventCoordinator.addEvent(savedChange);
-
-    await eventCoordinator.waitCurrentEvent();
-
-    if (!eventCoordinator.canProceed(savedChange)) {
-      eventCoordinator.cleanEvent(savedChange);
-      return;
-    }
-
-    const disposeEventCoordinator = eventCoordinator.start(savedChange);
-
-    const target = await this.getCursor(savedChange);
-
-    if (!target) {
-      disposeEventCoordinator();
+    // Eagerly resolve the cursor so we can compare ordering
+    const cursor = await this.getCursor(savedChange);
+    if (!cursor) {
       throw new Error(
         `Cursor not found for event ${savedChange.id.serialize()}`,
       );
     }
+
+    if (this.processingCheckpoints.has(key)) {
+      // Track this event so we can verify it was enqueued after processing.
+      // Events covered by a slice are pruned; any remaining are handled individually.
+      if (!this.pendingCursors.has(key)) {
+        this.pendingCursors.set(key, new Map());
+      }
+      const eventId = savedChange.id.serialize();
+      this.pendingCursors.get(key)!.set(eventId, { savedChange, cursor });
+
+      // Keep the event with the highest cursor as the debounce re-run target.
+      // Lower-cursor events are safe: they're either covered by the slice
+      // (head → max target) or caught as stragglers after processing.
+      const existing = this.processingCheckpoints.get(key);
+      if (!existing || cursor.isAfter(existing.cursor)) {
+        this.processingCheckpoints.set(key, { savedChange, cursor });
+      }
+      const coalesced = (this.coalescedCounts.get(key) ?? 0) + 1;
+      this.coalescedCounts.set(key, coalesced);
+      this.logger.debug(
+        `debounced: Checkpoint<${key}> is processing, Event<${eventId}> coalesced (${coalesced} pending)`,
+        { checkpointId: key, eventId, coalesced },
+      );
+      return;
+    }
+
+    this.processingCheckpoints.set(key, null);
+
+    try {
+      await this.handleOne(savedChange, cursor);
+
+      // Returns the next event to process: either a debounced re-run
+      // (higher cursor arrived during processing) or a straggler
+      // (event not covered by any slice). Returns null when done.
+      const nextPending = (): {
+        type: "debounced" | "straggler";
+        savedChange: ISavedChange<IEsEvent>;
+        cursor: Cursor;
+        eventId: string;
+      } | null => {
+        const debounced = this.processingCheckpoints.get(key);
+        if (debounced) {
+          this.processingCheckpoints.set(key, null);
+          return {
+            type: "debounced",
+            savedChange: debounced.savedChange,
+            cursor: debounced.cursor,
+            eventId: debounced.savedChange.id.serialize(),
+          };
+        }
+        const remaining = this.pendingCursors.get(key);
+        if (remaining && remaining.size > 0) {
+          const next = remaining.entries().next().value!;
+          const [eventId, straggler] = next;
+          remaining.delete(eventId);
+          return {
+            type: "straggler",
+            savedChange: straggler.savedChange,
+            cursor: straggler.cursor,
+            eventId,
+          };
+        }
+        return null;
+      };
+
+      let iterations = 0;
+      for (let next = nextPending(); next; next = nextPending()) {
+        iterations++;
+        if (iterations > 10) {
+          this.logger.warn(
+            `high-iteration: Checkpoint<${key}> re-run loop at iteration ${iterations}`,
+            { checkpointId: key, iterations },
+          );
+        }
+        if (next.type === "debounced") {
+          this.logger.debug(
+            `re-run: Checkpoint<${key}> iteration ${iterations}, targeting Event<${next.eventId}>`,
+            { checkpointId: key, iterations, eventId: next.eventId },
+          );
+        } else {
+          const remaining = this.pendingCursors.get(key);
+          this.logger.info(
+            `straggler: Checkpoint<${key}> handling Event<${next.eventId}> not covered by any slice (${remaining?.size ?? 0} remaining)`,
+            {
+              checkpointId: key,
+              eventId: next.eventId,
+              remainingStragglers: remaining?.size ?? 0,
+            },
+          );
+        }
+        await this.handleOne(next.savedChange, next.cursor);
+      }
+    } finally {
+      this.processingCheckpoints.delete(key);
+      this.pendingCursors.delete(key);
+      this.coalescedCounts.delete(key);
+    }
+  }
+
+  private async handleOne(savedChange: ISavedChange<IEsEvent>, target: Cursor) {
+    const checkpointId = this.projection.getCheckpointId(savedChange);
+    const eventId = savedChange.id.serialize();
+    const checkpointKey = checkpointId.serialize();
+    const startedAt = Date.now();
+
+    this.logger.info(
+      `processing: Checkpoint<${checkpointKey}> targeting Event<${eventId}>`,
+      {
+        checkpointId: checkpointKey,
+        eventId,
+        target: target.toString(),
+        targetRef: target.ref,
+      },
+    );
 
     const errors = [];
 
@@ -156,17 +286,24 @@ export class FirestoreProjector {
 
       if (status === Status.SUCCESS) {
         await this.queue.cleanup(checkpointId);
-        disposeEventCoordinator();
+        const durationMs = Date.now() - startedAt;
+        this.logger.info(
+          `processed: Checkpoint<${checkpointKey}> caught up to Event<${eventId}> in ${durationMs}ms`,
+          { checkpointId: checkpointKey, eventId, durationMs },
+        );
         return;
       }
 
       errors.push(message);
     }
 
-    disposeEventCoordinator();
-    throw new Error(
-      `Failed to handle event ${savedChange.id.serialize()}: ${errors.join(", ")}`,
+    const { attempts } = this.config.retry;
+    this.logger.error(
+      `failed: Checkpoint<${checkpointKey}> exhausted ${attempts} retries for Event<${eventId}>`,
+      { checkpointId: checkpointKey, eventId, attempts, errors },
     );
+
+    throw new Error(`Failed to handle event ${eventId}: ${errors.join(", ")}`);
   }
 
   // @Trace("projector.reader.getCursor")
@@ -199,6 +336,7 @@ export class FirestoreProjector {
     if (!isTargetAfterHead) {
       const processed = await this.checkIsProcessed(checkpointId, target);
       if (processed === TaskState.PROCESSED) {
+        this.prunePendingCursors(checkpointId, [target.eventId]);
         return [Status.SUCCESS, "Target event already processed"] as const;
       }
 
@@ -277,7 +415,26 @@ export class FirestoreProjector {
       return Task.new(e, settings);
     });
 
-    return await this.queue.enqueue(checkpointId, tasks);
+    const result = await this.queue.enqueue(checkpointId, tasks);
+
+    // Prune pending cursors for events covered by this slice.
+    // On SUCCESS all tasks were created; on AlreadyEnqueuedError the batch
+    // failed atomically so we only prune on SUCCESS.
+    const [status] = result;
+    if (status === Status.SUCCESS) {
+      this.prunePendingCursors(
+        checkpointId,
+        tasks.map((t) => t.id),
+      );
+    }
+
+    const checkpointKey = checkpointId.serialize();
+    this.logger.debug(
+      `enqueued: Checkpoint<${checkpointKey}> added ${tasks.length} tasks to queue`,
+      { checkpointId: checkpointKey, count: tasks.length },
+    );
+
+    return result;
   }
 
   private async enqueueOne(checkpointId: CheckpointId, target: Cursor) {
@@ -288,7 +445,14 @@ export class FirestoreProjector {
 
     const settings = this.projection.getTaskSettings(event);
     const task = Task.new(event, settings);
-    return await this.queue.enqueue(checkpointId, [task]);
+    const result = await this.queue.enqueue(checkpointId, [task]);
+
+    const [status] = result;
+    if (status === Status.SUCCESS) {
+      this.prunePendingCursors(checkpointId, [task.id]);
+    }
+
+    return result;
   }
 
   // @Trace("projector.queue.isProcessed")
@@ -334,7 +498,12 @@ export class FirestoreProjector {
     }
 
     const onProcessed = this.queue.processed.bind(this.queue, claimer);
-    const assertBeforeInsert = this.assertBeforeInsert.bind(this, checkpointId, claimer, filtered);
+    const assertBeforeInsert = this.assertBeforeInsert.bind(
+      this,
+      checkpointId,
+      claimer,
+      filtered,
+    );
     const context = { onProcessed, checkpointId, assertBeforeInsert };
 
     const hasTarget = tasks.some((t) => t.id.equals(targetEventId));
@@ -348,6 +517,16 @@ export class FirestoreProjector {
 
       return [Status.DEFERRED, "Target event not processed yet"] as const;
     } catch (e) {
+      const checkpointKey = checkpointId.serialize();
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      const truncated =
+        errorMessage.length > 200
+          ? `${errorMessage.slice(0, 200)}...`
+          : errorMessage;
+      this.logger.error(
+        `error: Checkpoint<${checkpointKey}> processing failed: ${truncated}`,
+        { checkpointId: checkpointKey, error: e },
+      );
       this.config.onProcessError(e as Error);
       if (this._unclaim) {
         await this.queue.unclaim(checkpointId, tasks);
@@ -370,16 +549,22 @@ export class FirestoreProjector {
     events: IEsEvent[],
   ) {
     const claimedTasks = await this.queue.claimed(checkpointId, claimer);
-    const claimedTasksMap = new Map(claimedTasks.map((t) => [t.id.serialize(), t]));
+    const claimedTasksMap = new Map(
+      claimedTasks.map((t) => [t.id.serialize(), t]),
+    );
 
     for (const event of events) {
       const task = claimedTasksMap.get(event.id.serialize());
       if (!task) {
-        throw new Error(`Task not found for event ${event.id.serialize()} in claimer ${claimer.serialize()}`);
+        throw new Error(
+          `Task not found for event ${event.id.serialize()} in claimer ${claimer.serialize()}`,
+        );
       }
 
       if (task.claimIds?.[0] !== claimer.serialize()) {
-        throw new Error(`Task ${task.id.serialize()} claimer mismatch: expected ${claimer.serialize()}, found ${task.claimIds?.[0]}`);
+        throw new Error(
+          `Task ${task.id.serialize()} claimer mismatch: expected ${claimer.serialize()}, found ${task.claimIds?.[0]}`,
+        );
       }
     }
   }
@@ -492,11 +677,11 @@ export class FirestoreQueueStore {
     }
     const headCursor = headDoc
       ? Cursor.deserialize({
-        ref: headData.ref,
-        occurredAt: headData.occurredAt,
-        revision: headData.revision,
-        eventId: headData.id,
-      })
+          ref: headData.ref,
+          occurredAt: headData.occurredAt,
+          revision: headData.revision,
+          eventId: headData.id,
+        })
       : undefined;
     return headCursor;
   }
@@ -642,7 +827,8 @@ export class FirestoreQueueStore {
         const ref = this.queued(id, eventId);
         trx.transaction.update(ref, {
           processed: true,
-          [`claimsMetadata.${claimerId.serialize()}.processedAt`]: FieldValue.serverTimestamp(),
+          [`claimsMetadata.${claimerId.serialize()}.processedAt`]:
+            FieldValue.serverTimestamp(),
         });
       }
       return;
@@ -652,7 +838,8 @@ export class FirestoreQueueStore {
       eventIds.map((eventId) =>
         this.queued(id, eventId).update({
           processed: true,
-          [`claimsMetadata.${claimerId.serialize()}.processedAt`]: FieldValue.serverTimestamp(),
+          [`claimsMetadata.${claimerId.serialize()}.processedAt`]:
+            FieldValue.serverTimestamp(),
         }),
       ),
     );
@@ -677,11 +864,11 @@ export class FirestoreQueueStore {
     }
     const tailCursor = tailDoc
       ? Cursor.deserialize({
-        ref: tailData.ref,
-        occurredAt: tailData.occurredAt,
-        revision: tailData.revision,
-        eventId: tailData.id,
-      })
+          ref: tailData.ref,
+          occurredAt: tailData.occurredAt,
+          revision: tailData.revision,
+          eventId: tailData.id,
+        })
       : undefined;
     return tailCursor;
   }
@@ -782,10 +969,12 @@ export class Task<Stored extends boolean> extends Shape({
   processed: Boolean,
   /** @deprecated */ claimer: Optional(String),
   /** @deprecated */ claimedAt: Optional(MicrosecondTimestamp),
-  claimsMetadata: Mapping([{
-    claimedAt: MicrosecondTimestamp,
-    processedAt: Optional(MicrosecondTimestamp),
-  }]),
+  claimsMetadata: Mapping([
+    {
+      claimedAt: MicrosecondTimestamp,
+      processedAt: Optional(MicrosecondTimestamp),
+    },
+  ]),
   claimIds: [String],
   lock: Lock,
   skipAfter: Number,
@@ -880,6 +1069,8 @@ export class Task<Stored extends boolean> extends Shape({
     const task = Task.deserialize({
       ...data,
       lastUpdateTime: timestamp as any,
+      claimIds: data.claimIds || [],
+      claimsMetadata: data.claimsMetadata || {},
     }) as Task<true>;
 
     return task;

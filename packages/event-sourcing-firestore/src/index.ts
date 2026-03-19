@@ -29,4 +29,5 @@ export {
   Task,
   AlreadyEnqueuedError,
   ClaimerId,
+  type ProjectorLogger,
 } from "./projection/firestore.projector";
