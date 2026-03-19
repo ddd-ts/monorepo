@@ -1,49 +1,54 @@
 {
-	"name": "@ddd-ts/freeze",
-	"version": "0.0.2",
-	"types": "dist/index.d.ts",
-	"license": "MIT",
-	"repository": {
-		"url": "git+https://github.com/ddd-ts/monorepo"
-	},
-	"files": [
-		"dist"
-	],
-	"bin": {
-		"freeze": "dist/entrypoints/freeze.entrypoint.js"
-	},
-	"scripts": {
-		"build": "tsdown --config node_modules/@ddd-ts/tools/tsdown.config.js",
-		"test": "jest --config node_modules/@ddd-ts/tools/jest.config.js"
-	},
-	"peerDependencies": {
-		"typescript": "^5.5.4",
-		"ts-morph": "^23.0.0"
-	},
-	"dependencies": {
-		"@ddd-ts/core": "workspace:*",
-		"@ddd-ts/shape": "workspace:*",
-		"@ddd-ts/traits": "workspace:*",
-		"@ddd-ts/types": "workspace:*"
-	},
-	"devDependencies": {
-		"@ddd-ts/tools": "workspace:*",
-		"@types/jest": "^29.5.1",
-		"@types/node": "^17.0.13"
-	},
-	"exports": {
-		".": "./src/index.ts",
-		"./package.json": "./package.json"
-	},
-	"publishConfig": {
-		"exports": {
-			".": {
-				"import": "./dist/index.mjs",
-				"require": "./dist/index.js"
-			},
-			"./package.json": "./package.json"
-		}
-	},
-	"main": "./dist/index.js",
-	"module": "./dist/index.mjs"
+  "name": "@ddd-ts/freeze",
+  "version": "0.0.2",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "repository": {
+    "url": "git+https://github.com/ddd-ts/monorepo"
+  },
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "freeze": "dist/entrypoints/freeze.entrypoint.js"
+  },
+  "scripts": {
+    "build": "tsdown --config node_modules/@ddd-ts/tools/tsdown.config.js src/index.ts src/entrypoints/freeze.entrypoint.ts",
+    "test": "jest --config node_modules/@ddd-ts/tools/jest.config.js"
+  },
+  "peerDependencies": {
+    "typescript": "^5.5.4",
+    "ts-morph": "^23.0.0"
+  },
+  "dependencies": {
+    "@ddd-ts/core": "workspace:*",
+    "@ddd-ts/shape": "workspace:*",
+    "@ddd-ts/traits": "workspace:*",
+    "@ddd-ts/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@ddd-ts/tools": "workspace:*",
+    "@types/jest": "^29.5.1",
+    "@types/node": "^17.0.13"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./entrypoints/freeze.entrypoint": "./src/entrypoints/freeze.entrypoint.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "import": "./dist/index.mjs",
+        "require": "./dist/index.js"
+      },
+      "./entrypoints/freeze.entrypoint": {
+        "import": "./dist/entrypoints/freeze.entrypoint.mjs",
+        "require": "./dist/entrypoints/freeze.entrypoint.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs"
 }
