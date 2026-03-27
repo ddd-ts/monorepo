@@ -155,6 +155,10 @@ function exploreNativeType(
     return (type as ts.TypeParameter).symbol.name;
   }
 
+  if (type.flags & ts.TypeFlags.Unknown) {
+    return "unknown";
+  }
+
   return JSON.stringify({
     name: checker.typeToString(type),
     flags: listTypeFlagsNames(type.flags),
