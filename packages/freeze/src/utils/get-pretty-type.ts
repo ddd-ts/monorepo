@@ -10,7 +10,7 @@ export function getPrettyType(type: Type, contextNode: Node): {
 
   const typeTextForEmbedding = checker.typeToString(
     type.compilerType,
-    contextNode.compilerNode,
+    undefined,
     ts.TypeFormatFlags.NoTruncation |
     ts.TypeFormatFlags.UseFullyQualifiedType |
     ts.TypeFormatFlags.InTypeAlias
