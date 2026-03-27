@@ -1,6 +1,7 @@
 import { ts, type ReferencedSymbol } from "ts-morph";
 import { relative } from "node:path";
 import fs from "node:fs";
+import prettier from "@prettier/sync";
 import { exploreType } from "../utils/explore-type";
 import { getPrettyType } from "../utils/get-pretty-type";
 import { project } from "./project";
@@ -147,7 +148,8 @@ for (const ref of references) {
       `export type ${serializedName} = ${result}`,
     ].join("\n");
 
-    fs.writeFileSync(`${directory.getPath()}/${serializedFilename}.ts`, output);
+    const formattedOutput = prettier.format(output, { parser: "typescript" });
+    fs.writeFileSync(`${directory.getPath()}/${serializedFilename}.ts`, formattedOutput);
 
     console.log(
       `${rpath} - ${name}: Frozen as ${serializedName} in ${serializedFilename}.ts`,
