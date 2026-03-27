@@ -293,9 +293,6 @@ importers:
       '@ddd-ts/types':
         specifier: workspace:*
         version: link:../packages/types
-      '@swc-node/register':
-        specifier: ^1.11.1
-        version: 1.11.1(@swc/core@1.6.13)(@swc/types@0.1.9)(typescript@5.7.3)
       '@types/jest':
         specifier: ^29.5.12
         version: 29.5.12
