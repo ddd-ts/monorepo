@@ -7,8 +7,6 @@ import { getPrettyType } from "../utils/get-pretty-type";
 import { project } from "./project";
 import packageJson from "../../package.json";
 
-console.log("Freezing functions...");
-
 const cwd = process.cwd();
 
 const resolveFromDistIndex = () => {
