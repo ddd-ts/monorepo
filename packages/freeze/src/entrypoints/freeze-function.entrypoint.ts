@@ -11,14 +11,12 @@ console.log("Freezing functions...");
 
 const cwd = process.cwd();
 
-let references: ReferencedSymbol[] | undefined;
-
-if (__dirname.endsWith("src/entrypoints")) {
+const resolveFromDistIndex = () => {
   const functionFilePath = `${__dirname}/../../dist/index.d.ts`;
 
   const functionFile = project.getSourceFile(functionFilePath);
   if (!functionFile) {
-    throw new Error(`Cannot find freeze.function.ts at path ${functionFilePath}`);
+    throw new Error(`Cannot find index.d.ts at path ${functionFilePath}`);
   }
 
   const freezeFunction = functionFile.getExportedDeclarations().get("freeze")?.[0].asKind(ts.SyntaxKind.FunctionDeclaration);
@@ -26,22 +24,60 @@ if (__dirname.endsWith("src/entrypoints")) {
     throw new Error(`Cannot find function for freeze in ${functionFilePath}`);
   }
 
-  references = freezeFunction.findReferences();
+  const references = freezeFunction.findReferences();
   if (!references) {
-    throw new Error("Cannot find references for freeze function");
+    throw new Error("Cannot find declaration of the freeze function");
   }
-} else {
-  const functionFilePath = `${__dirname}/../references/freeze.function.d.ts`;
+  
+  return references;
+};
+
+const resolveFromSource = () => {
+  const functionFilePath = `${__dirname}/../references/freeze.function.ts`;
 
   const functionFile = project.getSourceFile(functionFilePath);
   if (!functionFile) {
     throw new Error(`Cannot find freeze.function.ts at path ${functionFilePath}`);
   }
 
-  references = functionFile.getFunction("freeze")?.findReferences();
+  const references = functionFile.getFunction("freeze")?.findReferences();
 
   if (!references) {
-    throw new Error("Cannot find references for freeze function");
+    throw new Error("Cannot find declaration of the freeze function");
+  }
+  
+  return references;
+};
+
+const resolveFromDist = () => {
+  const functionFilePath = `${__dirname}/../references/freeze.function.d.ts`;
+
+  const functionFile = project.getSourceFile(functionFilePath);
+  if (!functionFile) {
+    throw new Error(`Cannot find freeze.function.d.ts at path ${functionFilePath}`);
+  }
+
+  const references = functionFile.getFunction("freeze")?.findReferences();
+
+  if (!references) {
+    throw new Error("Cannot find declaration of the freeze function");
+  }
+  
+  return references;
+};
+
+let references: ReferencedSymbol[] | undefined;
+try {
+  references = resolveFromDistIndex();
+} catch {
+  try {
+    references = resolveFromDist();
+  } catch {
+    try {
+      references = resolveFromSource();
+    } catch {
+      throw new Error("Cannot find references for freeze function in dist/index.d.ts, dist/references/freeze.function.d.ts or src/references/freeze.function.ts");
+    }
   }
 }
 
