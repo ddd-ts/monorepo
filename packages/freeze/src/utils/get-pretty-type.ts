@@ -10,7 +10,7 @@ export function getPrettyType(type: Type, contextNode: Node): {
 
   const typeTextForEmbedding = checker.typeToString(
     type.compilerType,
-    contextNode.compilerNode,
+    undefined,
     ts.TypeFormatFlags.NoTruncation |
     ts.TypeFormatFlags.UseFullyQualifiedType |
     ts.TypeFormatFlags.InTypeAlias
@@ -20,9 +20,13 @@ export function getPrettyType(type: Type, contextNode: Node): {
   const sf = project.createSourceFile(
     fileName,
     `
-      type Pretty<T> = { [K in keyof T]: T[K] } & {};
+      type DeepPretty<T> = T extends object
+        ? T extends Function
+          ? T
+          : { [K in keyof T]: DeepPretty<T[K]> } & {}
+        : T;
       declare const __v: ${typeTextForEmbedding};
-      export type __X = Pretty<typeof __v>;
+      export type __X = DeepPretty<typeof __v>;
     `,
     { overwrite: true }
   );

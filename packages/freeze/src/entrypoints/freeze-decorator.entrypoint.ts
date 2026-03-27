@@ -1,4 +1,4 @@
-import { ts } from "ts-morph";
+import { ts, type ReferencedSymbol } from "ts-morph";
 import { relative } from "node:path";
 import { exploreType } from "../utils/explore-type";
 import fs from "node:fs";
@@ -7,17 +7,72 @@ import packageJson from "../../package.json";
 
 const cwd = process.cwd();
 
-const decoratorFile = project.getSourceFile(`${__dirname}/../references/freeze.decorator.d.ts`);
-if (!decoratorFile) {
-  throw new Error("The @Freeze decorator is not used in the project.");
+const resolveFromDistIndex = () => {
+  const decoratorFilePath = `${__dirname}/../../dist/index.d.ts`;
+
+  const decoratorFile = project.getSourceFile(decoratorFilePath);
+  if (!decoratorFile) {
+    throw new Error(`Cannot find index.d.ts at path ${decoratorFilePath}`);
+  }
+
+  const decoratorFunction = decoratorFile.getExportedDeclarations().get("Freeze")?.[0].asKind(ts.SyntaxKind.FunctionDeclaration);
+  if (!decoratorFunction) {
+    throw new Error(`Cannot find function for Freeze decorator in ${decoratorFilePath}`);
+  }
+
+  const references = decoratorFunction.findReferences();
+  if (!references) {
+    throw new Error("Cannot find declaration of the Freeze decorator");
+  }
+
+  return references;
+};
+
+const resolveFromDist = () => {
+  const decoratorFilePath = `${__dirname}/../references/freeze.decorator.d.ts`;
+
+  const decoratorFile = project.getSourceFile(decoratorFilePath);
+  if (!decoratorFile) {
+    throw new Error(`Cannot find freeze.decorator.d.ts at path ${decoratorFilePath}`);
+  }
+
+  const references = decoratorFile.getFunction("Freeze")?.findReferences();
+  if (!references) {
+    throw new Error("Cannot find declaration of the Freeze decorator");
+  }
+  
+  return references;
+};
+
+const resolveFromSource = () => {
+  const decoratorFilePath = `${__dirname}/../references/freeze.decorator.ts`;
+
+  const decoratorFile = project.getSourceFile(decoratorFilePath);
+  if (!decoratorFile) {
+    throw new Error(`Cannot find freeze.decorator.ts at path ${decoratorFilePath}`);
+  }
+
+  const references = decoratorFile.getFunction("Freeze")?.findReferences();
+  if (!references) {
+    throw new Error("Cannot find declaration of the Freeze decorator");
+  }
+  
+  return references;
 }
 
-const references = decoratorFile.getFunction("Freeze")?.findReferences();
-
-if (!references) {
-  throw new Error(
-    "The @Freeze decorator is imported, but not used in the project.",
-  );
+let references: ReferencedSymbol[] | undefined;
+try {
+  references = resolveFromDistIndex();
+} catch (e) {
+  try {
+    references = resolveFromDist();
+  } catch (e) {
+    try {
+      references = resolveFromSource();
+    } catch (e) {
+      throw new Error("Cannot find declaration of the Freeze decorator in dist/index.d.ts, dist/references/freeze.decorator.d.ts or src/references/freeze.decorator.ts");
+    }
+  }
 }
 
 function lowercasefirstletter(str: string) {
