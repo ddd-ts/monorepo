@@ -1,4 +1,4 @@
-type PathUptoFirstSerialize<T> = T extends { serialize(): infer R }
+type PathUptoFirstSerialize<T> = T extends { serialize(...args: any[]): any }
   ? []
   : T extends object
     ? { [K in keyof T]: [K, ...PathUptoFirstSerialize<T[K]>] }[keyof T]
@@ -16,9 +16,11 @@ type JoinWithDot<T extends readonly unknown[] | undefined> =
     : never;
 
 type NoUnserialized<T extends object> = {
-  [K in keyof T as JoinWithDot<PathUptoFirstSerialize<T[K]>> extends never
+  [K in keyof T as PathUptoFirstSerialize<T[K]> extends never
     ? never
-    : K]: JoinWithDot<PathUptoFirstSerialize<T[K]>>;
+    : K]: PathUptoFirstSerialize<T[K]> extends []
+    ? K & string
+    : JoinWithDot<PathUptoFirstSerialize<T[K]>>;
 };
 
 type Pretty<T> = { [K in keyof T]: T[K] } & {};
