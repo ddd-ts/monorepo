@@ -21,8 +21,18 @@ if (false) {
   // @ts-expect-error nested identifiers should not be accepted
   noUnserialized({ event: { id: nestedUnserialized }, otherId: nestedUnserialized });
 
+  // SHOULD NOT WORK (ARRAY)
+  // @ts-expect-error nested identifiers should not be accepted
+  noUnserialized({ events: [nestedUnserialized] });
+
   // SHOULD WORK
   type SerializedEvent = { id: string; name: string };
   const fullySerialized: SerializedEvent = null as any;
   const checkedSerialized: SerializedEvent = noUnserialized(fullySerialized);
+
+  // SHOULD WORK WITH DATES
+  const withDate = noUnserialized({ date: new Date() });
+
+  // SHOULD WORK WITH ARRAYS
+  const withArray = noUnserialized({ dates: [new Date(), new Date()] });
 }
