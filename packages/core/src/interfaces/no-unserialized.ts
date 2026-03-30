@@ -16,14 +16,20 @@ type JoinWithDot<T extends readonly unknown[] | undefined> =
     : never;
 
 type NoUnserialized<T extends object> = {
-  [K in keyof T as JoinWithDot<PathUptoFirstSerialize<T[K]>> extends never ? never : K]: JoinWithDot<PathUptoFirstSerialize<T[K]>>
-}
+  [K in keyof T as JoinWithDot<PathUptoFirstSerialize<T[K]>> extends never
+    ? never
+    : K]: JoinWithDot<PathUptoFirstSerialize<T[K]>>;
+};
 
 type Pretty<T> = { [K in keyof T]: T[K] } & {};
 
-export const noUnserialized = <T extends object>(obj: {} extends NoUnserialized<T> ? T : {
-  error: "Object has unserialized properties",
-  details: Pretty<NoUnserialized<T>>,
-}): T => {
+export const noUnserialized = <T extends object>(
+  obj: {} extends NoUnserialized<T>
+    ? T
+    : {
+        error: "Object has unserialized properties";
+        details: Pretty<NoUnserialized<T>>;
+      },
+): T => {
   return obj as T;
-}
+};
