@@ -1,8 +1,12 @@
 type PathUptoFirstSerialize<T> = T extends { serialize(...args: any[]): any }
   ? []
-  : T extends object
+  : T extends Record<string, unknown>
     ? { [K in keyof T]: [K, ...PathUptoFirstSerialize<T[K]>] }[keyof T]
-    : never;
+    : T extends any[]
+      ? { [K in keyof T]: [K, ...PathUptoFirstSerialize<T[K]>] }[number]
+      : T extends readonly any[]
+        ? { [K in keyof T]: [K, ...PathUptoFirstSerialize<T[K]>] }[number]
+        : never;
 
 type JoinWithDot<T extends readonly unknown[] | undefined> =
   T extends readonly [infer H, ...infer R]
