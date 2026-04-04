@@ -150,7 +150,7 @@ export type Mapping<
     $shape: "mapping";
     deserialize<T extends Constructor>(
       this: T,
-      value: Expand<Internal<C, B>["Serialized"]>,
+      value: Expand<Internal<C, B>["Deserializing"]>,
     ): InstanceType<T>;
     $deserialize<T>(
       this: T,

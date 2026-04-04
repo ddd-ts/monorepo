@@ -2,7 +2,8 @@ import {
   type DefinitionOf,
   type Shorthand,
   Shape,
-  type Expand,
+  type ExpandOutput,
+  type ExpandPartial,
   type AbstractConstructor,
   type Constructor,
   Empty,
@@ -95,19 +96,19 @@ export type IDict<
   $of: S;
   deserialize<T extends Constructor>(
     this: T,
-    value: Expand<Internal<S, B>["Serialized"]>,
+    value: ExpandPartial<Internal<S, B>["Deserializing"]>,
   ): InstanceType<T>;
   $deserialize<T>(
     this: T,
-    value: Internal<S, B>["Deserializing"],
+    value: ExpandPartial<Internal<S, B>["Deserializing"]>,
   ): Internal<S, B>["Inline"];
   $serialize<T extends Constructor>(
     this: T,
     value: InstanceType<T>,
-  ): Internal<S, B>["Serialized"];
+  ): ExpandOutput<Internal<S, B>["Serialized"]>;
   $inline: Internal<S, B>["Inline"];
 } & (abstract new (
-    value: Expand<Internal<S, B>["Inline"]>,
+    value: ExpandPartial<Internal<S, B>["Inline"]>,
   ) => InstanceType<B> & {
-    serialize(): Expand<Internal<S, B>["Serialized"]>;
+    serialize(): ExpandOutput<Internal<S, B>["Serialized"]>;
   } & Internal<S, B>["Inline"]);
