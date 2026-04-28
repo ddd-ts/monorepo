@@ -612,8 +612,8 @@ export class FirestoreQueueStore {
     for (const task of tasks) {
       const ref = this.queued(checkpointId, task.id);
       batch.create(ref, {
-        ref: this.db.doc(task.cursor.ref),
         ...this.converter.toFirestore(task.serialize()),
+        ref: task.cursor.ref,
       });
     }
 
@@ -665,6 +665,7 @@ export class FirestoreQueueStore {
     const head = this.queue(checkpointId)
       .orderBy("occurredAt", "desc")
       .orderBy("revision", "desc")
+      .orderBy("ref", "desc")
       .limit(1);
     const headDoc = (await head.get()).docs[0];
     if (!headDoc) {
@@ -692,6 +693,7 @@ export class FirestoreQueueStore {
       .where("remaining", ">", 0)
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc")
+      .orderBy("ref", "asc")
       .limit(100);
 
     const snapshot = await query.get();
@@ -744,7 +746,8 @@ export class FirestoreQueueStore {
     const query = this.queue(checkpointId)
       .where("claimIds", "array-contains", claimer.serialize())
       .orderBy("occurredAt", "asc")
-      .orderBy("revision", "asc");
+      .orderBy("revision", "asc")
+      .orderBy("ref", "asc");
 
     const snapshot = await query.get();
     return snapshot.docs
@@ -852,6 +855,7 @@ export class FirestoreQueueStore {
       .where("remaining", ">", 0)
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc")
+      .orderBy("ref", "asc")
       .limit(1);
     const tailDoc = (await tail.get()).docs[0];
     if (!tailDoc) {
@@ -882,7 +886,8 @@ export class FirestoreQueueStore {
       .where("remaining", ">", 0)
       .where("occurredAt", "<", aMonthAgo.serialize()) // Only consider events older than 4 weeks
       .orderBy("occurredAt", "asc")
-      .orderBy("revision", "asc");
+      .orderBy("revision", "asc")
+      .orderBy("ref", "asc");
 
     const MIN_TRAIL = 1; // Keep at least one processed document to maintain the tail cursor
     const TRAIL = MIN_TRAIL + 0; // Extra buffer to optimize isProcessed checks

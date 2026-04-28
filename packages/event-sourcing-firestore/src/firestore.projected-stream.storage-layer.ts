@@ -8,6 +8,7 @@ import {
 } from "@ddd-ts/core";
 import { DefaultConverter } from "@ddd-ts/store-firestore";
 import {
+  FieldPath,
   Filter,
   Firestore,
   QueryDocumentSnapshot,
@@ -52,7 +53,8 @@ export class FirestoreProjectedStreamStorageLayer
     let query = this.firestore
       .collectionGroup("events")
       .orderBy("occurredAt")
-      .orderBy("revision");
+      .orderBy("revision")
+      .orderBy(FieldPath.documentId());
 
     const filters = projectedStream.sources.map((source) => {
       if (source instanceof LakeSource) {
@@ -68,12 +70,20 @@ export class FirestoreProjectedStreamStorageLayer
 
     if (startAfter) {
       const ts = this.microsecondToTimestamp(startAfter.occurredAt);
-      query = query.startAfter(ts, startAfter.revision);
+      query = query.startAfter(
+        ts,
+        startAfter.revision,
+        this.firestore.doc(startAfter.ref),
+      );
     }
 
     if (endAt) {
       const ts = this.microsecondToTimestamp(endAt.occurredAt);
-      query = query.endAt(ts, endAt.revision);
+      query = query.endAt(
+        ts,
+        endAt.revision,
+        this.firestore.doc(endAt.ref),
+      );
     }
 
     for await (const doc of query.stream() as AsyncIterable<QueryDocumentSnapshot>) {
@@ -140,7 +150,8 @@ export class FirestoreProjectedStreamStorageLayer
     let query = this.firestore
       .collectionGroup("events")
       .orderBy("occurredAt")
-      .orderBy("revision");
+      .orderBy("revision")
+      .orderBy(FieldPath.documentId());
 
     const filters = projectedStream.sources.map((source) => {
       if (source instanceof LakeSource) {
@@ -156,12 +167,20 @@ export class FirestoreProjectedStreamStorageLayer
 
     if (startAfter) {
       const ts = this.microsecondToTimestamp(startAfter.occurredAt);
-      query = query.startAfter(ts, startAfter.revision);
+      query = query.startAfter(
+        ts,
+        startAfter.revision,
+        this.firestore.doc(startAfter.ref),
+      );
     }
 
     if (endAt) {
       const ts = this.microsecondToTimestamp(endAt.occurredAt);
-      query = query.endAt(ts, endAt.revision);
+      query = query.endAt(
+        ts,
+        endAt.revision,
+        this.firestore.doc(endAt.ref),
+      );
     }
 
     if (limit) {
