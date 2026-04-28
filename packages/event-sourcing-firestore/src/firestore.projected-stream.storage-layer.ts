@@ -214,9 +214,7 @@ export class FirestoreProjectedStreamStorageLayer
       .collectionGroup("events")
       .orderBy("occurredAt")
       .orderBy("revision")
-      .orderBy(FieldPath.documentId())
-      .startAt(ts)
-      .limit(1);
+      .orderBy(FieldPath.documentId());
 
     const filters = projectedStream.sources.map((source) => {
       if (source instanceof LakeSource) {
@@ -228,7 +226,7 @@ export class FirestoreProjectedStreamStorageLayer
       throw new Error("Unknown source type");
     });
 
-    query = query.where(Filter.or(...filters));
+    query = query.where(Filter.or(...filters)).startAt(ts).limit(1);
 
     const snap = await query.get();
     const doc = snap.docs[0];
