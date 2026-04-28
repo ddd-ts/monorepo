@@ -203,4 +203,85 @@ export class FirestoreProjectedStreamStorageLayer
       } as ISerializedFact;
     });
   }
+
+  async firstAtOrAfter(
+    projectedStream: ProjectedStream,
+    shard: string,
+    from: MicrosecondTimestamp,
+  ): Promise<ISerializedFact | undefined> {
+    const ts = this.microsecondToTimestamp(from);
+    let query = this.firestore
+      .collectionGroup("events")
+      .orderBy("occurredAt")
+      .orderBy("revision")
+      .orderBy(FieldPath.documentId())
+      .startAt(ts)
+      .limit(1);
+
+    const filters = projectedStream.sources.map((source) => {
+      if (source instanceof LakeSource) {
+        return new FirestoreLakeSourceFilter().filter(shard, source);
+      }
+      if (source instanceof StreamSource) {
+        return new FirestoreStreamSourceFilter().filter(shard, source);
+      }
+      throw new Error("Unknown source type");
+    });
+
+    query = query.where(Filter.or(...filters));
+
+    const snap = await query.get();
+    const doc = snap.docs[0];
+    if (!doc) return undefined;
+    const data = this.converter.fromFirestore(doc);
+    return {
+      id: data.eventId,
+      ref: doc.ref.path,
+      revision: data.revision,
+      name: data.name,
+      $name: data.name,
+      payload: data.payload,
+      occurredAt: data.occurredAt,
+      version: data.version ?? 1,
+    } as ISerializedFact;
+  }
+
+  async latest(
+    projectedStream: ProjectedStream,
+    shard: string,
+  ): Promise<ISerializedFact | undefined> {
+    let query = this.firestore
+      .collectionGroup("events")
+      .orderBy("occurredAt", "desc")
+      .orderBy("revision", "desc")
+      .orderBy(FieldPath.documentId(), "desc")
+      .limit(1);
+
+    const filters = projectedStream.sources.map((source) => {
+      if (source instanceof LakeSource) {
+        return new FirestoreLakeSourceFilter().filter(shard, source);
+      }
+      if (source instanceof StreamSource) {
+        return new FirestoreStreamSourceFilter().filter(shard, source);
+      }
+      throw new Error("Unknown source type");
+    });
+
+    query = query.where(Filter.or(...filters));
+
+    const snap = await query.get();
+    const doc = snap.docs[0];
+    if (!doc) return undefined;
+    const data = this.converter.fromFirestore(doc);
+    return {
+      id: data.eventId,
+      ref: doc.ref.path,
+      revision: data.revision,
+      name: data.name,
+      $name: data.name,
+      payload: data.payload,
+      occurredAt: data.occurredAt,
+      version: data.version ?? 1,
+    } as ISerializedFact;
+  }
 }

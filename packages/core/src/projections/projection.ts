@@ -30,7 +30,7 @@ export abstract class ESProjection<E extends IEsEvent, C = any> {
     this.handlers[event.$name] = handler as IESProjectionHandler<E, C>;
   }
 
-  abstract getSource(event: E): ProjectedStream;
+  abstract getSource(event?: E): ProjectedStream;
   abstract getCheckpointId(event: E): CheckpointId;
 
   getHandler<T extends E>(event: T) {
