@@ -382,7 +382,6 @@ function buildGraph(root: string, scans: FileScan[]): Graph {
       byName.set(key, node);
       byName.set(node.name, node); // by name only for symbol resolution
       nodes.push(node);
-      if (node.name === "Billing") console.log({ cls, node }); // DEBUG
       if (cls.baseName === "CommandHandler" && cls.baseGenericIdentifier) {
         handlerToCommand.set(cls.className, cls.baseGenericIdentifier);
       }
@@ -509,9 +508,11 @@ function buildGraph(root: string, scans: FileScan[]): Graph {
         (cls.baseName === "Projection" || cls.baseCallee === "Projection.from") &&
         selfNode
       ) {
-        const reactedTo = new Set<string>();
-        for (const id of cls.baseArrayIdentifiers) reactedTo.add(id);
+        const clsNode = selfNode;
         for (const m of cls.methods) {
+          const selfNode = byName.get(`${clsNode.name}.${m.name}`);
+          if (!selfNode) continue;
+          const reactedTo = new Set<string>();
           for (const dec of m.decorators) {
             if (
               dec.callee === "On" ||
@@ -521,25 +522,19 @@ function buildGraph(root: string, scans: FileScan[]): Graph {
               if (dec.arg0Identifier) reactedTo.add(dec.arg0Identifier);
             }
           }
-          for (const t of m.paramTypeIdentifiers) {
-            const ev = byName.get(t);
-            if (ev?.kind === "event") reactedTo.add(t);
+          for (const id of reactedTo) {
+            const ev = byName.get(id);
+            if (!ev || ev.kind !== "event") continue;
+            edges.push({ from: ev.id, to: selfNode.id, kind: "reacts" });
           }
-        }
-        for (const id of reactedTo) {
-          const ev = byName.get(id);
-          if (!ev || ev.kind !== "event") continue;
-          edges.push({ from: ev.id, to: selfNode.id, kind: "reacts" });
         }
       }
 
-            // Saga: methods reacting to events + sending commands + emitting events
+      // Saga: methods reacting to events + sending commands + emitting events
       if (cls.baseName === "EsAggregate" && selfNode) {
-        console.log('getting aggregate', cls.className, selfNode.id);
         const clsNode = selfNode;
         for (const m of cls.methods) {
           const selfNode = byName.get(`${clsNode.name}.${m.name}`);
-          console.log(`  getting method`, m.name, selfNode?.id, `(${clsNode.name}.${m.name})`);
           if (!selfNode) continue;
           const reactedTo = new Set<string>();
           for (const dec of m.decorators) {
