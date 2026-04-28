@@ -391,6 +391,17 @@ function buildGraph(root: string, scans: FileScan[]): Graph {
         reactorsByClassName.set(cls.className, node);
       }
     }
+    for (const cls of scan.classes) {
+      for (const m of cls.methods) {
+        const node = classifyAsNode(m, rel, byName.get(`${cls.baseName === "Saga" || cls.baseName === "Projection" ? cls.className : ""}`));
+        if (!node) continue;
+        const key = `${cls.baseName}.${node.kind}:${node.name}`;
+        if (byName.has(key)) continue;
+        byName.set(key, node);
+        byName.set(node.name, node);
+        nodes.push(node);
+      }
+    }
   }
 
   // Pass 1.5 — also synthesize policy nodes from `*.policy.ts` files
@@ -436,8 +447,11 @@ function buildGraph(root: string, scans: FileScan[]): Graph {
 
       // Saga: methods reacting to events + sending commands + emitting events
       if (cls.baseName === "Saga" && selfNode) {
-        const reactedTo = new Set<string>();
+        const clsNode = selfNode;
         for (const m of cls.methods) {
+          const selfNode = byName.get(`${clsNode.name}.${m.name}`);
+          if (!selfNode) continue;
+          const reactedTo = new Set<string>();
           for (const dec of m.decorators) {
             if (
               dec.callee === "Saga.on" ||
@@ -447,20 +461,14 @@ function buildGraph(root: string, scans: FileScan[]): Graph {
               if (dec.arg0Identifier) reactedTo.add(dec.arg0Identifier);
             }
           }
-          for (const t of m.paramTypeIdentifiers) {
-            const ev = byName.get(t);
-            if (ev?.kind === "event") reactedTo.add(t);
+          for (const id of reactedTo) {
+            const ev = byName.get(id);
+            if (!ev || ev.kind !== "event") continue;
+            edges.push({ from: ev.id, to: selfNode.id, kind: "reacts" });
           }
-        }
-        for (const id of reactedTo) {
-          const ev = byName.get(id);
-          if (!ev || ev.kind !== "event") continue;
-          edges.push({ from: ev.id, to: selfNode.id, kind: "reacts" });
-        }
-        // Sends commands and emits events from method bodies
-        const sentCmds = new Set<string>();
-        const emittedEvts = new Set<string>();
-        for (const m of cls.methods) {
+          // Sends commands and emits events from method bodies
+          const sentCmds = new Set<string>();
+          const emittedEvts = new Set<string>();
           for (const c of m.callExprs) {
             if (
               c.member === "execute" ||
@@ -477,17 +485,17 @@ function buildGraph(root: string, scans: FileScan[]): Graph {
             const t = byName.get(id);
             if (t?.kind === "event") emittedEvts.add(id);
           }
-        }
-        for (const id of sentCmds) {
-          const t = byName.get(id);
-          if (t?.kind === "command") {
-            edges.push({ from: selfNode.id, to: t.id, kind: "sends" });
+          for (const id of sentCmds) {
+            const t = byName.get(id);
+            if (t?.kind === "command") {
+              edges.push({ from: selfNode.id, to: t.id, kind: "sends" });
+            }
           }
-        }
-        for (const id of emittedEvts) {
-          const t = byName.get(id);
-          if (t?.kind === "event") {
-            edges.push({ from: selfNode.id, to: t.id, kind: "emits" });
+          for (const id of emittedEvts) {
+            const t = byName.get(id);
+            if (t?.kind === "event") {
+              edges.push({ from: selfNode.id, to: t.id, kind: "emits" });
+            }
           }
         }
       }
@@ -536,31 +544,47 @@ function buildGraph(root: string, scans: FileScan[]): Graph {
   return { nodes, edges: dedupedEdges };
 }
 
-function classifyAsNode(cls: ScannedClass, file: string): GraphNode | null {
-  const base = cls.baseName;
-  const name = cls.className;
-  let kind: NodeKind | null = null;
+function classifyAsNode(obj: ScannedClass | ScannedMethod, file: string, clsParent?: GraphNode): GraphNode | null {
+  if ("className" in obj) {
+    const cls = obj;
 
-  if (base === "EsEvent" || base === "Event") kind = "event";
-  else if (base === "$Command" || base === "Command") kind = "command";
-  else if (base === "Saga") kind = "saga";
-  else if (base === "Projection" || cls.baseCallee === "Projection.from") {
-    kind = "projection";
-  } else if (base === "CommandHandler") {
-    return null; // handlers create edges, not nodes
+    const base = cls.baseName;
+    const name = cls.className;
+    let kind: NodeKind | null = null;
+
+    if (base === "EsEvent" || base === "Event") kind = "event";
+    else if (base === "$Command" || base === "Command") kind = "command";
+    else if (base === "Saga") kind = "saga";
+    else if (base === "Projection" || cls.baseCallee === "Projection.from") {
+      kind = "projection";
+    } else if (base === "CommandHandler") {
+      return null; // handlers create edges, not nodes
+    }
+
+    if (!kind) return null;
+
+    // Prefer the runtime-name string if present (e.g. EsEvent("BookingRequested", …))
+    const runtimeName = cls.baseStringArg ?? name;
+    return {
+      id: makeNodeId(kind, runtimeName),
+      kind,
+      name,
+      file,
+      line: cls.line,
+    };
+  } else if (clsParent) {
+    const m = obj;
+    const name = `${clsParent.name}.${m.name}`;
+    return {
+      id: makeNodeId(clsParent.kind, name),
+      kind: clsParent.kind,
+      name,
+      file,
+      line: m.line,
+    };
   }
 
-  if (!kind) return null;
-
-  // Prefer the runtime-name string if present (e.g. EsEvent("BookingRequested", …))
-  const runtimeName = cls.baseStringArg ?? name;
-  return {
-    id: makeNodeId(kind, runtimeName),
-    kind,
-    name: runtimeName,
-    file,
-    line: cls.line,
-  };
+  return null;
 }
 
 function makeNodeId(kind: NodeKind, name: string): string {
