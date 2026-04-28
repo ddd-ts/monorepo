@@ -1,4 +1,5 @@
 export * from "./_";
+export * from "./deserialization-error";
 export * from "./choice";
 export * from "./class";
 export * from "./dict";
