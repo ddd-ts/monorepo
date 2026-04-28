@@ -64,6 +64,15 @@ interface FirestoreProjectorConfig {
   enqueue: {
     batchSize: number;
   };
+  /**
+   * Controls retention of processed queue tasks.
+   *
+   * - `false` (default): never delete processed tasks. Preserves the queue
+   *   as a durable audit trail for replay diagnostics.
+   * - `{ olderThan }`: delete processed tasks older than `olderThan` after
+   *   each successful event handling.
+   */
+  cleanup?: false | { olderThan: MicrosecondTimestamp };
   logger?: ProjectorLogger;
   /** @deprecated Use `logger.error` instead */
   onProcessError: (error: Error) => void;
@@ -285,7 +294,9 @@ export class FirestoreProjector {
       }
 
       if (status === Status.SUCCESS) {
-        await this.queue.cleanup(checkpointId);
+        if (this.config.cleanup) {
+          await this.queue.cleanup(checkpointId, this.config.cleanup.olderThan);
+        }
         const durationMs = Date.now() - startedAt;
         this.logger.info(
           `processed: Checkpoint<${checkpointKey}> caught up to Event<${eventId}> in ${durationMs}ms`,
@@ -877,14 +888,15 @@ export class FirestoreQueueStore {
     return tailCursor;
   }
 
-  async cleanup(id: CheckpointId) {
-    const aMonthAgo = MicrosecondTimestamp.now().sub(
-      MicrosecondTimestamp.WEEK.mult(4),
-    );
+  async cleanup(
+    id: CheckpointId,
+    olderThan: MicrosecondTimestamp = MicrosecondTimestamp.WEEK.mult(4),
+  ) {
+    const threshold = MicrosecondTimestamp.now().sub(olderThan);
 
     const query = this.queue(id)
       .where("remaining", ">", 0)
-      .where("occurredAt", "<", aMonthAgo.serialize()) // Only consider events older than 4 weeks
+      .where("occurredAt", "<", threshold.serialize())
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc")
       .orderBy("ref", "asc");
