@@ -19,7 +19,7 @@
     "build:server": "tsdown --config tsdown.config.js --out-dir dist/server src/server/index.ts src/server/cli.ts",
     "dev": "concurrently -k -n srv,web 'pnpm run dev:server' 'pnpm run dev:client'",
     "dev:client": "vite",
-    "dev:server": "node --import @swc-node/register/esm-register src/server/cli.ts /Users/arthur-fontaine/Developer/code/gitlab.com/kraaft/monorepo/master",
+    "dev:server": "node --watch --import @swc-node/register/esm-register src/server/cli.ts /Users/arthur-fontaine/Developer/code/gitlab.com/kraaft/monorepo/master --no-open",
     "start": "node dist/server/cli.mjs",
     "test": "echo 'no tests yet' && exit 0"
   },

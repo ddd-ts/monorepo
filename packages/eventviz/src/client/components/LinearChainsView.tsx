@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { collectDescendants, type GraphIndex, verbFor } from "../lib/graph.js";
 import { COL, FONT_MONO, KIND_META } from "../lib/tokens.js";
 import { KindGlyph } from "./KindGlyph.js";
 import { RootPicker } from "./RootPicker.js";
 import { MustContainPicker } from "./MustContainPicker.js";
+import { InspectorPanel } from "./InspectorPanel.js";
 import type { GraphEdge } from "../../shared/types.js";
 
 interface Props {
@@ -16,6 +17,7 @@ export function LinearChainsView({ index }: Props) {
   const [contains, setContains] = useState<string[]>([]);
   const [containsAll, setContainsAll] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [inspectId, setInspectId] = useState<string | null>(null);
 
   const setExp = useCallback((key: string, open: boolean) => {
     setExpanded((prev) => {
@@ -56,6 +58,7 @@ export function LinearChainsView({ index }: Props) {
     for (const r of effectiveRoots) walk(r, []);
     setExpanded(next);
   };
+  useLayoutEffect(() => { expandAll(); }, []); // auto-expand on first load
   const collapseAll = () => setExpanded(new Set());
 
   const stats = useMemo(() => {
@@ -221,34 +224,60 @@ export function LinearChainsView({ index }: Props) {
         </span>
         <div style={{ flex: 1 }} />
         <span style={{ color: COL.textFaint, fontStyle: "italic" }}>
-          click any node to focus it as the only root
+          click any node to inspect · use sidebar to focus as root
         </span>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
-        {effectiveRoots.length === 0 && (
-          <EmptyState />
-        )}
-        {effectiveRoots.map((rid) => (
-          <TreeRow
-            key={rid + "|" + direction}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          minHeight: 0,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            background: "#fff",
+            minWidth: 0,
+          }}
+        >
+          {effectiveRoots.length === 0 && <EmptyState />}
+          {effectiveRoots.map((rid) => (
+            <TreeRow
+              key={rid + "|" + direction}
+              index={index}
+              nodeId={rid}
+              edgeIn={null}
+              direction={direction}
+              depth={0}
+              pathIds={[]}
+              expanded={expanded}
+              setExpanded={setExp}
+              onInspect={(id) => setInspectId(id)}
+              inspectId={inspectId}
+              mustContain={contains}
+              mustContainAll={containsAll}
+              isRoot
+            />
+          ))}
+        </div>
+        {inspectId && (
+          <InspectorPanel
             index={index}
-            nodeId={rid}
-            edgeIn={null}
-            direction={direction}
-            depth={0}
-            pathIds={[]}
-            expanded={expanded}
-            setExpanded={setExp}
-            onPick={(id) => {
+            nodeId={inspectId}
+            onClose={() => setInspectId(null)}
+            onMakeRoot={(id, dir) => {
+              setDirection(dir);
               setRootIds([id]);
               setExpanded(new Set());
+              setInspectId(null);
             }}
-            mustContain={contains}
-            mustContainAll={containsAll}
-            isRoot
+            onJump={(id) => setInspectId(id)}
           />
-        ))}
+        )}
       </div>
     </div>
   );
@@ -263,7 +292,8 @@ interface RowProps {
   pathIds: string[];
   expanded: Set<string>;
   setExpanded: (key: string, open: boolean) => void;
-  onPick: (id: string) => void;
+  onInspect: (id: string) => void;
+  inspectId: string | null;
   mustContain: string[];
   mustContainAll: boolean;
   isRoot: boolean;
@@ -278,7 +308,8 @@ function TreeRow({
   pathIds,
   expanded,
   setExpanded,
-  onPick,
+  onInspect,
+  inspectId,
   mustContain,
   mustContainAll,
   isRoot,
@@ -299,7 +330,6 @@ function TreeRow({
   const path = pathIds.join("/") + "/" + nodeId;
   const isOpen = expanded.has(path);
   const hasChildren = validChildren.length > 0;
-  const effectivelyOpen = isRoot ? expanded.has(path) || true : isOpen;
 
   const branchPasses = isRoot
     ? mustContain.length === 0 ||
@@ -337,10 +367,10 @@ function TreeRow({
           gap: 8,
           padding: "7px 12px",
           paddingLeft: 12 + depth * 22,
-          background: isRoot ? COL.accentSoft : "transparent",
-          borderTop: isRoot ? `1px solid ${COL.accent}` : "none",
-          borderBottom: isRoot
-            ? `1px solid ${COL.accent}`
+          background: isRoot ? COL.bg : "transparent",
+          borderTop: isRoot ? `1px solid ${COL.border}` : "none",
+          borderBottom: isRoot && renderableChildren.length > 0 && isOpen
+            ? `1px solid ${COL.border}`
             : `0.5px solid oklch(0.96 0.005 80)`,
           position: "relative",
         }}
@@ -372,27 +402,10 @@ function TreeRow({
               textTransform: "uppercase",
               flexShrink: 0,
               transform: "translateX(-4px)",
+              width: '14ch',
+              justifyContent: 'right',
             }}
           >
-            <svg width={14} height={8} viewBox="0 0 14 8">
-              <line
-                x1={0}
-                y1={4}
-                x2={10}
-                y2={4}
-                stroke={COL.textFaint}
-                strokeWidth={0.8}
-                strokeDasharray={edgeIn.kind === "sends" ? "2 2" : "0"}
-              />
-              <path
-                d="M 10 1 L 13 4 L 10 7"
-                fill="none"
-                stroke={COL.textFaint}
-                strokeWidth={0.8}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-            </svg>
             <span>{verbFor(direction, edgeIn.kind)}</span>
           </div>
         )}
@@ -419,7 +432,7 @@ function TreeRow({
             height={9}
             viewBox="0 0 9 9"
             style={{
-              transform: effectivelyOpen ? "rotate(90deg)" : "rotate(0deg)",
+              transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
               transition: "transform .12s",
             }}
           >
@@ -434,23 +447,37 @@ function TreeRow({
           </svg>
         </button>
         <div
-          onClick={() => onPick(nodeId)}
+          onClick={() => onInspect(nodeId)}
           style={{
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
             padding: "4px 10px 4px 8px",
             borderRadius: 4,
-            border: `0.5px solid ${isRoot ? COL.accent : COL.borderStrong}`,
-            background: "#fff",
+            border: `0.5px solid ${
+              inspectId === nodeId
+                ? COL.accent
+                : isRoot
+                  ? COL.accent
+                  : COL.borderStrong
+            }`,
+            background: inspectId === nodeId ? COL.accentSoft : "#fff",
             cursor: "pointer",
             fontSize: 12.5,
             color: COL.text,
             whiteSpace: "nowrap",
+            transition: "background 0.08s, border-color 0.08s",
           }}
         >
           <KindGlyph kind={node.kind} />
-          <span style={{ fontWeight: isRoot ? 600 : 500 }}>{node.name}</span>
+          <span
+            style={{
+              fontWeight: isRoot ? 600 : 500,
+              color: inspectId === nodeId ? COL.accentText : COL.text,
+            }}
+          >
+            {node.name}
+          </span>
           <span
             style={{
               fontFamily: FONT_MONO,
@@ -484,7 +511,7 @@ function TreeRow({
                 : "origin"}
         </div>
       </div>
-      {effectivelyOpen &&
+      {isOpen &&
         renderableChildren.map((e) => {
           const childId = direction === "forward" ? e.to : e.from;
           return (
@@ -498,7 +525,8 @@ function TreeRow({
               pathIds={[...pathIds, nodeId]}
               expanded={expanded}
               setExpanded={setExpanded}
-              onPick={onPick}
+              onInspect={onInspect}
+              inspectId={inspectId}
               mustContain={mustContain}
               mustContainAll={mustContainAll}
               isRoot={false}
