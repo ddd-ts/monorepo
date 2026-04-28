@@ -96,7 +96,7 @@ export function verbFor(
   } else {
     if (edgeKind === "emits") return "emitted by";
     if (edgeKind === "sends") return "sent by";
-    if (edgeKind === "reacts") return "reacted to by";
+    if (edgeKind === "reacts") return "triggered by";
   }
   return edgeKind;
 }
