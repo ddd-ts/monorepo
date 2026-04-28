@@ -1,4 +1,4 @@
-import { Either, Multiple, Shape } from "@ddd-ts/shape";
+import { Either, MicrosecondTimestamp, Multiple, Shape } from "@ddd-ts/shape";
 import type {
   IEsEvent,
   IFact,
@@ -49,6 +49,25 @@ export interface ProjectedStreamStorageLayer {
     endAt?: Cursor,
     count?: number,
   ): Promise<ISerializedFact[]>;
+
+  /**
+   * Returns the first fact at or after `from` (microsecond timestamp), or
+   * undefined if no event matches. Implementations should query with `>=`,
+   * not `>`, so the boundary fact is included.
+   */
+  firstAtOrAfter?(
+    projectedStream: ProjectedStream,
+    shard: string,
+    from: MicrosecondTimestamp,
+  ): Promise<ISerializedFact | undefined>;
+
+  /**
+   * Returns the most recent fact in the stream, or undefined if empty.
+   */
+  latest?(
+    projectedStream: ProjectedStream,
+    shard: string,
+  ): Promise<ISerializedFact | undefined>;
 }
 
 export class ProjectedStreamReader<Event extends IEsEvent> {
@@ -101,5 +120,42 @@ export class ProjectedStreamReader<Event extends IEsEvent> {
     return (await Promise.all(
       slice.map((fact) => this.registry.deserialize(fact)),
     )) as IFact<Event>[];
+  }
+
+  async first(
+    source: ProjectedStream,
+    shard: string,
+  ): Promise<IFact<Event> | undefined> {
+    const [fact] = await this.slice(source, shard, Cursor.MIN, Cursor.MAX, 1);
+    return fact;
+  }
+
+  async firstAtOrAfter(
+    source: ProjectedStream,
+    shard: string,
+    from: MicrosecondTimestamp,
+  ): Promise<IFact<Event> | undefined> {
+    if (!this.reader.firstAtOrAfter) {
+      throw new Error(
+        "Underlying ProjectedStreamStorageLayer does not implement firstAtOrAfter",
+      );
+    }
+    const fact = await this.reader.firstAtOrAfter(source, shard, from);
+    if (!fact) return undefined;
+    return this.registry.deserialize(fact) as IFact<Event>;
+  }
+
+  async latest(
+    source: ProjectedStream,
+    shard: string,
+  ): Promise<IFact<Event> | undefined> {
+    if (!this.reader.latest) {
+      throw new Error(
+        "Underlying ProjectedStreamStorageLayer does not implement latest",
+      );
+    }
+    const fact = await this.reader.latest(source, shard);
+    if (!fact) return undefined;
+    return this.registry.deserialize(fact) as IFact<Event>;
   }
 }
