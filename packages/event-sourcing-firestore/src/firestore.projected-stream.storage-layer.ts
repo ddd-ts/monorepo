@@ -68,7 +68,7 @@ export class FirestoreProjectedStreamStorageLayer
 
     query = query.where(Filter.or(...filters));
 
-    if (startAfter) {
+    if (startAfter && !startAfter.isMin()) {
       const ts = this.microsecondToTimestamp(startAfter.occurredAt);
       query = query.startAfter(
         ts,
@@ -77,7 +77,7 @@ export class FirestoreProjectedStreamStorageLayer
       );
     }
 
-    if (endAt) {
+    if (endAt && !endAt.isMax()) {
       const ts = this.microsecondToTimestamp(endAt.occurredAt);
       query = query.endAt(
         ts,
@@ -165,7 +165,7 @@ export class FirestoreProjectedStreamStorageLayer
 
     query = query.where(Filter.or(...filters));
 
-    if (startAfter) {
+    if (startAfter && !startAfter.isMin()) {
       const ts = this.microsecondToTimestamp(startAfter.occurredAt);
       query = query.startAfter(
         ts,
@@ -174,7 +174,7 @@ export class FirestoreProjectedStreamStorageLayer
       );
     }
 
-    if (endAt) {
+    if (endAt && !endAt.isMax()) {
       const ts = this.microsecondToTimestamp(endAt.occurredAt);
       query = query.endAt(
         ts,
