@@ -2,14 +2,14 @@ import { Shape } from "./_";
 import { DeserializationError } from "./deserialization-error";
 
 class Latitude extends Shape(Number) {
-  static override deserialize(value: any): Latitude {
+  static override deserialize(value: number) {
     if (typeof value !== "number") {
       throw new DeserializationError("Expected number", {
         rejectedValue: value,
         expected: "number",
       });
     }
-    return new Latitude(value);
+    return super.deserialize(value);
   }
 }
 
