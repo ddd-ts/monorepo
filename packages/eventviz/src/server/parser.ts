@@ -8,6 +8,7 @@ import type {
   GraphNode,
   NodeKind,
 } from "../shared/types.js";
+import { appendFileSync } from "node:fs";
 
 interface ScannedClass {
   className: string;
@@ -373,6 +374,7 @@ function buildGraph(root: string, scans: FileScan[]): Graph {
     const rel = relative(root, scan.path) || scan.path;
     for (const cls of scan.classes) {
       const node = classifyAsNode(cls, rel);
+      appendFileSync("scans-debug.json", JSON.stringify({ class: cls.className, file: rel, node: node?.id }, null, 2));
       if (!node) continue;
       // Avoid duplicates by name + kind
       const key = `${node.kind}:${node.name}`;
@@ -380,20 +382,22 @@ function buildGraph(root: string, scans: FileScan[]): Graph {
       byName.set(key, node);
       byName.set(node.name, node); // by name only for symbol resolution
       nodes.push(node);
+      if (node.name === "Billing") console.log({ cls, node }); // DEBUG
       if (cls.baseName === "CommandHandler" && cls.baseGenericIdentifier) {
         handlerToCommand.set(cls.className, cls.baseGenericIdentifier);
       }
       if (
         cls.baseName === "Saga" ||
         cls.baseName === "Projection" ||
-        cls.baseCallee === "Projection.from"
+        cls.baseCallee === "Projection.from" ||
+        cls.baseName === "EsAggregate"
       ) {
         reactorsByClassName.set(cls.className, node);
       }
     }
     for (const cls of scan.classes) {
       for (const m of cls.methods) {
-        const node = classifyAsNode(m, rel, byName.get(`${cls.baseName === "Saga" || cls.baseName === "Projection" ? cls.className : ""}`));
+        const node = classifyAsNode(m, rel, byName.get(`${cls.baseName === "Saga" || cls.baseName === "Projection" || cls.baseName === "EsAggregate" ? cls.className : ""}`));
         if (!node) continue;
         const key = `${cls.baseName}.${node.kind}:${node.name}`;
         if (byName.has(key)) continue;
@@ -528,6 +532,63 @@ function buildGraph(root: string, scans: FileScan[]): Graph {
           edges.push({ from: ev.id, to: selfNode.id, kind: "reacts" });
         }
       }
+
+            // Saga: methods reacting to events + sending commands + emitting events
+      if (cls.baseName === "EsAggregate" && selfNode) {
+        console.log('getting aggregate', cls.className, selfNode.id);
+        const clsNode = selfNode;
+        for (const m of cls.methods) {
+          const selfNode = byName.get(`${clsNode.name}.${m.name}`);
+          console.log(`  getting method`, m.name, selfNode?.id, `(${clsNode.name}.${m.name})`);
+          if (!selfNode) continue;
+          const reactedTo = new Set<string>();
+          for (const dec of m.decorators) {
+            if (
+              dec.callee === "EsAggregate.on" ||
+              dec.callee === "on" ||
+              dec.callee === "On"
+            ) {
+              if (dec.arg0Identifier) reactedTo.add(dec.arg0Identifier);
+            }
+          }
+          for (const id of reactedTo) {
+            const ev = byName.get(id);
+            if (!ev || ev.kind !== "event") continue;
+            edges.push({ from: ev.id, to: selfNode.id, kind: "reacts" });
+          }
+          // Sends commands and emits events from method bodies
+          const sentCmds = new Set<string>();
+          const emittedEvts = new Set<string>();
+          for (const c of m.callExprs) {
+            if (
+              c.member === "execute" ||
+              c.member === "dispatch" ||
+              c.member === "send"
+            ) {
+              if (c.arg0NewIdentifier) sentCmds.add(c.arg0NewIdentifier);
+            }
+            if (c.member === "publish" || c.member === "emit") {
+              if (c.arg0NewIdentifier) emittedEvts.add(c.arg0NewIdentifier);
+            }
+          }
+          for (const id of m.newCalls) {
+            const t = byName.get(id);
+            if (t?.kind === "event") emittedEvts.add(id);
+          }
+          for (const id of sentCmds) {
+            const t = byName.get(id);
+            if (t?.kind === "command") {
+              edges.push({ from: selfNode.id, to: t.id, kind: "sends" });
+            }
+          }
+          for (const id of emittedEvts) {
+            const t = byName.get(id);
+            if (t?.kind === "event") {
+              edges.push({ from: selfNode.id, to: t.id, kind: "emits" });
+            }
+          }
+        }
+      }
     }
   }
 
@@ -555,6 +616,7 @@ function classifyAsNode(obj: ScannedClass | ScannedMethod, file: string, clsPare
     if (base === "EsEvent" || base === "Event") kind = "event";
     else if (base === "$Command" || base === "Command") kind = "command";
     else if (base === "Saga") kind = "saga";
+    else if (base === "EsAggregate") kind = "saga";
     else if (base === "Projection" || cls.baseCallee === "Projection.from") {
       kind = "projection";
     } else if (base === "CommandHandler") {
@@ -574,6 +636,7 @@ function classifyAsNode(obj: ScannedClass | ScannedMethod, file: string, clsPare
     };
   } else if (clsParent) {
     const m = obj;
+    if (m.decorators.every((d) => !d.callee.toLowerCase().includes("on"))) return null;
     const name = `${clsParent.name}.${m.name}`;
     return {
       id: makeNodeId(clsParent.kind, name),
