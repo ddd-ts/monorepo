@@ -1,4 +1,5 @@
 import type { HasTrait } from "@ddd-ts/traits";
+import { DeserializationError } from "@ddd-ts/shape";
 import type { INamed, INamedContructor } from "../interfaces/named";
 import type {
   ISerializer,
@@ -155,7 +156,31 @@ export class SerializerRegistry<
       throw new Error(`No serializer for ${name}`);
     }
 
-    return serializer.deserialize(serialized);
+    const version =
+      typeof serialized === "object" &&
+      serialized !== null &&
+      "version" in serialized &&
+      typeof (serialized as any).version === "number"
+        ? (serialized as any).version
+        : undefined;
+
+    try {
+      const result = serializer.deserialize(serialized);
+      if (result && typeof (result as any).then === "function") {
+        return (result as Promise<unknown>).catch((err) => {
+          if (err instanceof DeserializationError) {
+            err.registryEntry ??= { name, version };
+          }
+          throw err;
+        });
+      }
+      return result;
+    } catch (err) {
+      if (err instanceof DeserializationError) {
+        err.registryEntry ??= { name, version };
+      }
+      throw err;
+    }
   }
 }
 

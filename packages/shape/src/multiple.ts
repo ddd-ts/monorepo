@@ -8,6 +8,7 @@ import {
   Empty,
   type Constructor,
 } from "./_";
+import { DeserializationError } from "./deserialization-error";
 
 export type MultipleConfiguration = Definition | Shorthand;
 export type MultipleShorthand = [any] | readonly [any];
@@ -41,7 +42,14 @@ export const Multiple = <
     }
 
     static $deserialize(value: any) {
-      return (value as any).map(longhand.$deserialize);
+      const deserialize = (longhand as any).$deserialize as (v: any) => any;
+      return (value as any).map((item: any, index: number) => {
+        try {
+          return deserialize(item);
+        } catch (err) {
+          throw DeserializationError.wrap(err, String(index), item);
+        }
+      });
     }
 
     static $serialize(value: any) {

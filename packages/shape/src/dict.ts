@@ -7,6 +7,7 @@ import {
   type Constructor,
   Empty,
 } from "./_";
+import { DeserializationError } from "./deserialization-error";
 
 export type DictShorthand = { [key: string]: Shorthand };
 
@@ -55,8 +56,12 @@ export const Dict = <
       const split = Object.entries(of);
       const transform = split.map(([key, child]) => {
         const longhand = Shape(child) as any;
-        const deserialized = longhand.$deserialize((value as any)[key]);
-        return [key, deserialized];
+        try {
+          const deserialized = longhand.$deserialize((value as any)?.[key]);
+          return [key, deserialized];
+        } catch (err) {
+          throw DeserializationError.wrap(err, key, (value as any)?.[key]);
+        }
       });
       const merge = Object.fromEntries(transform);
       return merge;
