@@ -73,6 +73,12 @@ interface FirestoreProjectorConfig {
    *   each successful event handling.
    */
   cleanup?: false | { olderThan: MicrosecondTimestamp };
+  /**
+   * Optional pre-handle filter. Returning `false` causes `handle()` to
+   * return without enqueuing or processing the event. Useful for feature
+   * flags or per-shard gating without subclassing the projector.
+   */
+  shouldHandle?: (event: ISavedChange<IEsEvent>) => Promise<boolean> | boolean;
   logger?: ProjectorLogger;
   /** @deprecated Use `logger.error` instead */
   onProcessError: (error: Error) => void;
@@ -153,6 +159,11 @@ export class FirestoreProjector {
   }
 
   async handle(savedChange: ISavedChange<IEsEvent>) {
+    if (this.config.shouldHandle) {
+      const accept = await this.config.shouldHandle(savedChange);
+      if (!accept) return;
+    }
+
     const checkpointId = this.projection.getCheckpointId(savedChange);
     const key = checkpointId.serialize();
 
@@ -323,7 +334,7 @@ export class FirestoreProjector {
   }
 
   // @Trace("projector.attempt")
-  private async attempt(
+  async attempt(
     source: ProjectedStream,
     checkpointId: CheckpointId,
     target: Cursor,
@@ -390,7 +401,7 @@ export class FirestoreProjector {
   }
 
   // @Trace("projector.queue.head")
-  private async getQueueHead(checkpointId: CheckpointId) {
+  async getQueueHead(checkpointId: CheckpointId) {
     return await this.queue.head(checkpointId);
   }
 
@@ -408,7 +419,7 @@ export class FirestoreProjector {
   }
 
   // @Trace("projector.enqueue")
-  private async enqueue(
+  async enqueue(
     source: ProjectedStream,
     head: Cursor | undefined,
     checkpointId: CheckpointId,
@@ -448,7 +459,7 @@ export class FirestoreProjector {
     return result;
   }
 
-  private async enqueueOne(checkpointId: CheckpointId, target: Cursor) {
+  async enqueueOne(checkpointId: CheckpointId, target: Cursor) {
     const event = await this.reader.get(target);
     if (!event) {
       throw new Error(`Event not found for cursor ${target.ref}`);
@@ -464,6 +475,130 @@ export class FirestoreProjector {
     }
 
     return result;
+  }
+
+  /**
+   * Enqueue all source events between the current queue head (exclusive)
+   * and `until` (inclusive). Defaults to Cursor.MAX, i.e. "to the end of
+   * the stream".
+   */
+  async enqueueUpTo(checkpointId: CheckpointId, until: Cursor = Cursor.MAX) {
+    const source = this.projection.getSource();
+    const head = await this.getQueueHead(checkpointId);
+    return this.enqueue(source, head, checkpointId, until);
+  }
+
+  /**
+   * Enqueue a single event by cursor. With `idempotent: true`, deletes any
+   * existing queued doc with the same eventId before re-creating, so a
+   * re-trigger after a partial replay doesn't fail with ALREADY_EXISTS.
+   */
+  async enqueueCursor(
+    checkpointId: CheckpointId,
+    cursor: Cursor,
+    opts: { idempotent?: boolean } = {},
+  ) {
+    if (opts.idempotent) {
+      await this.queue.queued(checkpointId, cursor.eventId).delete();
+    }
+    return this.enqueueOne(checkpointId, cursor);
+  }
+
+  /**
+   * Drain the queue to completion: repeatedly call attempt() with the
+   * current head as target until no unprocessed tasks remain. Yields to
+   * the event loop between iterations.
+   */
+  async dequeue(checkpointId: CheckpointId) {
+    const source = this.projection.getSource();
+    while (await this.queue.hasUnprocessed(checkpointId)) {
+      const head = await this.getQueueHead(checkpointId);
+      if (!head) return;
+      await this.attempt(source, checkpointId, head);
+      await wait(10);
+    }
+  }
+
+  /**
+   * Enqueue + drain in a loop until both phases are quiet. New events
+   * arriving mid-drain are picked up by the next enqueueUpTo cycle.
+   */
+  async catchup(
+    checkpointId: CheckpointId,
+    opts: { deadlineMs?: number } = {},
+  ) {
+    const deadline = opts.deadlineMs
+      ? Date.now() + opts.deadlineMs
+      : undefined;
+
+    while (true) {
+      await this.enqueueUpTo(checkpointId);
+      if (!(await this.queue.hasUnprocessed(checkpointId))) return;
+      await this.dequeue(checkpointId);
+      if (deadline !== undefined && Date.now() > deadline) {
+        throw new Error(
+          `catchup: deadline of ${opts.deadlineMs}ms exceeded for checkpoint ${checkpointId.serialize()}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Replay a checkpoint. Blocks the queue head, wipes existing tasks
+   * (except the blocker), seeds the start cursor, unblocks, and runs
+   * catchup forward. Concurrent listen() calls are safe — events
+   * arriving mid-replay are coalesced or re-enqueued by catchup.
+   *
+   * Provide either `from` (a Cursor) or `fromDate` (a wall-clock Date).
+   * If neither is given, replays from the first event in the stream.
+   */
+  async play(
+    checkpointId: CheckpointId,
+    opts: { from?: Cursor; fromDate?: Date } = {},
+  ) {
+    const start = await this.resolvePlayStart(checkpointId, opts);
+    if (!start) {
+      throw new Error(
+        `play: no events found for checkpoint ${checkpointId.serialize()}`,
+      );
+    }
+
+    await this.queue.block(checkpointId);
+    try {
+      await this.queue.flush(checkpointId, {
+        except: [FirestoreQueueStore.BLOCKER_EVENT_ID],
+      });
+      await this.enqueueCursor(checkpointId, start, { idempotent: true });
+    } finally {
+      await this.queue.unblock(checkpointId);
+    }
+
+    await this.catchup(checkpointId);
+  }
+
+  async playFrom(checkpointId: CheckpointId, fromDate: Date) {
+    return this.play(checkpointId, { fromDate });
+  }
+
+  private async resolvePlayStart(
+    checkpointId: CheckpointId,
+    opts: { from?: Cursor; fromDate?: Date },
+  ): Promise<Cursor | undefined> {
+    if (opts.from) return opts.from;
+
+    const source = this.projection.getSource();
+    const shard = checkpointId.shard();
+
+    if (opts.fromDate) {
+      const fromMicros = MicrosecondTimestamp.deserialize(opts.fromDate);
+      const fact = await this.reader.firstAtOrAfter(source, shard, fromMicros);
+      if (!fact) return undefined;
+      return Cursor.from(fact);
+    }
+
+    const fact = await this.reader.first(source, shard);
+    if (!fact) return undefined;
+    return Cursor.from(fact);
   }
 
   // @Trace("projector.queue.isProcessed")
@@ -591,6 +726,11 @@ export class AlreadyEnqueuedError extends Error {
 export class FirestoreQueueStore {
   converter = new DefaultConverter();
   collection: FirebaseFirestore.CollectionReference;
+
+  // Canonical blocker eventId used by block()/unblock() to park a sentinel
+  // task at Cursor.MAX. Stable across calls so unblock() can find it
+  // without the caller tracking the id.
+  static readonly BLOCKER_EVENT_ID = new EventId("_blocker_");
 
   constructor(public db: Firestore) {
     this.collection = db.collection(
@@ -919,11 +1059,62 @@ export class FirestoreQueueStore {
     await batch.commit();
   }
 
-  async flush(id: CheckpointId) {
+  async flush(id: CheckpointId, opts: { except?: EventId[] } = {}) {
+    const exclude = new Set((opts.except ?? []).map((e) => e.serialize()));
     const stream = this.queue(id).stream() as AsyncIterable<any>;
     const writer = this.collection.firestore.bulkWriter();
-    for await (const queued of stream) writer.delete(queued.ref);
+    for await (const queued of stream) {
+      if (exclude.has(queued.id)) continue;
+      writer.delete(queued.ref);
+    }
     await writer.close();
+  }
+
+  async hasUnprocessed(checkpointId: CheckpointId): Promise<boolean> {
+    const snap = await this.queue(checkpointId)
+      .where("processed", "==", false)
+      .where("remaining", ">", 0)
+      .limit(1)
+      .get();
+    return !snap.empty;
+  }
+
+  async block(
+    checkpointId: CheckpointId,
+    blockerId: EventId = FirestoreQueueStore.BLOCKER_EVENT_ID,
+  ) {
+    const task = new Task<false>({
+      id: blockerId,
+      ref: Cursor.MAX.ref,
+      occurredAt: Cursor.MAX.occurredAt,
+      revision: Cursor.MAX.revision,
+      attempts: 0,
+      processed: true,
+      /** @deprecated */ claimer: undefined,
+      /** @deprecated */ claimedAt: undefined,
+      claimsMetadata: {},
+      claimIds: [],
+      lock: new Lock({}),
+      remaining: 1,
+      claimTimeout: 0,
+      skipAfter: 0,
+      isolateAfter: 0,
+      lastUpdateTime: undefined,
+    });
+    await this.queued(checkpointId, blockerId).delete();
+    const serialized = task.serialize();
+    const converted = this.converter.toFirestore(serialized);
+    await this.queued(checkpointId, blockerId).create({
+      ...converted,
+      ref: Cursor.MAX.ref,
+    });
+  }
+
+  async unblock(
+    checkpointId: CheckpointId,
+    blockerId: EventId = FirestoreQueueStore.BLOCKER_EVENT_ID,
+  ) {
+    await this.queued(checkpointId, blockerId).delete();
   }
 
   /**
