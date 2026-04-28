@@ -29,6 +29,12 @@ export class Cursor extends Shape({
       return false;
     }
 
+    if (typeof this.ref !== "string" || typeof other.ref !== "string") {
+      throw new Error(
+        `Cursor.isAfter: ref must be a string, got ${typeof this.ref} vs ${typeof other.ref}`,
+      );
+    }
+
     return this.ref > other.ref;
   }
 
