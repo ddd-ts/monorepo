@@ -364,7 +364,6 @@ function buildGraph(root: string, scans: FileScan[]): Graph {
     const rel = relative(root, scan.path) || scan.path;
     for (const cls of scan.classes) {
       const node = classifyAsNode(cls, rel);
-      appendFileSync("scans-debug.json", JSON.stringify({ class: cls.className, file: rel, node: node?.id }, null, 2));
       if (!node) continue;
       // Avoid duplicates by name + kind
       const key = `${node.kind}:${node.name}`;

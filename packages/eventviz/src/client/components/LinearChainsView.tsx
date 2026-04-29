@@ -10,6 +10,8 @@ import { KindGlyph } from "./KindGlyph.js";
 import { RootPicker } from "./RootPicker.js";
 import { MustContainPicker } from "./MustContainPicker.js";
 import { InspectorPanel } from "./InspectorPanel.js";
+import { CypherQueryBar } from "./CypherQueryBar.js";
+import { executeCypher } from "../lib/cypher.js";
 import type { GraphEdge } from "../../shared/types.js";
 
 interface Props {
@@ -26,6 +28,30 @@ export function LinearChainsView({ index }: Props) {
     () => new Set(),
   );
   const [inspectId, setInspectId] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [cypherQuery, setCypherQuery] = useState("");
+
+  const cypherResult = useMemo(() => {
+    if (!advancedOpen || !cypherQuery.trim()) {
+      return { ok: true as const, nodeIds: null, rowCount: null };
+    }
+    try {
+      const r = executeCypher(cypherQuery, index);
+      return {
+        ok: true as const,
+        nodeIds: r.nodeIds,
+        rowCount: r.rowCount,
+      };
+    } catch (e) {
+      return { ok: false as const, error: (e as Error).message };
+    }
+  }, [advancedOpen, cypherQuery, index]);
+
+  const cypherActive =
+    advancedOpen &&
+    cypherResult.ok &&
+    cypherResult.nodeIds !== null &&
+    cypherResult.nodeIds.size > 0;
 
   const setExp = useCallback((key: string, open: boolean) => {
     setExpanded((prev) => {
@@ -37,6 +63,9 @@ export function LinearChainsView({ index }: Props) {
   }, []);
 
   const effectiveRoots = useMemo(() => {
+    if (cypherActive && cypherResult.ok && cypherResult.nodeIds) {
+      return [...cypherResult.nodeIds];
+    }
     if (rootIds.length > 0) return rootIds;
     const boundary = index.nodes
       .filter((n) =>
@@ -62,7 +91,7 @@ export function LinearChainsView({ index }: Props) {
       })
       .map((n) => n.id);
     return boundary.length > 0 ? boundary : index.nodes.map((n) => n.id);
-  }, [index, rootIds, direction]);
+  }, [index, rootIds, direction, cypherActive, cypherResult]);
 
   const expandAll = () => {
     const next = new Set(expanded);
@@ -135,7 +164,8 @@ export function LinearChainsView({ index }: Props) {
     return { reach: all.size, rootCount: effectiveRoots.length };
   }, [index, effectiveRoots, direction]);
 
-  const isAllMode = rootIds.length === 0;
+  const isAllMode = rootIds.length === 0 && !cypherActive;
+  const cypherMatchSet = cypherActive && cypherResult.ok ? cypherResult.nodeIds : null;
 
   return (
     <div
@@ -220,6 +250,26 @@ export function LinearChainsView({ index }: Props) {
         <div style={{ display: "flex", gap: 6 }}>
           <button
             type="button"
+            onClick={() => setAdvancedOpen((v) => !v)}
+            title="Cypher query"
+            style={{
+              border: `0.5px solid ${
+                advancedOpen ? COL.accent : COL.border
+              }`,
+              background: advancedOpen ? COL.accentSoft : "#fff",
+              color: advancedOpen ? COL.accentText : COL.textMuted,
+              padding: "6px 10px",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontSize: 11,
+              fontFamily: "inherit",
+              fontWeight: advancedOpen ? 600 : 400,
+            }}
+          >
+            Advanced
+          </button>
+          <button
+            type="button"
             onClick={expandAll}
             style={{
               border: `0.5px solid ${COL.border}`,
@@ -253,6 +303,24 @@ export function LinearChainsView({ index }: Props) {
         </div>
       </div>
 
+      {advancedOpen && (
+        <CypherQueryBar
+          value={cypherQuery}
+          onChange={setCypherQuery}
+          error={cypherResult.ok ? null : cypherResult.error}
+          matchCount={
+            cypherResult.ok && cypherResult.nodeIds
+              ? cypherResult.nodeIds.size
+              : null
+          }
+          rowCount={
+            cypherResult.ok && cypherResult.rowCount !== null
+              ? cypherResult.rowCount
+              : null
+          }
+        />
+      )}
+
       <div
         style={{
           padding: "8px 16px",
@@ -276,9 +344,11 @@ export function LinearChainsView({ index }: Props) {
           {direction === "forward" ? "Tracing from" : "Tracing to"}
         </span>
         <span style={{ color: COL.text, fontWeight: 500 }}>
-          {isAllMode
-            ? `all events · ${effectiveRoots.length} root${effectiveRoots.length === 1 ? "" : "s"}`
-            : `${rootIds.length} event${rootIds.length === 1 ? "" : "s"}`}
+          {cypherActive
+            ? `cypher match · ${effectiveRoots.length} node${effectiveRoots.length === 1 ? "" : "s"}`
+            : isAllMode
+              ? `all events · ${effectiveRoots.length} root${effectiveRoots.length === 1 ? "" : "s"}`
+              : `${rootIds.length} event${rootIds.length === 1 ? "" : "s"}`}
         </span>
         <span style={{ color: COL.textFaint }}>·</span>
         <span>
@@ -334,6 +404,7 @@ export function LinearChainsView({ index }: Props) {
                       inspectId={inspectId}
                       mustContain={contains}
                       mustContainAll={containsAll}
+                      cypherMatch={cypherMatchSet}
                       isRoot
                     />
                   ))}
@@ -373,6 +444,7 @@ interface RowProps {
   inspectId: string | null;
   mustContain: string[];
   mustContainAll: boolean;
+  cypherMatch: Set<string> | null;
   isRoot: boolean;
 }
 
@@ -389,6 +461,7 @@ function TreeRow({
   inspectId,
   mustContain,
   mustContainAll,
+  cypherMatch,
   isRoot,
 }: RowProps) {
   const node = index.byId[nodeId];
@@ -606,6 +679,7 @@ function TreeRow({
               inspectId={inspectId}
               mustContain={mustContain}
               mustContainAll={mustContainAll}
+              cypherMatch={cypherMatch}
               isRoot={false}
             />
           );
