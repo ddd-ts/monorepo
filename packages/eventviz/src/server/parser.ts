@@ -54,16 +54,6 @@ interface FileScan {
   topLevelNewCalls: string[];
 }
 
-const NODE_KIND_BY_BASE: Record<string, NodeKind> = {
-  EsEvent: "event",
-  Event: "event",
-  Command: "command",
-  $Command: "command",
-  Saga: "saga",
-  CommandHandler: "command-handler" as NodeKind,
-  Projection: "projection",
-};
-
 export interface ParserOptions {
   root: string;
   files: string[];
@@ -608,7 +598,7 @@ function classifyAsNode(obj: ScannedClass | ScannedMethod, file: string, clsPare
     const name = cls.className;
     let kind: NodeKind | null = null;
 
-    if (base === "EsEvent" || base === "Event") kind = "event";
+    if (base === "EsEvent" || base === "OldEvent" || base === "Event") kind = "event";
     else if (base === "$Command" || base === "Command") kind = "command";
     else if (base === "Saga") kind = "saga";
     else if (base === "EsAggregate") kind = "saga";

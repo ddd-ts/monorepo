@@ -36,6 +36,22 @@ export function LinearChainsView({ index }: Props) {
           ? (index.incoming[n.id] || []).length === 0
           : (index.outgoing[n.id] || []).length === 0,
       )
+      .filter((n) => {
+        if (direction === "forward") return n.kind === "event";
+        else return n.kind !== "event";
+      })
+      .filter((n) => {
+        if (n.kind === "saga" || n.kind === "projection") {
+          if (!n.name.includes(".")) return false; // filter out top-level sagas/projections, which are often just containers
+        }
+        return true;
+      })
+      .filter((n) => {
+        if (n.kind === "command") {
+          if (index.outgoing[n.id].length === 0 && index.incoming[n.id].length === 0) return false; // filter out orphan commands, which are often just data structures
+        }
+        return true;
+      })
       .map((n) => n.id);
     return boundary.length > 0 ? boundary : index.nodes.map((n) => n.id);
   }, [index, rootIds, direction]);
@@ -58,7 +74,7 @@ export function LinearChainsView({ index }: Props) {
     for (const r of effectiveRoots) walk(r, []);
     setExpanded(next);
   };
-  useLayoutEffect(() => { expandAll(); }, []); // auto-expand on first load
+  useLayoutEffect(() => { expandAll(); }, [direction]); // auto-expand on first load
   const collapseAll = () => setExpanded(new Set());
 
   const stats = useMemo(() => {
