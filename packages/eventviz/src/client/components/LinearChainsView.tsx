@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { collectDescendants, type GraphIndex, verbFor } from "../lib/graph.js";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import {
+  collectDescendants,
+  computeDomains,
+  type GraphIndex,
+  verbFor,
+} from "../lib/graph.js";
 import { COL, FONT_MONO, KIND_META } from "../lib/tokens.js";
 import { KindGlyph } from "./KindGlyph.js";
 import { RootPicker } from "./RootPicker.js";
@@ -17,6 +22,9 @@ export function LinearChainsView({ index }: Props) {
   const [contains, setContains] = useState<string[]>([]);
   const [containsAll, setContainsAll] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [collapsedDomains, setCollapsedDomains] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [inspectId, setInspectId] = useState<string | null>(null);
 
   const setExp = useCallback((key: string, open: boolean) => {
@@ -73,9 +81,48 @@ export function LinearChainsView({ index }: Props) {
     };
     for (const r of effectiveRoots) walk(r, []);
     setExpanded(next);
+    setCollapsedDomains(new Set());
   };
   useLayoutEffect(() => { expandAll(); }, [direction]); // auto-expand on first load
-  const collapseAll = () => setExpanded(new Set());
+  const collapseAll = () => {
+    setExpanded(new Set());
+    const allDomainKeys = new Set<string>();
+    for (const r of effectiveRoots) {
+      const d = domainByNodeId.get(r);
+      if (d) allDomainKeys.add(d.key);
+    }
+    setCollapsedDomains(allDomainKeys);
+  };
+
+  const domainByNodeId = useMemo(
+    () => computeDomains(index.nodes),
+    [index],
+  );
+  const groupedRoots = useMemo(() => {
+    const groups: { key: string; label: string; rootIds: string[] }[] = [];
+    const indexByKey = new Map<string, number>();
+    for (const rid of effectiveRoots) {
+      const d = domainByNodeId.get(rid) ?? { key: "·", label: "·" };
+      let i = indexByKey.get(d.key);
+      if (i === undefined) {
+        i = groups.length;
+        indexByKey.set(d.key, i);
+        groups.push({ key: d.key, label: d.label, rootIds: [] });
+      }
+      groups[i].rootIds.push(rid);
+    }
+    groups.sort((a, b) => a.label.localeCompare(b.label));
+    return groups;
+  }, [effectiveRoots, domainByNodeId]);
+
+  const toggleDomain = useCallback((domain: string) => {
+    setCollapsedDomains((prev) => {
+      const next = new Set(prev);
+      if (next.has(domain)) next.delete(domain);
+      else next.add(domain);
+      return next;
+    });
+  }, []);
 
   const stats = useMemo(() => {
     const all = new Set<string>();
@@ -261,24 +308,38 @@ export function LinearChainsView({ index }: Props) {
           }}
         >
           {effectiveRoots.length === 0 && <EmptyState />}
-          {effectiveRoots.map((rid) => (
-            <TreeRow
-              key={rid + "|" + direction}
-              index={index}
-              nodeId={rid}
-              edgeIn={null}
-              direction={direction}
-              depth={0}
-              pathIds={[]}
-              expanded={expanded}
-              setExpanded={setExp}
-              onInspect={(id) => setInspectId(id)}
-              inspectId={inspectId}
-              mustContain={contains}
-              mustContainAll={containsAll}
-              isRoot
-            />
-          ))}
+          {groupedRoots.map(({ key, label, rootIds }) => {
+            const isCollapsed = collapsedDomains.has(key);
+            return (
+              <div key={key}>
+                <DomainHeader
+                  label={label}
+                  count={rootIds.length}
+                  collapsed={isCollapsed}
+                  onToggle={() => toggleDomain(key)}
+                />
+                {!isCollapsed &&
+                  rootIds.map((rid) => (
+                    <TreeRow
+                      key={rid + "|" + direction}
+                      index={index}
+                      nodeId={rid}
+                      edgeIn={null}
+                      direction={direction}
+                      depth={0}
+                      pathIds={[]}
+                      expanded={expanded}
+                      setExpanded={setExp}
+                      onInspect={(id) => setInspectId(id)}
+                      inspectId={inspectId}
+                      mustContain={contains}
+                      mustContainAll={containsAll}
+                      isRoot
+                    />
+                  ))}
+              </div>
+            );
+          })}
         </div>
         {inspectId && (
           <InspectorPanel
@@ -550,6 +611,83 @@ function TreeRow({
           );
         })}
     </div>
+  );
+}
+
+interface DomainHeaderProps {
+  label: string;
+  count: number;
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+function DomainHeader({ label, count, collapsed, onToggle }: DomainHeaderProps) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        width: "100%",
+        padding: "10px 14px 8px",
+        border: "none",
+        borderTop: `0.5px solid ${COL.border}`,
+        background: "#fff",
+        cursor: "pointer",
+        textAlign: "left",
+        font: "inherit",
+        position: "sticky",
+        top: 0,
+        zIndex: 1,
+      }}
+    >
+      <svg
+        width={9}
+        height={9}
+        viewBox="0 0 9 9"
+        style={{
+          color: COL.textMuted,
+          transform: collapsed ? "rotate(0deg)" : "rotate(90deg)",
+          transition: "transform .12s",
+          flexShrink: 0,
+        }}
+      >
+        <path
+          d="M2 1 L6 4.5 L2 8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span
+        style={{
+          fontFamily: FONT_MONO,
+          fontSize: 11,
+          color: COL.text,
+          fontWeight: 500,
+          letterSpacing: 0.5,
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </span>
+      <div style={{ flex: 1 }} />
+      <span
+        style={{
+          fontFamily: FONT_MONO,
+          fontSize: 10,
+          color: COL.textFaint,
+          letterSpacing: 0.3,
+          textTransform: "uppercase",
+        }}
+      >
+        {count} root{count === 1 ? "" : "s"}
+      </span>
+    </button>
   );
 }
 
