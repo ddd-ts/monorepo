@@ -24,11 +24,12 @@
     "test": "echo 'no tests yet' && exit 0"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "birpc": "^2.9.0",
     "chokidar": "^3.6.0",
+    "open": "^10.1.0",
     "oxc-parser": "^0.128.0",
-    "ws": "^8.18.0",
-    "open": "^10.1.0"
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@ddd-ts/tools": "workspace:*",
