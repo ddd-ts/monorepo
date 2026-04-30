@@ -128,6 +128,10 @@ export function App() {
                   onMakeRoot={(id, dir) => {
                     filters.setDirection(dir);
                     filters.setRootIds([id]);
+                    // Clear any active cypher query so the new root takes
+                    // effect — otherwise cypher results would override the
+                    // rootIds the user just asked us to focus on.
+                    filters.setCypherQuery("");
                     setInspectId(null);
                   }}
                   onJump={(id) => setInspectId(id)}
