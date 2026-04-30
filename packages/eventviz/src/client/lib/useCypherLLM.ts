@@ -17,6 +17,8 @@ export interface CypherLLM {
   status: LLMStatus;
   progress: LLMProgress | null;
   error: string | null;
+  /** True if model files were already in the browser cache on this load. */
+  fromCache: boolean;
   load: () => void;
   generate: (text: string) => Promise<string>;
 }
@@ -27,6 +29,7 @@ export function useCypherLLM(): CypherLLM {
   const [status, setStatus] = useState<LLMStatus>("idle");
   const [progress, setProgress] = useState<LLMProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fromCache, setFromCache] = useState<boolean>(false);
 
   useEffect(() => {
     return () => {
@@ -44,10 +47,15 @@ export function useCypherLLM(): CypherLLM {
     w.addEventListener("message", (event) => {
       const data = event.data as
         | { type: "PROGRESS"; payload: { status: string; file?: string; progress?: number } }
+        | { type: "CACHE_STATUS"; payload: { fromCache: boolean } }
         | { type: "READY"; id?: string }
         | { type: "RESULT"; id: string; payload: { cypher: string; raw: string } }
         | { type: "ERROR"; id?: string; payload: { message: string } };
 
+      if (data.type === "CACHE_STATUS") {
+        setFromCache(data.payload.fromCache);
+        return;
+      }
       if (data.type === "PROGRESS") {
         const p = data.payload;
         // Always update if the worker sent an aggregated percent — that way
@@ -124,5 +132,5 @@ export function useCypherLLM(): CypherLLM {
     [ensureWorker],
   );
 
-  return { status, progress, error, load, generate };
+  return { status, progress, error, fromCache, load, generate };
 }

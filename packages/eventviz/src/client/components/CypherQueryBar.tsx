@@ -87,15 +87,15 @@ export function CypherQueryBar({
             border: `0.5px solid ${nlOpen ? COL.accent : COL.border}`,
             background: nlOpen ? COL.accentSoft : "#fff",
             color: nlOpen ? COL.accentText : COL.textMuted,
-            padding: "3px 9px",
-            borderRadius: 3,
+            padding: "6px 10px",
+            borderRadius: 4,
             cursor: "pointer",
-            fontSize: 10.5,
-            font: "inherit",
-            letterSpacing: 0.2,
+            fontSize: 11,
+            fontFamily: "inherit",
+            fontWeight: nlOpen ? 600 : 400,
           }}
         >
-          {nlOpen ? "✕ NL" : "✦ Ask in plain English"}
+          Ask in plain English
         </button>
       </div>
 
@@ -106,6 +106,7 @@ export function CypherQueryBar({
           onGenerate={runGenerate}
           status={llm.status}
           progress={llm.progress}
+          fromCache={llm.fromCache}
           loadError={llm.error}
           generateError={nlError}
           onPreload={llm.load}
@@ -176,6 +177,7 @@ interface NLPanelProps {
   onGenerate: () => void;
   status: ReturnType<typeof useCypherLLM>["status"];
   progress: ReturnType<typeof useCypherLLM>["progress"];
+  fromCache: boolean;
   loadError: string | null;
   generateError: string | null;
   onPreload: () => void;
@@ -187,6 +189,7 @@ function NLPanel({
   onGenerate,
   status,
   progress,
+  fromCache,
   loadError,
   generateError,
   onPreload,
@@ -265,12 +268,14 @@ function NLPanel({
         {status === "loading" && (
           progress?.percent != null && progress.percent >= 99.5 ? (
             <span>
-              files downloaded · compiling model on{" "}
-              {hasWebGPU() ? "WebGPU" : "WASM"}… (one-time, ~10–30s)
+              {fromCache ? "files restored from local cache" : "files downloaded"}{" "}
+              · compiling model on{" "}
+              {hasWebGPU() ? "WebGPU" : "WASM"}… (one-time per page load,
+              ~10–30s)
             </span>
           ) : (
             <span>
-              loading model
+              {fromCache ? "loading from local cache" : "downloading model"}
               {progress?.percent != null
                 ? ` · ${Math.round(progress.percent)}%`
                 : "…"}
@@ -279,7 +284,10 @@ function NLPanel({
           )
         )}
         {status === "ready" && !generateError && !loadError && (
-          <span>model ready · runs locally in a Web Worker</span>
+          <span>
+            model ready · runs locally in a Web Worker
+            {fromCache ? " · cached" : ""}
+          </span>
         )}
         {status === "generating" && <span>generating cypher…</span>}
         {(generateError || (status === "error" && loadError)) && (

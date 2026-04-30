@@ -7,6 +7,10 @@ import {
 } from "@huggingface/transformers";
 
 env.allowLocalModels = false;
+// Persist downloaded model files in the browser's Cache API so a page reload
+// reuses them instead of re-downloading. (Default is true, but pin it
+// explicitly so a future default flip can't silently disable persistence.)
+env.useBrowserCache = true;
 
 // Gemma 3n E2B is a multimodal model (image-text-to-text architecture) with
 // mixed fp16/fp32 tensors inside its altup module. The text-generation
@@ -103,6 +107,7 @@ type InMessage =
 
 type OutMessage =
   | { type: "PROGRESS"; payload: ProgressInfo }
+  | { type: "CACHE_STATUS"; payload: { fromCache: boolean } }
   | { type: "READY"; id?: string }
   | { type: "RESULT"; id: string; payload: { cypher: string; raw: string } }
   | { type: "ERROR"; id?: string; payload: { message: string } };
@@ -194,6 +199,22 @@ function handleRawProgress(p: RawProgress) {
   });
 }
 
+async function probeCache(): Promise<boolean> {
+  if (typeof caches === "undefined") return false;
+  try {
+    // transformers.js stores files in the named cache "transformers-cache".
+    // Probe a known config file to verify cache validity.
+    const has = await caches.has("transformers-cache");
+    if (!has) return false;
+    const cache = await caches.open("transformers-cache");
+    const url = `https://huggingface.co/${MODEL_ID}/resolve/main/config.json`;
+    const hit = await cache.match(url);
+    return !!hit;
+  } catch {
+    return false;
+  }
+}
+
 async function ensureLoaded(): Promise<{
   tokenizer: AnyTokenizer;
   model: AnyModel;
@@ -202,6 +223,8 @@ async function ensureLoaded(): Promise<{
   const supportsWebGPU =
     typeof (navigator as Navigator & { gpu?: unknown }).gpu !== "undefined";
   loadPromise = (async () => {
+    const fromCache = await probeCache();
+    post({ type: "CACHE_STATUS", payload: { fromCache } });
     const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID, {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       progress_callback: (p: any) => handleRawProgress(p as RawProgress),
