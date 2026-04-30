@@ -3,9 +3,11 @@ import {
   collectDescendants,
   computeDomains,
   type GraphIndex,
+  type NodeDomain,
   verbFor,
 } from "../lib/graph.js";
 import { COL, FONT_MONO, KIND_META } from "../lib/tokens.js";
+import { colorizeName } from "../lib/semantics.js";
 import { KindGlyph } from "./KindGlyph.js";
 import type { Direction } from "../lib/useFilters.js";
 import type { GraphEdge } from "../../shared/types.js";
@@ -187,6 +189,7 @@ export function LinearChainsView({
                 <TreeRow
                   key={rid + "|" + direction}
                   index={index}
+                  domainByNodeId={domainByNodeId}
                   nodeId={rid}
                   edgeIn={null}
                   direction={direction}
@@ -211,6 +214,7 @@ export function LinearChainsView({
 
 interface RowProps {
   index: GraphIndex;
+  domainByNodeId: Map<string, NodeDomain>;
   nodeId: string;
   edgeIn: GraphEdge | null;
   direction: Direction;
@@ -230,6 +234,7 @@ interface RowProps {
 
 const TreeRow = memo(function TreeRow({
   index,
+  domainByNodeId,
   nodeId,
   edgeIn,
   direction,
@@ -411,7 +416,7 @@ const TreeRow = memo(function TreeRow({
               color: inspectId === nodeId ? COL.accentText : COL.text,
             }}
           >
-            {node.name}
+            {colorizeName(node.name, domainByNodeId.get(nodeId))}
           </span>
           <span
             style={{
@@ -471,6 +476,7 @@ const TreeRow = memo(function TreeRow({
             <TreeRow
               key={path + "→" + childId + e.kind}
               index={index}
+              domainByNodeId={domainByNodeId}
               nodeId={childId}
               edgeIn={e}
               direction={direction}

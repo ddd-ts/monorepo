@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { NodeKind } from "../../shared/types.js";
-import type { GraphIndex } from "../lib/graph.js";
+import { computeDomains, type GraphIndex } from "../lib/graph.js";
 import { computeVisibleSubgraph } from "../lib/subgraph.js";
 import type { Direction } from "../lib/useFilters.js";
 import { COL, FONT_MONO, KIND_META } from "../lib/tokens.js";
+import { colorizeName } from "../lib/semantics.js";
 import { KindGlyph } from "./KindGlyph.js";
 
 const KINDS: ("all" | NodeKind)[] = [
@@ -71,6 +72,11 @@ export function FlatView({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
+
+  const domainByNodeId = useMemo(
+    () => computeDomains(index.nodes),
+    [index],
+  );
 
   const visibleNodes = useMemo(() => {
     const sub = computeVisibleSubgraph({
@@ -241,7 +247,7 @@ export function FlatView({
                         gap: 6,
                       }}
                     >
-                      <span>{n.name}</span>
+                      <span>{colorizeName(n.name, domainByNodeId.get(n.id))}</span>
                       {isMatch && (
                         <span
                           title="Matched by Cypher query"

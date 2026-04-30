@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { GraphEdge } from "../../shared/types.js";
-import { type GraphIndex, verbFor } from "../lib/graph.js";
+import { computeDomains, type GraphIndex, verbFor } from "../lib/graph.js";
 import { COL, FONT_MONO, KIND_META } from "../lib/tokens.js";
+import { colorizeName } from "../lib/semantics.js";
 import { KindGlyph } from "./KindGlyph.js";
 
 interface Props {
@@ -19,6 +20,10 @@ export function InspectorPanel({
   onMakeRoot,
   onJump,
 }: Props) {
+  const domainByNodeId = useMemo(
+    () => computeDomains(index.nodes),
+    [index],
+  );
   if (!nodeId) return null;
   const node = index.byId[nodeId];
   if (!node) return null;
@@ -81,7 +86,7 @@ export function InspectorPanel({
               wordBreak: "break-word",
             }}
           >
-            {node.name}
+            {colorizeName(node.name, domainByNodeId.get(node.id))}
           </div>
         </div>
         <button
@@ -141,6 +146,7 @@ export function InspectorPanel({
           edges={incoming}
           side="in"
           index={index}
+          domainByNodeId={domainByNodeId}
           onJump={onJump}
         />
         <EdgeSection
@@ -149,6 +155,7 @@ export function InspectorPanel({
           edges={outgoing}
           side="out"
           index={index}
+          domainByNodeId={domainByNodeId}
           onJump={onJump}
         />
       </div>
@@ -274,10 +281,11 @@ interface EdgeSectionProps {
   edges: GraphEdge[];
   side: "in" | "out";
   index: GraphIndex;
+  domainByNodeId: Map<string, { key: string; label: string }>;
   onJump: (id: string) => void;
 }
 
-function EdgeSection({ label, empty, edges, side, index, onJump }: EdgeSectionProps) {
+function EdgeSection({ label, empty, edges, side, index, domainByNodeId, onJump }: EdgeSectionProps) {
   return (
     <div style={{ marginBottom: 16 }}>
       <div
@@ -306,7 +314,14 @@ function EdgeSection({ label, empty, edges, side, index, onJump }: EdgeSectionPr
         </div>
       ) : (
         edges.map((edge, i) => (
-          <EdgeRow key={i} edge={edge} side={side} index={index} onJump={onJump} />
+          <EdgeRow
+            key={i}
+            edge={edge}
+            side={side}
+            index={index}
+            domainByNodeId={domainByNodeId}
+            onJump={onJump}
+          />
         ))
       )}
     </div>
@@ -317,10 +332,11 @@ interface EdgeRowProps {
   edge: GraphEdge;
   side: "in" | "out";
   index: GraphIndex;
+  domainByNodeId: Map<string, { key: string; label: string }>;
   onJump: (id: string) => void;
 }
 
-function EdgeRow({ edge, side, index, onJump }: EdgeRowProps) {
+function EdgeRow({ edge, side, index, domainByNodeId, onJump }: EdgeRowProps) {
   const otherId = side === "in" ? edge.from : edge.to;
   const other = index.byId[otherId];
   if (!other) return null;
@@ -373,7 +389,7 @@ function EdgeRow({ edge, side, index, onJump }: EdgeRowProps) {
           textOverflow: "ellipsis",
         }}
       >
-        {other.name}
+        {colorizeName(other.name, domainByNodeId.get(other.id))}
       </span>
     </button>
   );
