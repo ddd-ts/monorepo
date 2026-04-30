@@ -1,18 +1,39 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useGraph } from "./lib/useGraph.js";
+import { useFilters, type ViewMode } from "./lib/useFilters.js";
 import { COL, FONT_MONO } from "./lib/tokens.js";
-import { LinearChainsView } from "./components/LinearChainsView.js";
-import { SequenceView } from "./components/SequenceView.js";
-import { CompactView } from "./components/CompactView.js";
-import { Toolbar } from "./components/Toolbar.js";
-import { Legend } from "./components/Legend.js";
-import { DetailPanel } from "./components/DetailPanel.js";
-
-type Tab = "tree" | "sequence" | "compact";
+import {
+  LinearChainsView,
+  type LinearChainsHandle,
+} from "./components/LinearChainsView.js";
+import { GraphView } from "./components/GraphView.js";
+import { FlatView } from "./components/FlatView.js";
+import { FilterBar } from "./components/FilterBar.js";
+import { InspectorPanel } from "./components/InspectorPanel.js";
 
 export function App() {
   const { index, info } = useGraph();
-  const [tab, setTab] = useState<Tab>("tree");
+  const filters = useFilters(index);
+  const [inspectId, setInspectId] = useState<string | null>(null);
+
+  const treeHandleRef = useRef<LinearChainsHandle | null>(null);
+  const registerHandle = useCallback((h: LinearChainsHandle) => {
+    treeHandleRef.current = h;
+  }, []);
+
+  // Track which views the user has visited at least once. Each visited view
+  // stays mounted (just hidden via display:none) so subsequent switches are
+  // instant — the heavy work (mermaid render for graph, large lists for tree
+  // / flat) only pays once. Unvisited views aren't mounted at all, so the
+  // initial page load only pays for the default view.
+  const [visited, setVisited] = useState<Set<ViewMode>>(
+    () => new Set([filters.view]),
+  );
+  useEffect(() => {
+    setVisited((prev) =>
+      prev.has(filters.view) ? prev : new Set(prev).add(filters.view),
+    );
+  }, [filters.view]);
 
   return (
     <div
@@ -24,24 +45,105 @@ export function App() {
         background: "#fff",
       }}
     >
-      <Header tab={tab} setTab={setTab} info={info} />
-      <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+      <Header info={info} />
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          position: "relative",
+        }}
+      >
         {!index && <LoadingState />}
-        {index && tab === "tree" && <LinearChainsView index={index} />}
-        {index && tab === "sequence" && <SequenceTab index={index} />}
-        {index && tab === "compact" && <CompactView index={index} />}
+        {index && (
+          <>
+            <FilterBar
+              index={index}
+              filters={filters}
+              treeActions={{
+                onExpandAll: () => treeHandleRef.current?.expandAll(),
+                onCollapseAll: () => treeHandleRef.current?.collapseAll(),
+              }}
+            />
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                minHeight: 0,
+                overflow: "hidden",
+              }}
+            >
+              {visited.has("tree") && (
+                <ViewSlot active={filters.view === "tree"}>
+                  <LinearChainsView
+                    index={index}
+                    direction={filters.direction}
+                    effectiveRoots={filters.effectiveRoots}
+                    contains={filters.contains}
+                    containsAll={filters.containsAll}
+                    cypherMatch={filters.cypherMatchSet}
+                    inspectId={inspectId}
+                    onInspect={setInspectId}
+                    registerHandle={registerHandle}
+                    isActive={filters.view === "tree"}
+                  />
+                </ViewSlot>
+              )}
+              {visited.has("graph") && (
+                <ViewSlot active={filters.view === "graph"}>
+                  <GraphView
+                    index={index}
+                    direction={filters.direction}
+                    effectiveRoots={filters.effectiveRoots}
+                    contains={filters.contains}
+                    containsAll={filters.containsAll}
+                    cypherMatch={filters.cypherMatchSet}
+                    inspectId={inspectId}
+                    onInspect={setInspectId}
+                    isActive={filters.view === "graph"}
+                  />
+                </ViewSlot>
+              )}
+              {visited.has("flat") && (
+                <ViewSlot active={filters.view === "flat"}>
+                  <FlatView
+                    index={index}
+                    direction={filters.direction}
+                    effectiveRoots={filters.effectiveRoots}
+                    contains={filters.contains}
+                    containsAll={filters.containsAll}
+                    cypherMatch={filters.cypherMatchSet}
+                    inspectId={inspectId}
+                    onInspect={setInspectId}
+                    isActive={filters.view === "flat"}
+                  />
+                </ViewSlot>
+              )}
+              {inspectId && (
+                <InspectorPanel
+                  index={index}
+                  nodeId={inspectId}
+                  onClose={() => setInspectId(null)}
+                  onMakeRoot={(id, dir) => {
+                    filters.setDirection(dir);
+                    filters.setRootIds([id]);
+                    setInspectId(null);
+                  }}
+                  onJump={(id) => setInspectId(id)}
+                />
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 function Header({
-  tab,
-  setTab,
   info,
 }: {
-  tab: Tab;
-  setTab: (t: Tab) => void;
   info: { fileCount: number; root: string } | null;
 }) {
   return (
@@ -78,43 +180,10 @@ function Header({
             />
           </svg>
         </div>
-        <span
-          style={{ fontWeight: 600, fontSize: 13.5, letterSpacing: -0.1 }}
-        >
+        <span style={{ fontWeight: 600, fontSize: 13.5, letterSpacing: -0.1 }}>
           Effects
         </span>
         <span style={{ color: COL.textFaint, fontSize: 12 }}>· DDD-TS</span>
-      </div>
-      <div
-        style={{ width: 1, height: 16, background: COL.border, margin: "0 4px" }}
-      />
-      <div style={{ display: "flex", gap: 4 }}>
-        {(
-          [
-            ["tree", "Tree"],
-            ["sequence", "Sequence"],
-            ["compact", "Compact"],
-          ] as const
-        ).map(([k, lbl]) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setTab(k)}
-            style={{
-              border: "none",
-              background: tab === k ? COL.accentSoft : "transparent",
-              color: tab === k ? COL.accentText : COL.textMuted,
-              padding: "4px 10px",
-              borderRadius: 3,
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: tab === k ? 500 : 400,
-              letterSpacing: 0.1,
-            }}
-          >
-            {lbl}
-          </button>
-        ))}
       </div>
       <div style={{ flex: 1 }} />
       {info && (
@@ -139,60 +208,38 @@ function Header({
   );
 }
 
+/**
+ * Flex slot wrapping each view. When inactive, switches to display:none so
+ * the view is hidden but stays mounted (preserves rendered DOM, scroll
+ * position, mermaid SVG, etc. across switches).
+ */
+function ViewSlot({
+  active,
+  children,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: active ? "flex" : "none",
+        flex: 1,
+        minWidth: 0,
+        minHeight: 0,
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function trimRoot(root: string): string {
   const parts = root.split(/[\\/]/).filter(Boolean);
   if (parts.length <= 3) return root;
   return ".../" + parts.slice(-3).join("/");
-}
-
-function SequenceTab({ index }: { index: ReturnType<typeof useGraph>["index"] }) {
-  const [selected, setSelected] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [layout, setLayout] = useState<
-    "sequence" | "hierarchical" | "force" | "radial"
-  >("sequence");
-  if (!index) return null;
-  return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <Toolbar
-        search={search}
-        setSearch={setSearch}
-        layout={layout}
-        setLayout={setLayout}
-        selected={!!selected}
-        onClear={() => setSelected(null)}
-      />
-      <div
-        style={{
-          position: "relative",
-          flex: 1,
-          overflow: "hidden",
-        }}
-      >
-        <SequenceView
-          index={index}
-          selectedId={selected}
-          onSelect={setSelected}
-          search={search}
-          layout={layout}
-        />
-        <DetailPanel
-          index={index}
-          nodeId={selected}
-          onClose={() => setSelected(null)}
-          onSelect={setSelected}
-        />
-        {!selected && <Legend />}
-      </div>
-    </div>
-  );
 }
 
 function LoadingState() {

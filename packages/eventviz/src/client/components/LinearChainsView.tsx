@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   collectDescendants,
   computeDomains,
@@ -7,51 +7,45 @@ import {
 } from "../lib/graph.js";
 import { COL, FONT_MONO, KIND_META } from "../lib/tokens.js";
 import { KindGlyph } from "./KindGlyph.js";
-import { RootPicker } from "./RootPicker.js";
-import { MustContainPicker } from "./MustContainPicker.js";
-import { InspectorPanel } from "./InspectorPanel.js";
-import { CypherQueryBar } from "./CypherQueryBar.js";
-import { executeCypher } from "../lib/cypher.js";
+import type { Direction } from "../lib/useFilters.js";
 import type { GraphEdge } from "../../shared/types.js";
+
+export interface LinearChainsHandle {
+  expandAll: () => void;
+  collapseAll: () => void;
+}
 
 interface Props {
   index: GraphIndex;
+  direction: Direction;
+  effectiveRoots: string[];
+  contains: string[];
+  containsAll: boolean;
+  cypherMatch: Set<string> | null;
+  inspectId: string | null;
+  onInspect: (id: string) => void;
+  /** Imperative handle exposing expand/collapse so the FilterBar can call them. */
+  registerHandle?: (h: LinearChainsHandle) => void;
+  /** True when this view is the currently visible one. */
+  isActive: boolean;
 }
 
-export function LinearChainsView({ index }: Props) {
-  const [direction, setDirection] = useState<"forward" | "reversed">("forward");
-  const [rootIds, setRootIds] = useState<string[]>([]);
-  const [contains, setContains] = useState<string[]>([]);
-  const [containsAll, setContainsAll] = useState(true);
+export function LinearChainsView({
+  index,
+  direction,
+  effectiveRoots,
+  contains,
+  containsAll,
+  cypherMatch,
+  inspectId,
+  onInspect,
+  registerHandle,
+  isActive,
+}: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [collapsedDomains, setCollapsedDomains] = useState<Set<string>>(
     () => new Set(),
   );
-  const [inspectId, setInspectId] = useState<string | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [cypherQuery, setCypherQuery] = useState("");
-
-  const cypherResult = useMemo(() => {
-    if (!advancedOpen || !cypherQuery.trim()) {
-      return { ok: true as const, nodeIds: null, rowCount: null };
-    }
-    try {
-      const r = executeCypher(cypherQuery, index);
-      return {
-        ok: true as const,
-        nodeIds: r.nodeIds,
-        rowCount: r.rowCount,
-      };
-    } catch (e) {
-      return { ok: false as const, error: (e as Error).message };
-    }
-  }, [advancedOpen, cypherQuery, index]);
-
-  const cypherActive =
-    advancedOpen &&
-    cypherResult.ok &&
-    cypherResult.nodeIds !== null &&
-    cypherResult.nodeIds.size > 0;
 
   const setExp = useCallback((key: string, open: boolean) => {
     setExpanded((prev) => {
@@ -61,67 +55,6 @@ export function LinearChainsView({ index }: Props) {
       return next;
     });
   }, []);
-
-  const effectiveRoots = useMemo(() => {
-    if (cypherActive && cypherResult.ok && cypherResult.nodeIds) {
-      return [...cypherResult.nodeIds];
-    }
-    if (rootIds.length > 0) return rootIds;
-    const boundary = index.nodes
-      .filter((n) =>
-        direction === "forward"
-          ? (index.incoming[n.id] || []).length === 0
-          : (index.outgoing[n.id] || []).length === 0,
-      )
-      .filter((n) => {
-        if (direction === "forward") return n.kind === "event";
-        else return n.kind !== "event";
-      })
-      .filter((n) => {
-        if (n.kind === "saga" || n.kind === "projection") {
-          if (!n.name.includes(".")) return false; // filter out top-level sagas/projections, which are often just containers
-        }
-        return true;
-      })
-      .filter((n) => {
-        if (n.kind === "command") {
-          if (index.outgoing[n.id].length === 0 && index.incoming[n.id].length === 0) return false; // filter out orphan commands, which are often just data structures
-        }
-        return true;
-      })
-      .map((n) => n.id);
-    return boundary.length > 0 ? boundary : index.nodes.map((n) => n.id);
-  }, [index, rootIds, direction, cypherActive, cypherResult]);
-
-  const expandAll = () => {
-    const next = new Set(expanded);
-    const walk = (id: string, pathIds: string[]) => {
-      const path = pathIds.join("/") + "/" + id;
-      next.add(path);
-      const edges =
-        direction === "forward"
-          ? index.outgoing[id] || []
-          : index.incoming[id] || [];
-      for (const e of edges) {
-        const child = direction === "forward" ? e.to : e.from;
-        if (pathIds.includes(child) || child === id) continue;
-        walk(child, [...pathIds, id]);
-      }
-    };
-    for (const r of effectiveRoots) walk(r, []);
-    setExpanded(next);
-    setCollapsedDomains(new Set());
-  };
-  useLayoutEffect(() => { expandAll(); }, [direction]); // auto-expand on first load
-  const collapseAll = () => {
-    setExpanded(new Set());
-    const allDomainKeys = new Set<string>();
-    for (const r of effectiveRoots) {
-      const d = domainByNodeId.get(r);
-      if (d) allDomainKeys.add(d.key);
-    }
-    setCollapsedDomains(allDomainKeys);
-  };
 
   const domainByNodeId = useMemo(
     () => computeDomains(index.nodes),
@@ -144,6 +77,47 @@ export function LinearChainsView({ index }: Props) {
     return groups;
   }, [effectiveRoots, domainByNodeId]);
 
+  const expandAll = useCallback(() => {
+    const next = new Set<string>();
+    const walk = (id: string, pathIds: string[]) => {
+      const path = pathIds.join("/") + "/" + id;
+      next.add(path);
+      const edges =
+        direction === "forward"
+          ? index.outgoing[id] || []
+          : index.incoming[id] || [];
+      for (const e of edges) {
+        const child = direction === "forward" ? e.to : e.from;
+        if (pathIds.includes(child) || child === id) continue;
+        walk(child, [...pathIds, id]);
+      }
+    };
+    for (const r of effectiveRoots) walk(r, []);
+    setExpanded(next);
+    setCollapsedDomains(new Set());
+  }, [index, effectiveRoots, direction]);
+
+  const collapseAll = useCallback(() => {
+    setExpanded(new Set());
+    const allDomainKeys = new Set<string>();
+    for (const r of effectiveRoots) {
+      const d = domainByNodeId.get(r);
+      if (d) allDomainKeys.add(d.key);
+    }
+    setCollapsedDomains(allDomainKeys);
+  }, [effectiveRoots, domainByNodeId]);
+
+  // Auto-expand on mount and whenever direction flips.
+  useLayoutEffect(() => {
+    expandAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [direction]);
+
+  // Expose imperative actions for the shared FilterBar's tree-only buttons.
+  useLayoutEffect(() => {
+    registerHandle?.({ expandAll, collapseAll });
+  }, [registerHandle, expandAll, collapseAll]);
+
   const toggleDomain = useCallback((domain: string) => {
     setCollapsedDomains((prev) => {
       const next = new Set(prev);
@@ -153,280 +127,84 @@ export function LinearChainsView({ index }: Props) {
     });
   }, []);
 
-  const stats = useMemo(() => {
-    const all = new Set<string>();
-    for (const r of effectiveRoots) {
-      all.add(r);
-      for (const id of collectDescendants(index, r, direction, new Set())) {
-        all.add(id);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // Scroll the inspected node into view whenever this view becomes active
+  // (initial mount or a switch back to it). The auto-expand effect above
+  // commits new DOM, so we retry across a few rAFs until the row exists.
+  useEffect(() => {
+    if (!isActive || !inspectId) return;
+    let attempts = 0;
+    let cancelled = false;
+    const tryScroll = () => {
+      if (cancelled) return;
+      const root = scrollContainerRef.current;
+      if (!root) return;
+      const escaped =
+        typeof CSS !== "undefined" && CSS.escape
+          ? CSS.escape(inspectId)
+          : inspectId.replace(/"/g, '\\"');
+      const el = root.querySelector<HTMLElement>(
+        `[data-node-id="${escaped}"]`,
+      );
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "auto" });
+        return;
       }
-    }
-    return { reach: all.size, rootCount: effectiveRoots.length };
-  }, [index, effectiveRoots, direction]);
-
-  const isAllMode = rootIds.length === 0 && !cypherActive;
-  const cypherMatchSet = cypherActive && cypherResult.ok ? cypherResult.nodeIds : null;
+      if (attempts++ < 10) requestAnimationFrame(tryScroll);
+    };
+    requestAnimationFrame(tryScroll);
+    return () => {
+      cancelled = true;
+    };
+    // Only re-fire when the view becomes active; don't auto-scroll on every
+    // inspectId change, which would steal focus during normal clicks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive]);
 
   return (
     <div
+      ref={scrollContainerRef}
       style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
+        flex: 1,
+        overflowY: "auto",
         background: "#fff",
-        overflow: "hidden",
+        minWidth: 0,
       }}
     >
-      <div
-        style={{
-          padding: "12px 16px",
-          borderBottom: `0.5px solid ${COL.border}`,
-          display: "flex",
-          gap: 16,
-          alignItems: "flex-end",
-          background: "#fafaf8",
-        }}
-      >
-        <RootPicker
-          index={index}
-          value={rootIds}
-          onChange={setRootIds}
-          direction={direction}
-          onDirectionChange={setDirection}
-        />
-        <div style={{ flex: 1.2 }}>
-          <MustContainPicker
-            index={index}
-            value={contains}
-            onChange={setContains}
-          />
-          {contains.length > 1 && (
-            <div
-              style={{
-                display: "inline-flex",
-                marginTop: 6,
-                padding: 2,
-                background: "oklch(0.94 0.005 80)",
-                borderRadius: 4,
-              }}
-            >
-              {(
-                [
-                  ["all", "all of"],
-                  ["any", "any of"],
-                ] as const
-              ).map(([k, lbl]) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setContainsAll(k === "all")}
-                  style={{
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "2px 8px",
-                    borderRadius: 3,
-                    background:
-                      (k === "all") === containsAll ? "#fff" : "transparent",
-                    color:
-                      (k === "all") === containsAll
-                        ? COL.text
-                        : COL.textMuted,
-                    boxShadow:
-                      (k === "all") === containsAll
-                        ? "0 1px 2px rgba(0,0,0,0.06)"
-                        : "none",
-                    font: "inherit",
-                    fontSize: 10.5,
-                    letterSpacing: 0.2,
-                  }}
-                >
-                  {lbl}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button
-            type="button"
-            onClick={() => setAdvancedOpen((v) => !v)}
-            title="Cypher query"
-            style={{
-              border: `0.5px solid ${
-                advancedOpen ? COL.accent : COL.border
-              }`,
-              background: advancedOpen ? COL.accentSoft : "#fff",
-              color: advancedOpen ? COL.accentText : COL.textMuted,
-              padding: "6px 10px",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontSize: 11,
-              fontFamily: "inherit",
-              fontWeight: advancedOpen ? 600 : 400,
-            }}
-          >
-            Advanced
-          </button>
-          <button
-            type="button"
-            onClick={expandAll}
-            style={{
-              border: `0.5px solid ${COL.border}`,
-              background: "#fff",
-              color: COL.textMuted,
-              padding: "6px 10px",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontSize: 11,
-              fontFamily: "inherit",
-            }}
-          >
-            Expand all
-          </button>
-          <button
-            type="button"
-            onClick={collapseAll}
-            style={{
-              border: `0.5px solid ${COL.border}`,
-              background: "#fff",
-              color: COL.textMuted,
-              padding: "6px 10px",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontSize: 11,
-              fontFamily: "inherit",
-            }}
-          >
-            Collapse
-          </button>
-        </div>
-      </div>
-
-      {advancedOpen && (
-        <CypherQueryBar
-          value={cypherQuery}
-          onChange={setCypherQuery}
-          error={cypherResult.ok ? null : cypherResult.error}
-          matchCount={
-            cypherResult.ok && cypherResult.nodeIds
-              ? cypherResult.nodeIds.size
-              : null
-          }
-          rowCount={
-            cypherResult.ok && cypherResult.rowCount !== null
-              ? cypherResult.rowCount
-              : null
-          }
-        />
-      )}
-
-      <div
-        style={{
-          padding: "8px 16px",
-          borderBottom: `0.5px solid ${COL.border}`,
-          display: "flex",
-          alignItems: "center",
-          gap: 18,
-          fontSize: 11,
-          fontFamily: FONT_MONO,
-          color: COL.textMuted,
-          letterSpacing: 0.3,
-        }}
-      >
-        <span
-          style={{
-            color: COL.textFaint,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-          }}
-        >
-          {direction === "forward" ? "Tracing from" : "Tracing to"}
-        </span>
-        <span style={{ color: COL.text, fontWeight: 500 }}>
-          {cypherActive
-            ? `cypher match · ${effectiveRoots.length} node${effectiveRoots.length === 1 ? "" : "s"}`
-            : isAllMode
-              ? `all events · ${effectiveRoots.length} root${effectiveRoots.length === 1 ? "" : "s"}`
-              : `${rootIds.length} event${rootIds.length === 1 ? "" : "s"}`}
-        </span>
-        <span style={{ color: COL.textFaint }}>·</span>
-        <span>
-          <span style={{ color: COL.text }}>{stats.reach}</span> nodes{" "}
-          {direction === "forward" ? "reachable" : "in upstream cone"}
-        </span>
-        <div style={{ flex: 1 }} />
-        <span style={{ color: COL.textFaint, fontStyle: "italic" }}>
-          click any node to inspect · use sidebar to focus as root
-        </span>
-      </div>
-
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          minHeight: 0,
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            background: "#fff",
-            minWidth: 0,
-          }}
-        >
-          {effectiveRoots.length === 0 && <EmptyState />}
-          {groupedRoots.map(({ key, label, rootIds }) => {
-            const isCollapsed = collapsedDomains.has(key);
-            return (
-              <div key={key}>
-                <DomainHeader
-                  label={label}
-                  count={rootIds.length}
-                  collapsed={isCollapsed}
-                  onToggle={() => toggleDomain(key)}
+      {effectiveRoots.length === 0 && <EmptyState />}
+      {groupedRoots.map(({ key, label, rootIds }) => {
+        const isCollapsed = collapsedDomains.has(key);
+        return (
+          <div key={key}>
+            <DomainHeader
+              label={label}
+              count={rootIds.length}
+              collapsed={isCollapsed}
+              onToggle={() => toggleDomain(key)}
+            />
+            {!isCollapsed &&
+              rootIds.map((rid) => (
+                <TreeRow
+                  key={rid + "|" + direction}
+                  index={index}
+                  nodeId={rid}
+                  edgeIn={null}
+                  direction={direction}
+                  depth={0}
+                  path=""
+                  expanded={expanded}
+                  setExpanded={setExp}
+                  onInspect={onInspect}
+                  inspectId={inspectId}
+                  mustContain={contains}
+                  mustContainAll={containsAll}
+                  cypherMatch={cypherMatch}
+                  isRoot
                 />
-                {!isCollapsed &&
-                  rootIds.map((rid) => (
-                    <TreeRow
-                      key={rid + "|" + direction}
-                      index={index}
-                      nodeId={rid}
-                      edgeIn={null}
-                      direction={direction}
-                      depth={0}
-                      pathIds={[]}
-                      expanded={expanded}
-                      setExpanded={setExp}
-                      onInspect={(id) => setInspectId(id)}
-                      inspectId={inspectId}
-                      mustContain={contains}
-                      mustContainAll={containsAll}
-                      cypherMatch={cypherMatchSet}
-                      isRoot
-                    />
-                  ))}
-              </div>
-            );
-          })}
-        </div>
-        {inspectId && (
-          <InspectorPanel
-            index={index}
-            nodeId={inspectId}
-            onClose={() => setInspectId(null)}
-            onMakeRoot={(id, dir) => {
-              setDirection(dir);
-              setRootIds([id]);
-              setExpanded(new Set());
-              setInspectId(null);
-            }}
-            onJump={(id) => setInspectId(id)}
-          />
-        )}
-      </div>
+              ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -435,9 +213,11 @@ interface RowProps {
   index: GraphIndex;
   nodeId: string;
   edgeIn: GraphEdge | null;
-  direction: "forward" | "reversed";
+  direction: Direction;
   depth: number;
-  pathIds: string[];
+  /** Slash-joined ancestor ids (no trailing slash). Stable string keeps
+   *  React.memo's shallow compare effective across re-renders. */
+  path: string;
   expanded: Set<string>;
   setExpanded: (key: string, open: boolean) => void;
   onInspect: (id: string) => void;
@@ -448,13 +228,13 @@ interface RowProps {
   isRoot: boolean;
 }
 
-function TreeRow({
+const TreeRow = memo(function TreeRow({
   index,
   nodeId,
   edgeIn,
   direction,
   depth,
-  pathIds,
+  path: ancestorPath,
   expanded,
   setExpanded,
   onInspect,
@@ -464,6 +244,10 @@ function TreeRow({
   cypherMatch,
   isRoot,
 }: RowProps) {
+  const pathIds = useMemo<string[]>(
+    () => (ancestorPath === "" ? [] : ancestorPath.split("/")),
+    [ancestorPath],
+  );
   const node = index.byId[nodeId];
   if (!node) return null;
   const meta = KIND_META[node.kind];
@@ -511,6 +295,7 @@ function TreeRow({
   return (
     <div>
       <div
+        data-node-id={nodeId}
         style={{
           display: "flex",
           alignItems: "center",
@@ -640,6 +425,24 @@ function TreeRow({
           >
             {meta.label}
           </span>
+          {cypherMatch?.has(nodeId) && (
+            <span
+              title="Matched by Cypher query"
+              style={{
+                fontFamily: FONT_MONO,
+                fontSize: 8.5,
+                color: COL.accentText,
+                background: COL.accentSoft,
+                padding: "1px 5px",
+                borderRadius: 3,
+                letterSpacing: 0.5,
+                textTransform: "uppercase",
+                marginLeft: 2,
+              }}
+            >
+              match
+            </span>
+          )}
         </div>
         <div style={{ flex: 1 }} />
         <div
@@ -672,7 +475,7 @@ function TreeRow({
               edgeIn={e}
               direction={direction}
               depth={depth + 1}
-              pathIds={[...pathIds, nodeId]}
+              path={ancestorPath === "" ? nodeId : ancestorPath + "/" + nodeId}
               expanded={expanded}
               setExpanded={setExpanded}
               onInspect={onInspect}
@@ -686,7 +489,7 @@ function TreeRow({
         })}
     </div>
   );
-}
+});
 
 interface DomainHeaderProps {
   label: string;

@@ -1,12 +1,10 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { NodeKind } from "../../shared/types.js";
 import type { GraphIndex } from "../lib/graph.js";
+import { computeVisibleSubgraph } from "../lib/subgraph.js";
+import type { Direction } from "../lib/useFilters.js";
 import { COL, FONT_MONO, KIND_META } from "../lib/tokens.js";
 import { KindGlyph } from "./KindGlyph.js";
-
-interface Props {
-  index: GraphIndex;
-}
 
 const KINDS: ("all" | NodeKind)[] = [
   "all",
@@ -18,26 +16,93 @@ const KINDS: ("all" | NodeKind)[] = [
   "policy",
 ];
 
-export function CompactView({ index }: Props) {
-  const [filter, setFilter] = useState<"all" | NodeKind>("all");
+interface Props {
+  index: GraphIndex;
+  direction: Direction;
+  effectiveRoots: string[];
+  contains: string[];
+  containsAll: boolean;
+  cypherMatch: Set<string> | null;
+  inspectId: string | null;
+  onInspect: (id: string) => void;
+  isActive: boolean;
+}
+
+export function FlatView({
+  index,
+  direction,
+  effectiveRoots,
+  contains,
+  containsAll,
+  cypherMatch,
+  inspectId,
+  onInspect,
+  isActive,
+}: Props) {
+  const [kindFilter, setKindFilter] = useState<"all" | NodeKind>("all");
   const [hover, setHover] = useState<string | null>(null);
-  const filtered = index.nodes.filter(
-    (n) => filter === "all" || n.kind === filter,
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll the inspected row into view whenever this view becomes active.
+  useEffect(() => {
+    if (!isActive || !inspectId) return;
+    let attempts = 0;
+    let cancelled = false;
+    const tryScroll = () => {
+      if (cancelled) return;
+      const root = scrollContainerRef.current;
+      if (!root) return;
+      const escaped =
+        typeof CSS !== "undefined" && CSS.escape
+          ? CSS.escape(inspectId)
+          : inspectId.replace(/"/g, '\\"');
+      const el = root.querySelector<HTMLElement>(
+        `tr[data-node-id="${escaped}"]`,
+      );
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "auto" });
+        return;
+      }
+      if (attempts++ < 10) requestAnimationFrame(tryScroll);
+    };
+    requestAnimationFrame(tryScroll);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive]);
+
+  const visibleNodes = useMemo(() => {
+    const sub = computeVisibleSubgraph({
+      index,
+      roots: effectiveRoots,
+      direction,
+      mustContain: contains,
+      mustContainAll: containsAll,
+    });
+    return [...sub.nodes]
+      .map((id) => index.byId[id])
+      .filter(Boolean)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [index, effectiveRoots, direction, contains, containsAll]);
+
+  const filtered = visibleNodes.filter(
+    (n) => kindFilter === "all" || n.kind === kindFilter,
   );
-  const counts: Record<string, number> = { all: index.nodes.length };
+  const counts: Record<string, number> = { all: visibleNodes.length };
   for (const k of KINDS.slice(1) as NodeKind[]) {
-    counts[k] = index.nodes.filter((n) => n.kind === k).length;
+    counts[k] = visibleNodes.filter((n) => n.kind === k).length;
   }
 
   return (
     <div
       style={{
-        width: "100%",
-        height: "100%",
+        flex: 1,
+        minWidth: 0,
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
         background: "#fff",
-        overflow: "hidden",
       }}
     >
       <div
@@ -65,14 +130,14 @@ export function CompactView({ index }: Props) {
           <button
             key={k}
             type="button"
-            onClick={() => setFilter(k)}
+            onClick={() => setKindFilter(k)}
             style={{
               border: "none",
               cursor: "pointer",
               padding: "4px 9px",
               borderRadius: 3,
-              background: filter === k ? COL.accentSoft : "transparent",
-              color: filter === k ? COL.accentText : COL.textMuted,
+              background: kindFilter === k ? COL.accentSoft : "transparent",
+              color: kindFilter === k ? COL.accentText : COL.textMuted,
               fontFamily: FONT_MONO,
               fontSize: 10.5,
               letterSpacing: 0.4,
@@ -80,11 +145,12 @@ export function CompactView({ index }: Props) {
               fontWeight: 500,
             }}
           >
-            {k} <span style={{ opacity: 0.5, marginLeft: 4 }}>{counts[k]}</span>
+            {k}{" "}
+            <span style={{ opacity: 0.5, marginLeft: 4 }}>{counts[k] ?? 0}</span>
           </button>
         ))}
       </div>
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      <div ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto" }}>
         <table
           style={{
             width: "100%",
@@ -115,18 +181,39 @@ export function CompactView({ index }: Props) {
               )}
             </tr>
           </thead>
-          <tbody>
+          <tbody
+            onClick={(e) => {
+              const tr = (e.target as HTMLElement).closest(
+                "tr[data-node-id]",
+              ) as HTMLElement | null;
+              const id = tr?.getAttribute("data-node-id");
+              if (id) onInspect(id);
+            }}
+            onMouseOver={(e) => {
+              const tr = (e.target as HTMLElement).closest(
+                "tr[data-node-id]",
+              ) as HTMLElement | null;
+              const id = tr?.getAttribute("data-node-id");
+              setHover(id ?? null);
+            }}
+            onMouseLeave={() => setHover(null)}
+          >
             {filtered.map((n) => {
               const inc = index.incoming[n.id]?.length || 0;
               const out = index.outgoing[n.id]?.length || 0;
               const isHover = hover === n.id;
+              const isSelected = inspectId === n.id;
+              const isMatch = cypherMatch?.has(n.id);
               return (
                 <tr
                   key={n.id}
-                  onMouseEnter={() => setHover(n.id)}
-                  onMouseLeave={() => setHover(null)}
+                  data-node-id={n.id}
                   style={{
-                    background: isHover ? "oklch(0.97 0.005 80)" : "transparent",
+                    background: isSelected
+                      ? COL.accentSoft
+                      : isHover
+                        ? "oklch(0.97 0.005 80)"
+                        : "transparent",
                     cursor: "pointer",
                   }}
                 >
@@ -144,10 +231,36 @@ export function CompactView({ index }: Props) {
                       padding: "8px 10px",
                       borderBottom: `0.5px solid ${COL.border}`,
                       fontWeight: 500,
-                      color: COL.text,
+                      color: isSelected ? COL.accentText : COL.text,
                     }}
                   >
-                    {n.name}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <span>{n.name}</span>
+                      {isMatch && (
+                        <span
+                          title="Matched by Cypher query"
+                          style={{
+                            fontFamily: FONT_MONO,
+                            fontSize: 8.5,
+                            color: COL.accentText,
+                            background: "#fff",
+                            border: `0.5px solid ${COL.accent}`,
+                            padding: "1px 5px",
+                            borderRadius: 3,
+                            letterSpacing: 0.5,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          match
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td
                     style={{
@@ -210,8 +323,8 @@ export function CompactView({ index }: Props) {
           letterSpacing: 0.3,
         }}
       >
-        {filtered.length} of {index.nodes.length} nodes · {index.edges.length}{" "}
-        edges total
+        {filtered.length} of {visibleNodes.length} visible · {index.nodes.length}{" "}
+        in graph
       </div>
     </div>
   );
