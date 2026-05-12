@@ -17,6 +17,7 @@ import {
   type DomainGroup,
 } from "@/domain/domain-grouping";
 import { useExpansion, type ExpansionApi } from "@/application/use-expansion";
+import { useReveal, type RevealApi } from "@/application/use-reveal";
 import type { DomainMap } from "@/application/use-domains";
 import type { Settings } from "@/application/use-settings";
 
@@ -52,6 +53,7 @@ export function TreeView({
   }, [index, direction, visibleIds, domains]);
 
   const expansion = useExpansion();
+  const reveal = useReveal();
 
   return (
     <ScrollArea className="h-full">
@@ -66,9 +68,11 @@ export function TreeView({
             index={index}
             direction={direction}
             settings={settings}
+            visibleIds={visibleIds}
             selectedId={selectedId}
             onSelect={onSelect}
             expansion={expansion}
+            reveal={reveal}
           />
         ))}
       </div>
@@ -81,17 +85,21 @@ function DomainSection({
   index,
   direction,
   settings,
+  visibleIds,
   selectedId,
   onSelect,
   expansion,
+  reveal,
 }: {
   group: DomainGroup;
   index: GraphIndex;
   direction: Direction;
   settings: Settings;
+  visibleIds: ReadonlySet<NodeId>;
   selectedId: NodeId | null;
   onSelect: (id: NodeId) => void;
   expansion: ExpansionApi;
+  reveal: RevealApi;
 }) {
   const traces = useMemo(
     () =>
@@ -118,9 +126,11 @@ function DomainSection({
             direction={direction}
             domainPrefix={prefix}
             settings={settings}
+            visibleIds={visibleIds}
             selectedId={selectedId}
             onSelect={onSelect}
             expansion={expansion}
+            reveal={reveal}
           />
         ))}
       </div>
@@ -145,21 +155,33 @@ function TraceBranch({
   direction,
   domainPrefix,
   settings,
+  visibleIds,
   selectedId,
   onSelect,
   expansion,
+  reveal,
 }: {
   trace: TraceNode;
   path: string;
   direction: Direction;
   domainPrefix: string;
   settings: Settings;
+  visibleIds: ReadonlySet<NodeId>;
   selectedId: NodeId | null;
   onSelect: (id: NodeId) => void;
   expansion: ExpansionApi;
+  reveal: RevealApi;
 }) {
   const hasChildren = trace.children.length > 0;
   const expanded = expansion.isExpanded(path);
+  const revealed = reveal.isRevealed(path);
+
+  const visibleChildren = useMemo(
+    () => trace.children.filter((c) => visibleIds.has(c.id)),
+    [trace.children, visibleIds],
+  );
+  const hiddenCount = trace.children.length - visibleChildren.length;
+  const childrenToRender = revealed ? trace.children : visibleChildren;
 
   return (
     <div className="flex flex-col">
@@ -180,7 +202,7 @@ function TraceBranch({
       </div>
       {hasChildren && expanded && (
         <div className="border-border/60 ml-[11.5px] flex flex-col gap-1 border-l pt-1 pl-[19.5px]">
-          {trace.children.map((child, idx) => (
+          {childrenToRender.map((child, idx) => (
             <TraceBranch
               key={`${child.id}:${idx}`}
               trace={child}
@@ -188,14 +210,44 @@ function TraceBranch({
               direction={direction}
               domainPrefix={domainPrefix}
               settings={settings}
+              visibleIds={visibleIds}
               selectedId={selectedId}
               onSelect={onSelect}
               expansion={expansion}
+              reveal={reveal}
             />
           ))}
+          {hiddenCount > 0 && (
+            <HiddenIndicator
+              count={hiddenCount}
+              revealed={revealed}
+              onToggle={() => reveal.toggle(path)}
+            />
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+function HiddenIndicator({
+  count,
+  revealed,
+  onToggle,
+}: {
+  count: number;
+  revealed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onToggle}
+      className="text-muted-foreground h-auto w-fit justify-start px-3 py-1 text-xs font-normal italic"
+    >
+      {revealed ? `Hide ${count} filtered` : `${count} hidden by filter`}
+    </Button>
   );
 }
 
