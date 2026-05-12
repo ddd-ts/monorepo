@@ -2,7 +2,7 @@ import { engine } from "../engine";
 
 const COMMAND_BASES = new Set(["$Command", "Command"]);
 
-engine.on((node, parent, ctx, emit) => {
+engine.on((node, parent, ctx, file) => {
   if (node.type !== "ClassDeclaration") return;
   if (!node.id) return;
 
@@ -10,9 +10,10 @@ engine.on((node, parent, ctx, emit) => {
   if (sup?.type !== "Identifier") return;
   if (!COMMAND_BASES.has(sup.name)) return;
 
-  emit("command", {
-    className: node.id.name,
-    base: sup.name,
-    start: node.start,
+  engine.saveNode({
+    type: "command",
+    name: node.id.name,
+    meta: { base: sup.name },
+    source: { file, start: node.start },
   });
 });

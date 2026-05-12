@@ -4,3 +4,4 @@ import "./saga";
 import "./es-aggregate";
 import "./projection";
 import "./command-handler";
+import "./scanner";

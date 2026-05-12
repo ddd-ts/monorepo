@@ -8,7 +8,7 @@ import {
 
 const REACTOR_DECORATORS = new Set(["Saga.on", "on", "On"]);
 
-engine.on((node, parent, ctx, emit) => {
+engine.on((node, parent, ctx, file) => {
   if (node.type !== "ClassDeclaration") return;
   if (!node.id) return;
 
@@ -16,7 +16,11 @@ engine.on((node, parent, ctx, emit) => {
   if (sup?.type !== "Identifier" || sup.name !== "Saga") return;
 
   const className = node.id.name;
-  emit("saga", { className, start: node.start });
+  engine.saveNode({
+    type: "saga",
+    name: className,
+    source: { file, start: node.start },
+  });
 
   for (const method of classMethods(node)) {
     const name = methodName(method);
@@ -26,15 +30,27 @@ engine.on((node, parent, ctx, emit) => {
     if (!events.length) continue;
 
     for (const event of events) {
-      emit("saga-reacts", { className, method: name, event, start: method.start });
+      engine.saveEdge({
+        from: { type: "event", name: event },
+        to: { type: "saga", name: className, method: name },
+        source: { file, start: method.start },
+      });
     }
 
     const effects = methodEffects(method);
     for (const command of effects.sends) {
-      emit("saga-sends", { className, method: name, command, start: method.start });
+      engine.saveEdge({
+        from: { type: "saga", name: className, method: name },
+        to: { type: "command", name: command },
+        source: { file, start: method.start },
+      });
     }
     for (const event of effects.emits) {
-      emit("saga-emits", { className, method: name, event, start: method.start });
+      engine.saveEdge({
+        from: { type: "saga", name: className, method: name },
+        to: { type: "event", name: event },
+        source: { file, start: method.start },
+      });
     }
   }
 });

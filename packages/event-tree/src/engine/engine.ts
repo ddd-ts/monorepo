@@ -1,32 +1,60 @@
 import fs from "node:fs";
 import { parseAndWalk, type WalkerEnter } from "oxc-walker";
+import type { Node } from "../node";
+import type { Edge } from "../edge";
 
-type Emit = (event: string, data: any) => void
+type AstWalker = (...args: [...Parameters<WalkerEnter>, file: string]) => ReturnType<WalkerEnter>
 
-type Walker = (...args: [...Parameters<WalkerEnter>, emit: Emit]) => ReturnType<WalkerEnter>
+export class Engine {
+  private astWalkers: AstWalker[] = []
 
-export const engine = new class Engine {
-  walkers: Walker[] = []
-
-  on(walker: Walker) {
-    this.walkers.push(walker);
+  on(walker: AstWalker) {
+    this.astWalkers.push(walker);
     return this;
   }
 
-  emit: Emit = (event, data) => {}
+  private fileScanner: (root: string) => Iterable<string> = function* (root) {
+    console.warn(`No file scanner configured for event-tree engine. Please call engine.scan() with a file scanner function.`);
+  };
+  scan(fileScanner: (root: string) => Iterable<string>) {
+    this.fileScanner = fileScanner;
+    return this;
+  }
 
-  run(pattern: string) {
-    for (const file of fs.globSync(pattern)) {
+  private edges: Edge[] = [];
+  saveEdge(edge: Edge) {
+    this.edges.push(edge);
+  }
+
+  private nodes: Node[] = [];
+  saveNode(node: Node) {
+    this.nodes.push(node);
+  }
+
+  reset() {
+    this.edges = [];
+    this.nodes = [];
+  }
+
+  run() {
+    for (const file of this.fileScanner(process.cwd())) {
       const code = fs.readFileSync(file, "utf8");
-      const walkers = this.walkers;
-      const emit = this.emit.bind(this);
+      const walkers = this.astWalkers;
       parseAndWalk(code, file, {
         enter: function (node, parent, ctx) {
-          for (const walker of walkers) walker.call(this, node, parent, ctx, emit);
+          for (const walker of walkers) {
+            try {
+              walker.call(this, node, parent, ctx, file);
+            } catch (error) {
+              console.error(`Error occurred while walking node in file ${file}:`, error);
+            }
+          }
         },
       });
     }
   }
 }
+
+export const engine = new Engine();
 
 import './defaults';

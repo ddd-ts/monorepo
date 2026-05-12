@@ -3,7 +3,7 @@ import { readStringLiteral } from "./_utils";
 
 const EVENT_BASES = new Set(["EsEvent", "OldEvent", "Event"]);
 
-engine.on((node, parent, ctx, emit) => {
+engine.on((node, parent, ctx, file) => {
   if (node.type !== "ClassDeclaration") return;
   if (!node.id) return;
 
@@ -13,11 +13,11 @@ engine.on((node, parent, ctx, emit) => {
   if (sup.type === "Identifier") {
     if (!EVENT_BASES.has(sup.name)) return;
 
-    emit("event", {
-      className: node.id.name,
-      runtimeName: node.id.name,
-      base: sup.name,
-      start: node.start,
+    engine.saveNode({
+      type: "event",
+      name: node.id.name,
+      meta: { alias: node.id.name, base: sup.name },
+      source: { file, start: node.start },
     });
     return;
   }
@@ -26,10 +26,13 @@ engine.on((node, parent, ctx, emit) => {
   if (sup.callee?.type !== "Identifier") return;
   if (!EVENT_BASES.has(sup.callee.name)) return;
 
-  emit("event", {
-    className: node.id.name,
-    runtimeName: readStringLiteral(sup.arguments?.[0]) ?? node.id.name,
-    base: sup.callee.name,
-    start: node.start,
+  engine.saveNode({
+    type: "event",
+    name: node.id.name,
+    meta: {
+      alias: readStringLiteral(sup.arguments?.[0]) ?? node.id.name,
+      base: sup.callee.name,
+    },
+    source: { file, start: node.start },
   });
 });
