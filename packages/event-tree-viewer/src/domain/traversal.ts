@@ -14,7 +14,7 @@ export function traceFrom(
   index: GraphIndex,
   rootId: NodeId,
   direction: Direction = "forward",
-  maxDepth = 6,
+  maxDepth = 100,
 ): TraceNode | null {
   const root = index.nodesById.get(rootId);
   if (!root) return null;
