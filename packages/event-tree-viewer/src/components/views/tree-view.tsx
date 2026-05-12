@@ -21,6 +21,11 @@ import { useReveal, type RevealApi } from "@/application/use-reveal";
 import type { DomainMap } from "@/application/use-domains";
 import type { Settings } from "@/application/use-settings";
 
+const HEADER_H = 36;
+const ROW_H = 36;
+const HEADER_Z = 40;
+const ROW_Z_BASE = 30;
+
 interface TreeViewProps {
   index: GraphIndex;
   visibleNodes: Node[];
@@ -57,9 +62,9 @@ export function TreeView({
 
   return (
     <ScrollArea className="h-full">
-      <div className="flex flex-col gap-6 px-6 py-4">
+      <div className="flex flex-col px-6 pb-4">
         {groups.length === 0 && (
-          <p className="text-muted-foreground text-sm">No matching roots.</p>
+          <p className="text-muted-foreground py-4 text-sm">No matching roots.</p>
         )}
         {groups.map((group) => (
           <DomainSection
@@ -114,44 +119,78 @@ function DomainSection({
     [group.domain.label],
   );
 
+  const sectionPath = `domain:${group.domain.key}`;
+  const expanded = expansion.isExpanded(sectionPath);
+
   return (
-    <section className="flex flex-col gap-2">
-      <DomainHeader label={group.domain.label} count={traces.length} />
-      <div className="flex flex-col gap-1">
-        {traces.map((trace) => (
-          <TraceBranch
-            key={trace.id}
-            trace={trace}
-            path={`${group.domain.key}/${trace.id}`}
-            direction={direction}
-            domainPrefix={prefix}
-            settings={settings}
-            visibleIds={visibleIds}
-            selectedId={selectedId}
-            onSelect={onSelect}
-            expansion={expansion}
-            reveal={reveal}
-          />
-        ))}
-      </div>
+    <section className="flex flex-col">
+      <DomainHeader
+        label={group.domain.label}
+        count={traces.length}
+        expanded={expanded}
+        onToggle={() => expansion.toggle(sectionPath)}
+      />
+      {expanded && (
+        <div className="flex flex-col">
+          {traces.map((trace) => (
+            <TraceBranch
+              key={trace.id}
+              trace={trace}
+              path={`${group.domain.key}/${trace.id}`}
+              depth={0}
+              direction={direction}
+              domainPrefix={prefix}
+              settings={settings}
+              visibleIds={visibleIds}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              expansion={expansion}
+              reveal={reveal}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
 
-function DomainHeader({ label, count }: { label: string; count: number }) {
+function DomainHeader({
+  label,
+  count,
+  expanded,
+  onToggle,
+}: {
+  label: string;
+  count: number;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <div className="text-muted-foreground flex items-baseline gap-2 text-xs font-semibold tracking-wide uppercase">
-      <span>{label}</span>
-      <span className="font-mono font-normal">
+    <button
+      type="button"
+      onClick={onToggle}
+      className="bg-background hover:bg-muted/30 sticky top-0 flex items-center gap-2 border-b px-1 py-2 text-left transition-colors"
+      style={{ minHeight: HEADER_H, zIndex: HEADER_Z }}
+    >
+      <CaretRight
+        className={`text-muted-foreground size-3 shrink-0 transition-transform ${
+          expanded ? "rotate-90" : ""
+        }`}
+      />
+      <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+        {label}
+      </span>
+      <span className="text-muted-foreground font-mono text-xs font-normal">
         {count} root{count === 1 ? "" : "s"}
       </span>
-    </div>
+    </button>
   );
 }
 
 function TraceBranch({
   trace,
   path,
+  depth,
   direction,
   domainPrefix,
   settings,
@@ -163,6 +202,7 @@ function TraceBranch({
 }: {
   trace: TraceNode;
   path: string;
+  depth: number;
   direction: Direction;
   domainPrefix: string;
   settings: Settings;
@@ -183,9 +223,20 @@ function TraceBranch({
   const hiddenCount = trace.children.length - visibleChildren.length;
   const childrenToRender = revealed ? trace.children : visibleChildren;
 
+  const rowSticky = hasChildren && expanded;
+
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-1">
+      <div
+        className={`flex items-center gap-1 ${
+          rowSticky ? "bg-background sticky" : ""
+        }`}
+        style={
+          rowSticky
+            ? { top: HEADER_H + depth * ROW_H, zIndex: ROW_Z_BASE - depth, minHeight: ROW_H }
+            : undefined
+        }
+      >
         <ExpandToggle
           hasChildren={hasChildren}
           expanded={expanded}
@@ -201,12 +252,13 @@ function TraceBranch({
         />
       </div>
       {hasChildren && expanded && (
-        <div className="border-border/60 ml-[11.5px] flex flex-col gap-1 border-l pt-1 pl-[19.5px]">
+        <div className="border-border/60 ml-[11.5px] flex flex-col border-l pl-[19.5px]">
           {childrenToRender.map((child, idx) => (
             <TraceBranch
               key={`${child.id}:${idx}`}
               trace={child}
               path={`${path}/${child.id}:${idx}`}
+              depth={depth + 1}
               direction={direction}
               domainPrefix={domainPrefix}
               settings={settings}
