@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export interface RevealApi {
   isRevealed: (path: string) => boolean;
@@ -19,5 +19,5 @@ export function useReveal(): RevealApi {
     });
   }, []);
 
-  return { isRevealed, toggle };
+  return useMemo(() => ({ isRevealed, toggle }), [isRevealed, toggle]);
 }

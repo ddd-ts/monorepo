@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export interface ExpansionApi {
   isExpanded: (path: string) => boolean;
@@ -19,5 +19,5 @@ export function useExpansion(): ExpansionApi {
     });
   }, []);
 
-  return { isExpanded, toggle };
+  return useMemo(() => ({ isExpanded, toggle }), [isExpanded, toggle]);
 }

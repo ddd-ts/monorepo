@@ -1,21 +1,24 @@
-import { useMemo } from "react";
-import { CaretRight, DotsThreeIcon } from "@phosphor-icons/react";
+import { memo, useCallback, useMemo, useRef } from "react";
+import { CaretRightIcon, DotsThreeIcon } from "@phosphor-icons/react";
+import {
+  defaultRangeExtractor,
+  useVirtualizer,
+  type Range,
+} from "@tanstack/react-virtual";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { NodeBadge } from "@/components/node-badge";
 import { type GraphIndex, type NodeId } from "@/domain/graph";
 import type { Node } from "@/domain/node";
-import { traceFrom, type TraceNode } from "@/domain/traversal";
 import { edgeKind, verbFor, type Edge } from "@/domain/edge";
 import { effectiveRoots } from "@/domain/roots";
 import type { Direction } from "@/domain/direction";
 import {
   groupByDomain,
-  domainPrefixFromLabel,
   stripDomainAffix,
   isJustKind,
-  type DomainGroup,
 } from "@/domain/domain-grouping";
+import { flattenTree, type FlatRow } from "@/domain/flatten-tree";
 import { useExpansion, type ExpansionApi } from "@/application/use-expansion";
 import { useReveal, type RevealApi } from "@/application/use-reveal";
 import type { DomainMap } from "@/application/use-domains";
@@ -23,8 +26,11 @@ import type { Settings } from "@/application/use-settings";
 
 const HEADER_H = 36;
 const ROW_H = 36;
+const INDENT = 31;
 const HEADER_Z = 40;
 const ROW_Z_BASE = 30;
+const STICKY_BOTTOM_CLASSES =
+  "after:bg-border after:pointer-events-none after:absolute after:bottom-[-1px] after:left-[-9999px] after:right-[-9999px] after:h-px after:content-['']";
 
 interface TreeViewProps {
   index: GraphIndex;
@@ -45,6 +51,9 @@ export function TreeView({
   selectedId,
   onSelect,
 }: TreeViewProps) {
+  const expansion = useExpansion();
+  const reveal = useReveal();
+
   const visibleIds = useMemo(
     () => new Set(visibleNodes.map((n) => `${n.type}:${n.name}` as NodeId)),
     [visibleNodes],
@@ -57,321 +66,329 @@ export function TreeView({
     return groupByDomain(visibleRoots, domains);
   }, [index, direction, visibleIds, domains]);
 
-  const expansion = useExpansion();
-  const reveal = useReveal();
+  const rows = useMemo(
+    () =>
+      flattenTree({
+        index,
+        groups,
+        direction,
+        visibleIds,
+        isExpanded: expansion.isExpanded,
+        isRevealed: reveal.isRevealed,
+        headerHeight: HEADER_H,
+        rowHeight: ROW_H,
+      }),
+    [index, groups, direction, visibleIds, expansion, reveal],
+  );
+
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const rangeExtractor = useCallback(
+    (range: Range) => {
+      const first = rows[range.startIndex];
+      const ancestors = first?.ancestors ?? [];
+      const set = new Set<number>([...ancestors, ...defaultRangeExtractor(range)]);
+      return [...set].sort((a, b) => a - b);
+    },
+    [rows],
+  );
+
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () =>
+      parentRef.current?.querySelector<HTMLElement>(
+        '[data-slot="scroll-area-viewport"]',
+      ) ?? parentRef.current,
+    estimateSize: () => ROW_H,
+    overscan: 8,
+    rangeExtractor,
+  });
+
+  const scrollOffset = virtualizer.scrollOffset ?? 0;
+  const virtualItems = virtualizer.getVirtualItems();
+  let pinnedBottomPath: string | null = null;
+  let deepestStickyTop = -1;
+  for (const item of virtualItems) {
+    const row = rows[item.index];
+    if (!row.stickable) continue;
+    const enter = item.start - row.stickyTop;
+    const exit = item.start + row.subtreeSize * ROW_H - row.stickyTop - ROW_H;
+    if (scrollOffset >= enter && scrollOffset < exit) {
+      if (row.stickyTop > deepestStickyTop) {
+        deepestStickyTop = row.stickyTop;
+        pinnedBottomPath = row.path;
+      }
+    }
+  }
 
   return (
-    <ScrollArea className="h-full">
-      <div className="flex flex-col px-6 pb-4">
-        {groups.length === 0 && (
-          <p className="text-muted-foreground py-4 text-sm">No matching roots.</p>
-        )}
-        {groups.map((group) => (
-          <DomainSection
-            key={group.domain.key}
-            group={group}
-            index={index}
+    <ScrollArea ref={parentRef} className="h-full">
+      {rows.length === 0 ? (
+        <p className="text-muted-foreground px-6 py-4 text-sm">No matching roots.</p>
+      ) : (
+        <div className="overflow-x-clip px-6 pb-4">
+          <div
+            className="relative"
+            style={{ height: virtualizer.getTotalSize() }}
+          >
+            {virtualItems.map((virtualRow) => (
+              <FlatRowSlot
+                key={virtualRow.key}
+                row={rows[virtualRow.index]}
+                naturalY={virtualRow.start}
+                size={virtualRow.size}
+                isPinnedBottom={rows[virtualRow.index].path === pinnedBottomPath}
+                direction={direction}
+                settings={settings}
+                selectedId={selectedId}
+                onSelect={onSelect}
+                expansion={expansion}
+                reveal={reveal}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </ScrollArea>
+  );
+}
+
+interface FlatRowSlotProps {
+  row: FlatRow;
+  naturalY: number;
+  size: number;
+  isPinnedBottom: boolean;
+  direction: Direction;
+  settings: Settings;
+  selectedId: NodeId | null;
+  onSelect: (id: NodeId) => void;
+  expansion: ExpansionApi;
+  reveal: RevealApi;
+}
+
+const FlatRowSlot = memo(function FlatRowSlot({
+  row,
+  naturalY,
+  size,
+  isPinnedBottom,
+  direction,
+  settings,
+  selectedId,
+  onSelect,
+  expansion,
+  reveal,
+}: FlatRowSlotProps) {
+  const depth = row.kind === "trace-row" ? row.depth : 0;
+  const zIndex = row.stickable
+    ? row.kind === "domain-header"
+      ? HEADER_Z
+      : ROW_Z_BASE - depth
+    : 0;
+
+  if (row.stickable) {
+    return (
+      <div
+        className="pointer-events-none absolute left-0 right-0"
+        style={{
+          top: naturalY,
+          height: row.subtreeSize * ROW_H,
+          zIndex,
+        }}
+      >
+        <div
+          className={`bg-background pointer-events-auto sticky flex w-full items-center ${
+            isPinnedBottom ? STICKY_BOTTOM_CLASSES : ""
+          }`}
+          style={{ top: row.stickyTop, minHeight: size }}
+        >
+          <RowContent
+            row={row}
             direction={direction}
             settings={settings}
-            visibleIds={visibleIds}
             selectedId={selectedId}
             onSelect={onSelect}
             expansion={expansion}
             reveal={reveal}
           />
-        ))}
-      </div>
-    </ScrollArea>
-  );
-}
-
-function DomainSection({
-  group,
-  index,
-  direction,
-  settings,
-  visibleIds,
-  selectedId,
-  onSelect,
-  expansion,
-  reveal,
-}: {
-  group: DomainGroup;
-  index: GraphIndex;
-  direction: Direction;
-  settings: Settings;
-  visibleIds: ReadonlySet<NodeId>;
-  selectedId: NodeId | null;
-  onSelect: (id: NodeId) => void;
-  expansion: ExpansionApi;
-  reveal: RevealApi;
-}) {
-  const traces = useMemo(
-    () =>
-      group.rootIds
-        .map((id) => traceFrom(index, id, direction))
-        .filter((t): t is TraceNode => t !== null),
-    [group.rootIds, index, direction],
-  );
-
-  const prefix = useMemo(
-    () => domainPrefixFromLabel(group.domain.label),
-    [group.domain.label],
-  );
-
-  const sectionPath = `domain:${group.domain.key}`;
-  const expanded = expansion.isExpanded(sectionPath);
-
-  return (
-    <section className="flex flex-col">
-      <DomainHeader
-        label={group.domain.label}
-        count={traces.length}
-        expanded={expanded}
-        onToggle={() => expansion.toggle(sectionPath)}
-      />
-      {expanded && (
-        <div className="flex flex-col">
-          {traces.map((trace) => (
-            <TraceBranch
-              key={trace.id}
-              trace={trace}
-              path={`${group.domain.key}/${trace.id}`}
-              depth={0}
-              direction={direction}
-              domainPrefix={prefix}
-              settings={settings}
-              visibleIds={visibleIds}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              expansion={expansion}
-              reveal={reveal}
-            />
-          ))}
         </div>
-      )}
-    </section>
-  );
-}
+      </div>
+    );
+  }
 
-function DomainHeader({
-  label,
-  count,
-  expanded,
-  onToggle,
-}: {
-  label: string;
-  count: number;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="bg-background hover:bg-muted/30 sticky top-0 flex items-center gap-2 border-b px-1 py-2 text-left transition-colors"
-      style={{ minHeight: HEADER_H, zIndex: HEADER_Z }}
+    <div
+      className="bg-background absolute left-0 right-0 flex items-center"
+      style={{
+        top: naturalY,
+        minHeight: size,
+        zIndex,
+      }}
     >
-      <CaretRight
-        className={`text-muted-foreground size-3 shrink-0 transition-transform ${
-          expanded ? "rotate-90" : ""
-        }`}
+      <RowContent
+        row={row}
+        direction={direction}
+        settings={settings}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        expansion={expansion}
+        reveal={reveal}
       />
-      <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-        {label}
-      </span>
-      <span className="text-muted-foreground font-mono text-xs font-normal">
-        {count} root{count === 1 ? "" : "s"}
-      </span>
-    </button>
+    </div>
   );
-}
+});
 
-function TraceBranch({
-  trace,
-  path,
-  depth,
+function RowContent({
+  row,
   direction,
-  domainPrefix,
   settings,
-  visibleIds,
   selectedId,
   onSelect,
   expansion,
   reveal,
 }: {
-  trace: TraceNode;
-  path: string;
-  depth: number;
+  row: FlatRow;
   direction: Direction;
-  domainPrefix: string;
   settings: Settings;
-  visibleIds: ReadonlySet<NodeId>;
   selectedId: NodeId | null;
   onSelect: (id: NodeId) => void;
   expansion: ExpansionApi;
   reveal: RevealApi;
 }) {
-  const hasChildren = trace.children.length > 0;
-  const expanded = expansion.isExpanded(path);
-  const revealed = reveal.isRevealed(path);
+  if (row.kind === "domain-header") {
+    return (
+      <button
+        type="button"
+        onClick={() => expansion.toggle(row.path)}
+        className="hover:bg-muted/30 flex h-full w-full items-center gap-2 px-1 py-2 text-left transition-colors"
+      >
+        <CaretRightIcon
+          className={`text-muted-foreground size-3 shrink-0 transition-transform ${
+            row.expanded ? "rotate-90" : ""
+          }`}
+        />
+        <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+          {row.label}
+        </span>
+        <span className="text-muted-foreground font-mono text-xs font-normal">
+          {row.count} root{row.count === 1 ? "" : "s"}
+        </span>
+      </button>
+    );
+  }
 
-  const visibleChildren = useMemo(
-    () => trace.children.filter((c) => visibleIds.has(c.id)),
-    [trace.children, visibleIds],
-  );
-  const hiddenCount = trace.children.length - visibleChildren.length;
-  const childrenToRender = revealed ? trace.children : visibleChildren;
-
-  const rowSticky = hasChildren && expanded;
+  if (row.kind === "hidden-indicator") {
+    const indentDepth = (row.stickyTop - HEADER_H) / ROW_H;
+    return (
+      <div
+        className="relative flex h-full w-full items-center"
+        style={{ paddingLeft: indentDepth * INDENT }}
+      >
+        <IndentGuides depth={indentDepth} />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => reveal.toggle(row.togglePath)}
+          className="text-muted-foreground h-auto w-fit justify-start px-3 py-1 text-xs font-normal italic"
+        >
+          {row.revealed
+            ? `Hide ${row.count} filtered`
+            : `${row.count} hidden by filter`}
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col">
-      <div
-        className={`flex items-center gap-1 ${
-          rowSticky ? "bg-background sticky" : ""
-        }`}
-        style={
-          rowSticky
-            ? { top: HEADER_H + depth * ROW_H, zIndex: ROW_Z_BASE - depth, minHeight: ROW_H }
-            : undefined
-        }
+    <TraceItem
+      row={row}
+      direction={direction}
+      settings={settings}
+      selectedId={selectedId}
+      onSelect={onSelect}
+      expansion={expansion}
+    />
+  );
+}
+
+function TraceItem({
+  row,
+  direction,
+  settings,
+  selectedId,
+  onSelect,
+  expansion,
+}: {
+  row: Extract<FlatRow, { kind: "trace-row" }>;
+  direction: Direction;
+  settings: Settings;
+  selectedId: NodeId | null;
+  onSelect: (id: NodeId) => void;
+  expansion: ExpansionApi;
+}) {
+  const { trace, depth, hasChildren, expanded, domainPrefix } = row;
+  const followedByMethod = trace.edge ? hasMethodOnPeer(trace.edge, direction) : false;
+  const selected = selectedId === trace.id;
+
+  return (
+    <div
+      className="relative flex h-full w-full items-center gap-1"
+      style={{ paddingLeft: depth * INDENT }}
+    >
+      <IndentGuides depth={depth} />
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        onClick={() => expansion.toggle(row.path)}
+        disabled={!hasChildren}
+        aria-expanded={expanded}
+        className="text-muted-foreground shrink-0"
       >
-        <ExpandToggle
-          hasChildren={hasChildren}
-          expanded={expanded}
-          onToggle={() => expansion.toggle(path)}
+        <CaretRightIcon
+          className={`transition-transform ${expanded ? "rotate-90" : ""} ${
+            hasChildren ? "" : "opacity-0"
+          }`}
         />
-        <TraceRow
-          trace={trace}
-          direction={direction}
-          domainPrefix={domainPrefix}
-          settings={settings}
-          selected={selectedId === trace.id}
-          onSelect={onSelect}
-        />
-      </div>
-      {hasChildren && expanded && (
-        <div className="border-border/60 ml-[11.5px] flex flex-col border-l pl-[19.5px]">
-          {childrenToRender.map((child, idx) => (
-            <TraceBranch
-              key={`${child.id}:${idx}`}
-              trace={child}
-              path={`${path}/${child.id}:${idx}`}
-              depth={depth + 1}
-              direction={direction}
-              domainPrefix={domainPrefix}
-              settings={settings}
-              visibleIds={visibleIds}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              expansion={expansion}
-              reveal={reveal}
-            />
-          ))}
-          {hiddenCount > 0 && (
-            <HiddenIndicator
-              count={hiddenCount}
-              revealed={revealed}
-              onToggle={() => reveal.toggle(path)}
-            />
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onSelect(trace.id)}
+        aria-pressed={selected}
+        className={`h-auto w-fit justify-start gap-3 px-3 py-1.5 text-sm font-normal ${
+          selected ? "bg-muted" : ""
+        }`}
+      >
+        {trace.edge && <EdgeLabel edge={trace.edge} direction={direction} />}
+        <NodeBadge kind={trace.node.type} />
+        <span>
+          <NodeName
+            name={trace.node.name}
+            kind={trace.node.type}
+            domainPrefix={domainPrefix}
+            hide={settings.hideDomainPrefix}
+            allowEmpty={followedByMethod}
+          />
+          {trace.edge && (
+            <MethodTag edge={trace.edge} target={trace.node.name} direction={direction} />
           )}
-        </div>
-      )}
+        </span>
+      </Button>
     </div>
   );
 }
 
-function HiddenIndicator({
-  count,
-  revealed,
-  onToggle,
-}: {
-  count: number;
-  revealed: boolean;
-  onToggle: () => void;
-}) {
+function IndentGuides({ depth }: { depth: number }) {
+  if (depth === 0) return null;
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={onToggle}
-      className="text-muted-foreground h-auto w-fit justify-start px-3 py-1 text-xs font-normal italic"
-    >
-      {revealed ? `Hide ${count} filtered` : `${count} hidden by filter`}
-    </Button>
-  );
-}
-
-function ExpandToggle({
-  hasChildren,
-  expanded,
-  onToggle,
-}: {
-  hasChildren: boolean;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Button
-      variant="ghost"
-      size="icon-xs"
-      onClick={onToggle}
-      disabled={!hasChildren}
-      aria-expanded={expanded}
-      className="text-muted-foreground shrink-0"
-    >
-      <CaretRight
-        className={`transition-transform ${expanded ? "rotate-90" : ""} ${
-          hasChildren ? "" : "opacity-0"
-        }`}
-      />
-    </Button>
-  );
-}
-
-function TraceRow({
-  trace,
-  direction,
-  domainPrefix,
-  settings,
-  selected,
-  onSelect,
-}: {
-  trace: TraceNode;
-  direction: Direction;
-  domainPrefix: string;
-  settings: Settings;
-  selected: boolean;
-  onSelect: (id: NodeId) => void;
-}) {
-  const followedByMethod = trace.edge ? hasMethodOnPeer(trace.edge, direction) : false;
-
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={() => onSelect(trace.id)}
-      aria-pressed={selected}
-      className={`h-auto w-fit justify-start gap-3 px-3 py-1.5 text-sm font-normal ${
-        selected ? "bg-muted" : ""
-      }`}
-    >
-      {trace.edge && <EdgeLabel edge={trace.edge} direction={direction} />}
-      <NodeBadge kind={trace.node.type} />
-      <span>
-        <NodeName
-          name={trace.node.name}
-          kind={trace.node.type}
-          domainPrefix={domainPrefix}
-          hide={settings.hideDomainPrefix}
-          allowEmpty={followedByMethod}
+    <>
+      {Array.from({ length: depth }, (_, i) => (
+        <span
+          key={i}
+          className="border-border/60 pointer-events-none absolute top-0 bottom-0 border-l"
+          style={{ left: 11.5 + i * INDENT }}
         />
-        {trace.edge && (
-          <MethodTag edge={trace.edge} target={trace.node.name} direction={direction} />
-        )}
-      </span>
-    </Button>
+      ))}
+    </>
   );
 }
 
