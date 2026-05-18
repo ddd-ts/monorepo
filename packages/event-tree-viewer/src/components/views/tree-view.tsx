@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { CaretRightIcon, DotsThreeIcon } from "@phosphor-icons/react";
 import {
   defaultRangeExtractor,
@@ -22,15 +22,25 @@ import { flattenTree, type FlatRow } from "@/domain/flatten-tree";
 import { useExpansion, type ExpansionApi } from "@/application/use-expansion";
 import { useReveal, type RevealApi } from "@/application/use-reveal";
 import type { DomainMap } from "@/application/use-domains";
-import type { Settings } from "@/application/use-settings";
+import type { FontSize, Settings } from "@/application/use-settings";
 
-const HEADER_H = 36;
-const ROW_H = 36;
 const INDENT = 31;
 const HEADER_Z = 40;
 const ROW_Z_BASE = 30;
 const STICKY_BOTTOM_CLASSES =
   "after:bg-border after:pointer-events-none after:absolute after:bottom-[-1px] after:left-[-9999px] after:right-[-9999px] after:h-px after:content-['']";
+
+const ROW_HEIGHT_BY_FONT: Record<FontSize, number> = {
+  sm: 30,
+  md: 36,
+  lg: 44,
+};
+
+const ROW_TEXT_BY_FONT: Record<FontSize, { main: string; meta: string; padY: string }> = {
+  sm: { main: "text-xs", meta: "text-[10px]", padY: "py-1" },
+  md: { main: "text-sm", meta: "text-xs", padY: "py-1.5" },
+  lg: { main: "text-base", meta: "text-sm", padY: "py-2" },
+};
 
 interface TreeViewProps {
   index: GraphIndex;
@@ -53,6 +63,7 @@ export function TreeView({
 }: TreeViewProps) {
   const expansion = useExpansion();
   const reveal = useReveal();
+  const rowHeight = ROW_HEIGHT_BY_FONT[settings.fontSize];
 
   const visibleIds = useMemo(
     () => new Set(visibleNodes.map((n) => `${n.type}:${n.name}` as NodeId)),
@@ -75,10 +86,10 @@ export function TreeView({
         visibleIds,
         isExpanded: expansion.isExpanded,
         isRevealed: reveal.isRevealed,
-        headerHeight: HEADER_H,
-        rowHeight: ROW_H,
+        headerHeight: rowHeight,
+        rowHeight,
       }),
-    [index, groups, direction, visibleIds, expansion, reveal],
+    [index, groups, direction, visibleIds, expansion, reveal, rowHeight],
   );
 
   const parentRef = useRef<HTMLDivElement>(null);
@@ -99,10 +110,11 @@ export function TreeView({
       parentRef.current?.querySelector<HTMLElement>(
         '[data-slot="scroll-area-viewport"]',
       ) ?? parentRef.current,
-    estimateSize: () => ROW_H,
+    estimateSize: () => rowHeight,
     overscan: 8,
     rangeExtractor,
   });
+  useEffect(() => virtualizer.measure(), [rowHeight]);
 
   const scrollOffset = virtualizer.scrollOffset ?? 0;
   const virtualItems = virtualizer.getVirtualItems();
@@ -112,7 +124,7 @@ export function TreeView({
     const row = rows[item.index];
     if (!row.stickable) continue;
     const enter = item.start - row.stickyTop;
-    const exit = item.start + row.subtreeSize * ROW_H - row.stickyTop - ROW_H;
+    const exit = item.start + row.subtreeSize * rowHeight - row.stickyTop;
     if (scrollOffset >= enter && scrollOffset < exit) {
       if (row.stickyTop > deepestStickyTop) {
         deepestStickyTop = row.stickyTop;
@@ -137,6 +149,7 @@ export function TreeView({
                 row={rows[virtualRow.index]}
                 naturalY={virtualRow.start}
                 size={virtualRow.size}
+                rowHeight={rowHeight}
                 isPinnedBottom={rows[virtualRow.index].path === pinnedBottomPath}
                 direction={direction}
                 settings={settings}
@@ -157,6 +170,7 @@ interface FlatRowSlotProps {
   row: FlatRow;
   naturalY: number;
   size: number;
+  rowHeight: number;
   isPinnedBottom: boolean;
   direction: Direction;
   settings: Settings;
@@ -170,6 +184,7 @@ const FlatRowSlot = memo(function FlatRowSlot({
   row,
   naturalY,
   size,
+  rowHeight,
   isPinnedBottom,
   direction,
   settings,
@@ -191,7 +206,7 @@ const FlatRowSlot = memo(function FlatRowSlot({
         className="pointer-events-none absolute left-0 right-0"
         style={{
           top: naturalY,
-          height: row.subtreeSize * ROW_H,
+          height: row.subtreeSize * rowHeight,
           zIndex,
         }}
       >
@@ -199,10 +214,11 @@ const FlatRowSlot = memo(function FlatRowSlot({
           className={`bg-background pointer-events-auto sticky flex w-full items-center ${
             isPinnedBottom ? STICKY_BOTTOM_CLASSES : ""
           }`}
-          style={{ top: row.stickyTop, minHeight: size }}
+          style={{ top: row.stickyTop, minHeight: rowHeight }}
         >
           <RowContent
             row={row}
+            rowHeight={rowHeight}
             direction={direction}
             settings={settings}
             selectedId={selectedId}
@@ -220,12 +236,13 @@ const FlatRowSlot = memo(function FlatRowSlot({
       className="bg-background absolute left-0 right-0 flex items-center"
       style={{
         top: naturalY,
-        minHeight: size,
+        minHeight: rowHeight,
         zIndex,
       }}
     >
       <RowContent
         row={row}
+        rowHeight={rowHeight}
         direction={direction}
         settings={settings}
         selectedId={selectedId}
@@ -239,6 +256,7 @@ const FlatRowSlot = memo(function FlatRowSlot({
 
 function RowContent({
   row,
+  rowHeight,
   direction,
   settings,
   selectedId,
@@ -247,6 +265,7 @@ function RowContent({
   reveal,
 }: {
   row: FlatRow;
+  rowHeight: number;
   direction: Direction;
   settings: Settings;
   selectedId: NodeId | null;
@@ -277,7 +296,7 @@ function RowContent({
   }
 
   if (row.kind === "hidden-indicator") {
-    const indentDepth = (row.stickyTop - HEADER_H) / ROW_H;
+    const indentDepth = (row.stickyTop - rowHeight) / rowHeight;
     return (
       <div
         className="relative flex h-full w-full items-center"
@@ -328,6 +347,7 @@ function TraceItem({
   const { trace, depth, hasChildren, expanded, domainPrefix } = row;
   const followedByMethod = trace.edge ? hasMethodOnPeer(trace.edge, direction) : false;
   const selected = selectedId === trace.id;
+  const text = ROW_TEXT_BY_FONT[settings.fontSize];
 
   return (
     <div
@@ -354,11 +374,13 @@ function TraceItem({
         size="sm"
         onClick={() => onSelect(trace.id)}
         aria-pressed={selected}
-        className={`h-auto w-fit justify-start gap-3 px-3 py-1.5 text-sm font-normal ${
+        className={`h-auto w-fit justify-start gap-3 px-3 ${text.padY} ${text.main} font-normal ${
           selected ? "bg-muted" : ""
         }`}
       >
-        {trace.edge && <EdgeLabel edge={trace.edge} direction={direction} />}
+        {trace.edge && (
+          <EdgeLabel edge={trace.edge} direction={direction} metaClass={text.meta} />
+        )}
         <NodeBadge kind={trace.node.type} />
         <span>
           <NodeName
@@ -369,7 +391,12 @@ function TraceItem({
             allowEmpty={followedByMethod}
           />
           {trace.edge && (
-            <MethodTag edge={trace.edge} target={trace.node.name} direction={direction} />
+            <MethodTag
+              edge={trace.edge}
+              target={trace.node.name}
+              direction={direction}
+              metaClass={text.meta}
+            />
           )}
         </span>
       </Button>
@@ -429,9 +456,19 @@ function NodeName({
   );
 }
 
-function EdgeLabel({ edge, direction }: { edge: Edge; direction: Direction }) {
+function EdgeLabel({
+  edge,
+  direction,
+  metaClass,
+}: {
+  edge: Edge;
+  direction: Direction;
+  metaClass: string;
+}) {
   return (
-    <span className="text-muted-foreground font-mono text-xs tracking-wide uppercase">
+    <span
+      className={`text-muted-foreground font-mono ${metaClass} tracking-wide uppercase`}
+    >
       {verbFor(direction, edgeKind(edge))}
     </span>
   );
@@ -441,14 +478,20 @@ function MethodTag({
   edge,
   target,
   direction,
+  metaClass,
 }: {
   edge: Edge;
   target: string;
   direction: Direction;
+  metaClass: string;
 }) {
   const peer = direction === "forward" ? edge.to : edge.from;
   if ("method" in peer && peer.name === target) {
-    return <span className="text-muted-foreground font-mono text-xs">.{peer.method}</span>;
+    return (
+      <span className={`text-muted-foreground font-mono ${metaClass}`}>
+        .{peer.method}
+      </span>
+    );
   }
   return null;
 }
