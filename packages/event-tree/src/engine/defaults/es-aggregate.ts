@@ -13,7 +13,14 @@ engine.on((node, parent, ctx, file) => {
   if (!node.id) return;
 
   const sup = node.superClass;
-  if (sup?.type !== "Identifier" || sup.name !== "EsAggregate") return;
+  if (!sup) return;
+  if (sup.type === "Identifier") {
+    if (sup.name !== "EsAggregate") return;
+  } else if (sup.type === "CallExpression") {
+    if (sup.callee?.type !== "Identifier" || sup.callee.name !== "EsAggregate") return;
+  } else {
+    return;
+  }
 
   const className = node.id.name;
   engine.saveNode({

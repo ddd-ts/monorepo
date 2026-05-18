@@ -7,13 +7,22 @@ engine.on((node, parent, ctx, file) => {
   if (!node.id) return;
 
   const sup = node.superClass;
-  if (sup?.type !== "Identifier") return;
-  if (!COMMAND_BASES.has(sup.name)) return;
+  if (!sup) return;
+
+  let base: string | null = null;
+  if (sup.type === "Identifier") {
+    if (COMMAND_BASES.has(sup.name)) base = sup.name;
+  } else if (sup.type === "CallExpression") {
+    if (sup.callee?.type === "Identifier" && COMMAND_BASES.has(sup.callee.name)) {
+      base = sup.callee.name;
+    }
+  }
+  if (!base) return;
 
   engine.saveNode({
     type: "command",
     name: node.id.name,
-    meta: { base: sup.name },
+    meta: { base },
     source: { file, start: node.start },
   });
 });
