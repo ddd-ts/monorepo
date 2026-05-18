@@ -13,7 +13,7 @@ export class Engine {
     return this;
   }
 
-  private fileScanner: (root: string) => Iterable<string> = function* (root) {
+  private fileScanner: (root: string) => Iterable<string> = function* () {
     console.warn(`No file scanner configured for event-tree engine. Please call engine.scan() with a file scanner function.`);
   };
   scan(fileScanner: (root: string) => Iterable<string>) {
@@ -25,10 +25,16 @@ export class Engine {
   saveEdge(edge: Edge) {
     this.edges.push(edge);
   }
+  getEdges(): readonly Edge[] {
+    return this.edges;
+  }
 
   private nodes: Node[] = [];
   saveNode(node: Node) {
     this.nodes.push(node);
+  }
+  getNodes(): readonly Node[] {
+    return this.nodes;
   }
 
   reset() {
@@ -36,8 +42,8 @@ export class Engine {
     this.nodes = [];
   }
 
-  run() {
-    for (const file of this.fileScanner(process.cwd())) {
+  run(root: string = process.cwd()) {
+    for (const file of this.fileScanner(root)) {
       const code = fs.readFileSync(file, "utf8");
       const walkers = this.astWalkers;
       parseAndWalk(code, file, {
@@ -57,4 +63,4 @@ export class Engine {
 
 export const engine = new Engine();
 
-import './defaults';
+await import('./defaults');

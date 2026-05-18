@@ -14,7 +14,7 @@ import { ListView } from "@/components/views/list-view";
 import { TreeView } from "@/components/views/tree-view";
 
 export function App() {
-  const index = useGraph();
+  const { index, status, error, refetch } = useGraph();
   const domains = useDomains(index);
   const filters = useFilters(index);
   const selection = useSelection();
@@ -33,14 +33,29 @@ export function App() {
 
       <main className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1">
-          {viewMode.view === "list" && (
+          {status === "loading" && (
+            <p className="text-muted-foreground px-6 py-4 text-sm">Scanning project…</p>
+          )}
+          {status === "error" && (
+            <div className="px-6 py-4 text-sm">
+              <p className="text-destructive">Failed to load graph: {error}</p>
+              <button
+                type="button"
+                onClick={refetch}
+                className="text-muted-foreground mt-2 underline"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {status === "ready" && viewMode.view === "list" && (
             <ListView
               nodes={filters.visibleNodes}
               selectedId={selection.selectedId}
               onSelect={selection.select}
             />
           )}
-          {viewMode.view === "tree" && (
+          {status === "ready" && viewMode.view === "tree" && (
             <TreeView
               index={index}
               visibleNodes={filters.visibleNodes}

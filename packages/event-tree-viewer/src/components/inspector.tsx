@@ -7,13 +7,13 @@ import { NodeBadge } from "@/components/node-badge";
 import { nodeId, type GraphIndex, type NodeId } from "@/domain/graph";
 import type { Node } from "@/domain/node";
 import { edgeKind, type Edge } from "@/domain/edge";
+import { trpc } from "@/application/trpc-client";
 
 async function openInEditor(source: { file: string; start: number }) {
-  const url = `/__open-in-editor?file=${encodeURIComponent(source.file)}&offset=${source.start}`;
-  const res = await fetch(url, { method: "GET" });
-  if (!res.ok) {
-    const body = await res.text();
-    console.warn(`[open-in-editor] ${res.status}: ${body}`);
+  try {
+    await trpc.editor.open.mutate({ file: source.file, offset: source.start });
+  } catch (error) {
+    console.warn(`[open-in-editor] ${(error as Error).message}`);
   }
 }
 
