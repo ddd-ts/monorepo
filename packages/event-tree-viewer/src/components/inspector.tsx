@@ -28,7 +28,7 @@ export function Inspector({ index, selectedId, onSelect, onClose }: InspectorPro
   if (!node) return null;
 
   return (
-    <aside className="bg-card flex w-96 flex-col border-l">
+    <aside className="bg-card surface-elevated flex w-96 flex-col border-l">
       <header className="flex items-center justify-between border-b px-5 py-3">
         <div className="flex items-center gap-2">
           <NodeBadge kind={node.type} />

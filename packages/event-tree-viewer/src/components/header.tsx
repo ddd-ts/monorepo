@@ -12,9 +12,17 @@ export function Header({
   const { graph } = index;
   return (
     <header className="flex items-center justify-between border-b px-6 py-3">
-      <h1 className="text-sm font-semibold">Event Tree Viewer</h1>
+      <div className="flex items-baseline gap-3">
+        <span className="font-display text-foreground text-base font-bold tracking-tight">
+          DDD-TS
+        </span>
+        <span className="text-muted-foreground/70">·</span>
+        <h1 className="text-muted-foreground text-sm font-medium tracking-tight">
+          Event Tree Viewer
+        </h1>
+      </div>
       <div className="flex items-center gap-3">
-        <span className="text-muted-foreground font-mono text-xs">
+        <span className="text-muted-foreground font-mono text-xs tracking-wide">
           {graph.nodes.length} nodes · {graph.edges.length} edges
         </span>
         <SettingsMenu settings={settings} />
