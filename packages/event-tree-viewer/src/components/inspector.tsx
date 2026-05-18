@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,15 @@ import { NodeBadge } from "@/components/node-badge";
 import { nodeId, type GraphIndex, type NodeId } from "@/domain/graph";
 import type { Node } from "@/domain/node";
 import { edgeKind, type Edge } from "@/domain/edge";
+
+async function openInEditor(source: { file: string; start: number }) {
+  const url = `/__open-in-editor?file=${encodeURIComponent(source.file)}&offset=${source.start}`;
+  const res = await fetch(url, { method: "GET" });
+  if (!res.ok) {
+    const body = await res.text();
+    console.warn(`[open-in-editor] ${res.status}: ${body}`);
+  }
+}
 
 interface InspectorProps {
   index: GraphIndex;
@@ -42,6 +52,15 @@ export function Inspector({ index, selectedId, onSelect, onClose }: InspectorPro
       <ScrollArea className="flex-1">
         <div className="flex flex-col gap-4 px-5 py-4">
           <Meta node={node} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openInEditor(node.source)}
+            className="w-full justify-start gap-2"
+          >
+            <ArrowSquareOutIcon />
+            Open in editor
+          </Button>
           <Separator />
           <Section
             title={`Incoming (${incoming.length})`}
