@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from "react"
-import { CaretRightIcon, DotsThreeIcon } from "@phosphor-icons/react"
+import { CaretRightIcon } from "@phosphor-icons/react"
 import {
   defaultRangeExtractor,
   useVirtualizer,
@@ -8,16 +8,14 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { NodeBadge } from "@/components/node-badge"
+import { DomainHeader } from "@/components/domain-header"
+import { NodeName } from "@/components/node-name"
 import { type GraphIndex, type NodeId } from "@/domain/graph"
 import type { Node } from "@/domain/node"
 import { edgeKind, verbFor, type Edge } from "@/domain/edge"
 import { effectiveRoots } from "@/domain/roots"
 import type { Direction } from "@/domain/direction"
-import {
-  groupByDomain,
-  stripDomainAffix,
-  isJustKind,
-} from "@/domain/domain-grouping"
+import { groupByDomain } from "@/domain/domain-grouping"
 import { flattenTree, type FlatRow } from "@/domain/flatten-tree"
 import { type ExpansionApi } from "@/application/use-expansion"
 import { useReveal, type RevealApi } from "@/application/use-reveal"
@@ -301,23 +299,12 @@ function RowContent({
 }) {
   if (row.kind === "domain-header") {
     return (
-      <button
-        type="button"
-        onClick={() => expansion.toggle(row.path)}
-        className="flex h-full w-full items-center gap-2 px-1 py-2 text-left transition-colors hover:bg-muted/30"
-      >
-        <CaretRightIcon
-          className={`size-3 shrink-0 text-muted-foreground transition-transform ${
-            row.expanded ? "rotate-90" : ""
-          }`}
-        />
-        <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          {row.label}
-        </span>
-        <span className="font-mono text-xs font-normal text-muted-foreground">
-          {row.count} root{row.count === 1 ? "" : "s"}
-        </span>
-      </button>
+      <DomainHeader
+        label={row.label}
+        expanded={row.expanded}
+        onToggle={() => expansion.toggle(row.path)}
+        meta={`${row.count} root${row.count === 1 ? "" : "s"}`}
+      />
     )
   }
 
@@ -454,42 +441,6 @@ function IndentGuides({ depth }: { depth: number }) {
 function hasMethodOnPeer(edge: Edge, direction: Direction): boolean {
   const peer = direction === "forward" ? edge.to : edge.from
   return "method" in peer
-}
-
-function NodeName({
-  name,
-  kind,
-  domainPrefix,
-  hide,
-  allowEmpty,
-}: {
-  name: string
-  kind: string
-  domainPrefix: string
-  hide: boolean
-  allowEmpty: boolean
-}) {
-  if (!hide) return <span className="font-medium">{name}</span>
-  const { stripped, position } = stripDomainAffix(
-    name,
-    domainPrefix,
-    allowEmpty
-  )
-  if (position === null) return <span className="font-medium">{name}</span>
-  const visible = isJustKind(stripped, kind) ? "" : stripped
-  const ellipsis = (
-    <DotsThreeIcon
-      className="inline size-3 align-middle text-muted-foreground"
-      aria-label={name}
-    />
-  )
-  return (
-    <span className="font-medium" title={name}>
-      {position === "prefix" && ellipsis}
-      {visible}
-      {position === "suffix" && ellipsis}
-    </span>
-  )
 }
 
 function EdgeLabel({

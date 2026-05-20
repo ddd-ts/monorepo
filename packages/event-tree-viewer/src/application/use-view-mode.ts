@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react"
 
-export type ViewMode = "list" | "tree"
+export type ViewMode = "list" | "tree" | "graph"
 
 export interface ViewModeApi {
   view: ViewMode

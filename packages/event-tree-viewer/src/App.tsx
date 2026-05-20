@@ -1,3 +1,4 @@
+import { Activity } from "react"
 import { useGraph } from "@/application/use-graph"
 import { useFilters } from "@/application/use-filters"
 import { useSelection } from "@/application/use-selection"
@@ -14,14 +15,15 @@ import { DirectionToggle } from "@/components/direction-toggle"
 import { Inspector } from "@/components/inspector"
 import { ListView } from "@/components/views/list-view"
 import { TreeView } from "@/components/views/tree-view"
+import { GraphView } from "@/components/views/graph-view"
 
 export function App() {
   const { index, status, error, refetch } = useGraph()
   const domains = useDomains(index)
-  const filters = useFilters(index)
+  const direction = useDirection()
+  const filters = useFilters(index, direction.direction)
   const selection = useSelection()
   const viewMode = useViewMode()
-  const direction = useDirection()
   const settings = useSettings()
   const expansion = useExpansion()
 
@@ -32,6 +34,23 @@ export function App() {
       <div className="flex items-center justify-between gap-3 border-b px-6 py-2">
         <ViewSwitcher view={viewMode} />
         {viewMode.view === "tree" && (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center -space-x-px">
+              <Button variant="outline" size="sm" onClick={expansion.expandAll}>
+                Expand
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={expansion.collapseAll}
+              >
+                Collapse
+              </Button>
+            </div>
+            <DirectionToggle direction={direction} />
+          </div>
+        )}
+        {viewMode.view === "graph" && (
           <div className="flex items-center gap-2">
             <div className="flex items-center -space-x-px">
               <Button variant="outline" size="sm" onClick={expansion.expandAll}>
@@ -69,24 +88,49 @@ export function App() {
               </button>
             </div>
           )}
-          {status === "ready" && viewMode.view === "list" && (
-            <ListView
-              nodes={filters.visibleNodes}
-              selectedId={selection.selectedId}
-              onSelect={selection.select}
-            />
-          )}
-          {status === "ready" && viewMode.view === "tree" && (
-            <TreeView
-              index={index}
-              visibleNodes={filters.visibleNodes}
-              domains={domains}
-              direction={direction.direction}
-              settings={settings.settings}
-              expansion={expansion}
-              selectedId={selection.selectedId}
-              onSelect={selection.select}
-            />
+          {status === "ready" && (
+            <>
+              <Activity
+                mode={viewMode.view === "list" ? "visible" : "hidden"}
+                name="list-view"
+              >
+                <ListView
+                  nodes={filters.visibleNodes}
+                  selectedId={selection.selectedId}
+                  onSelect={selection.select}
+                />
+              </Activity>
+              <Activity
+                mode={viewMode.view === "tree" ? "visible" : "hidden"}
+                name="tree-view"
+              >
+                <TreeView
+                  index={index}
+                  visibleNodes={filters.visibleNodes}
+                  domains={domains}
+                  direction={direction.direction}
+                  settings={settings.settings}
+                  expansion={expansion}
+                  selectedId={selection.selectedId}
+                  onSelect={selection.select}
+                />
+              </Activity>
+              <Activity
+                mode={viewMode.view === "graph" ? "visible" : "hidden"}
+                name="graph-view"
+              >
+                <GraphView
+                  index={index}
+                  visibleNodes={filters.visibleNodes}
+                  domains={domains}
+                  direction={direction.direction}
+                  settings={settings.settings}
+                  expansion={expansion}
+                  selectedId={selection.selectedId}
+                  onSelect={selection.select}
+                />
+              </Activity>
+            </>
           )}
         </div>
         {selection.selectedId && (

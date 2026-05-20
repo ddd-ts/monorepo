@@ -4,6 +4,7 @@ import type { ViewMode, ViewModeApi } from "@/application/use-view-mode"
 const VIEWS: { value: ViewMode; label: string }[] = [
   { value: "tree", label: "Tree" },
   { value: "list", label: "List" },
+  { value: "graph", label: "Graph" },
 ]
 
 export function ViewSwitcher({ view }: { view: ViewModeApi }) {
