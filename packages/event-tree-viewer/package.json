@@ -6,7 +6,10 @@
   "bin": {
     "event-tree-viewer": "./src/cli.ts"
   },
-  "files": ["./src", "./vite.config.ts"],
+  "files": [
+    "./src",
+    "./vite.config.ts"
+  ],
   "scripts": {
     "dev": "vite",
     "lint": "eslint .",
@@ -19,6 +22,7 @@
     "@ddd-ts/event-tree": "workspace:^",
     "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/vite": "^4.2.1",
+    "@tanstack/react-query": "^5.100.11",
     "@tanstack/react-virtual": "^3.13.24",
     "@trpc/client": "^11",
     "@trpc/server": "^11",
