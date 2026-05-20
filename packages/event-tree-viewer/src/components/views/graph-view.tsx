@@ -162,8 +162,8 @@ export function GraphView({
   }
 
   return (
-    <SyncedHorizontalSections
-      panels={groupByDomainPanel(sections)}
+    <SyncedHorizontalSectionsMemoed
+      sections={sections}
       expansion={expansion}
       settings={settings}
       selectedId={selectedId}
@@ -172,6 +172,22 @@ export function GraphView({
       onHover={setHoveredId}
     />
   )
+}
+
+function SyncedHorizontalSectionsMemoed({
+  sections,
+  ...rest
+}: {
+  sections: ComponentSection[]
+  expansion: ExpansionApi
+  settings: Settings
+  selectedId: NodeId | null
+  relatedIds: ReadonlySet<string> | null
+  onSelect: (id: NodeId) => void
+  onHover: (id: NodeId | null) => void
+}) {
+  const panels = useMemo(() => groupByDomainPanel(sections), [sections])
+  return <SyncedHorizontalSections panels={panels} {...rest} />
 }
 
 function groupByDomainPanel(sections: ComponentSection[]): DomainPanel[] {
@@ -196,6 +212,8 @@ function groupByDomainPanel(sections: ComponentSection[]): DomainPanel[] {
   )
 }
 
+const STICKY_HEADER_H = 36
+
 function SyncedHorizontalSections({
   panels,
   expansion,
@@ -213,62 +231,83 @@ function SyncedHorizontalSections({
   onSelect: (id: NodeId) => void
   onHover: (id: NodeId | null) => void
 }) {
-  const scrollXRef = useRef(0)
-  const viewportsRef = useRef<Map<string, HTMLDivElement>>(new Map())
-  const externalRef = useRef(false)
-  const maxWidth = useMemo(() => {
-    let m = 0
-    for (const panel of panels) {
-      if (!expansion.isExpanded(panel.key)) continue
-      for (const c of panel.components) m = Math.max(m, c.laid.width)
-    }
-    return m
-  }, [panels, expansion])
+  const hostRef = useRef<HTMLDivElement>(null)
+  const transformRef = useRef<HTMLDivElement>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const stickyHeaderRef = useRef<HTMLDivElement>(null)
+  const panelEls = useRef(new Map<string, HTMLDivElement>())
+  const [contentSize, setContentSize] = useState<{ w: number; h: number }>({
+    w: 0,
+    h: 0,
+  })
+  const [activePanelKey, setActivePanelKey] = useState<string | null>(null)
+  const activePanelKeyRef = useRef<string | null>(null)
 
-  const registerViewport = useCallback(
+  const registerPanelEl = useCallback(
     (key: string, el: HTMLDivElement | null) => {
-      const map = viewportsRef.current
-      if (el) {
-        map.set(key, el)
-        externalRef.current = true
-        const max = Math.max(0, el.scrollWidth - el.clientWidth)
-        el.scrollLeft = Math.min(scrollXRef.current, max)
-        requestAnimationFrame(() => {
-          externalRef.current = false
-        })
-      } else {
-        map.delete(key)
-      }
+      if (el) panelEls.current.set(key, el)
+      else panelEls.current.delete(key)
     },
     []
   )
 
-  const handleScroll = useCallback((source: HTMLDivElement) => {
-    if (externalRef.current) return
-    const global = viewportsRef.current.get("__global__")
-    if (source !== global && global) {
-      // Per-section scroll: lift to global, which then re-broadcasts.
-      const globalMax = Math.max(0, global.scrollWidth - global.clientWidth)
-      const next = Math.min(globalMax, source.scrollLeft)
-      if (Math.abs(global.scrollLeft - next) > 0.5) {
-        global.scrollLeft = next
-        return
+  const updateSticky = useCallback(
+    (ty: number) => {
+      let activeKey: string | null = null
+      let nextTop: number | null = null
+      let activeFound = false
+      for (const panel of panels) {
+        const el = panelEls.current.get(panel.key)
+        if (!el) continue
+        const top = el.offsetTop
+        const height = el.offsetHeight
+        if (!activeFound) {
+          if (top <= ty && ty < top + height) {
+            activeKey = panel.key
+            activeFound = true
+          }
+        } else {
+          nextTop = top
+          break
+        }
       }
-    }
-    scrollXRef.current = source.scrollLeft
-    externalRef.current = true
-    for (const [, el] of viewportsRef.current) {
-      if (el === source) continue
-      const max = Math.max(0, el.scrollWidth - el.clientWidth)
-      const target = Math.min(scrollXRef.current, max)
-      if (Math.abs(el.scrollLeft - target) > 0.5) el.scrollLeft = target
-    }
-    requestAnimationFrame(() => {
-      externalRef.current = false
-    })
-  }, [])
+      let overlayY = 0
+      if (activeKey && nextTop !== null) {
+        const nextTopInViewport = nextTop - ty
+        if (nextTopInViewport < STICKY_HEADER_H) {
+          overlayY = nextTopInViewport - STICKY_HEADER_H
+        }
+      }
+      const overlay = stickyHeaderRef.current
+      if (overlay) {
+        overlay.style.transform = `translateY(${overlayY}px)`
+      }
+      if (activeKey !== activePanelKeyRef.current) {
+        activePanelKeyRef.current = activeKey
+        setActivePanelKey(activeKey)
+      }
+    },
+    [panels]
+  )
 
-  const wheelHostRef = useRef<HTMLDivElement>(null)
+  const applyTransform = useCallback(
+    (left: number, top: number) => {
+      const t = transformRef.current
+      if (t) t.style.transform = `translate3d(0, ${-top}px, 0)`
+      const host = hostRef.current
+      if (host) host.style.setProperty("--graph-scroll-x", `${left}px`)
+      updateSticky(top)
+    },
+    [updateSticky]
+  )
+
+  const handleViewportScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const v = e.currentTarget
+      applyTransform(v.scrollLeft, v.scrollTop)
+    },
+    [applyTransform]
+  )
 
   const nodeToPanelKey = useMemo(() => {
     const map = new Map<string, string>()
@@ -283,45 +322,164 @@ function SyncedHorizontalSections({
   }, [panels])
 
   useEffect(() => {
-    if (!selectedId) return
-    const panelKey = nodeToPanelKey.get(selectedId)
-    if (!panelKey) return
-    if (!expansion.isExpanded(panelKey)) expansion.toggle(panelKey)
-    const raf = requestAnimationFrame(() => {
-      const host = wheelHostRef.current
-      if (!host) return
-      const escaped =
-        typeof CSS !== "undefined" && CSS.escape
-          ? CSS.escape(selectedId)
-          : selectedId.replace(/(["\\])/g, "\\$1")
-      const el = host.querySelector<HTMLElement>(
-        `[data-node-id="${escaped}"]`
-      )
-      el?.scrollIntoView({ block: "center", inline: "center", behavior: "auto" })
+    const el = transformRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => {
+      const r = entry.contentRect
+      setContentSize({ w: Math.ceil(r.width), h: Math.ceil(r.height) })
     })
-    return () => cancelAnimationFrame(raf)
-  }, [selectedId, nodeToPanelKey, expansion])
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
-    const host = wheelHostRef.current
+    const host = hostRef.current
+    if (!host) return
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width
+      host.style.setProperty("--graph-viewport-w", `${w}px`)
+    })
+    ro.observe(host)
+    return () => ro.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const v = viewportRef.current
+    if (!v) return
+    applyTransform(v.scrollLeft, v.scrollTop)
+  }, [contentSize, applyTransform])
+
+  useEffect(() => {
+    const host = hostRef.current
     if (!host) return
     const onWheel = (e: WheelEvent) => {
-      const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : 0
-      if (dx === 0) return
-      const global = viewportsRef.current.get("__global__")
-      if (!global) return
-      const max = Math.max(0, global.scrollWidth - global.clientWidth)
-      const next = Math.max(0, Math.min(max, global.scrollLeft + dx))
-      if (Math.abs(global.scrollLeft - next) < 0.5) return
+      const v = viewportRef.current
+      if (!v) return
+      const hMax = Math.max(0, v.scrollWidth - v.clientWidth)
+      const vMax = Math.max(0, v.scrollHeight - v.clientHeight)
+      const newLeft = Math.max(0, Math.min(hMax, v.scrollLeft + e.deltaX))
+      const newTop = Math.max(0, Math.min(vMax, v.scrollTop + e.deltaY))
+      const changed =
+        Math.abs(newLeft - v.scrollLeft) > 0.5 ||
+        Math.abs(newTop - v.scrollTop) > 0.5
+      if (!changed) return
       e.preventDefault()
-      global.scrollLeft = next
+      v.scrollLeft = newLeft
+      v.scrollTop = newTop
     }
     host.addEventListener("wheel", onWheel, { passive: false })
     return () => host.removeEventListener("wheel", onWheel)
   }, [])
 
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return
+    let pan:
+      | {
+          startX: number
+          startY: number
+          startLeft: number
+          startTop: number
+          pointerId: number
+          moved: boolean
+        }
+      | null = null
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") return
+      const v = viewportRef.current
+      if (!v) return
+      pan = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startLeft: v.scrollLeft,
+        startTop: v.scrollTop,
+        pointerId: e.pointerId,
+        moved: false,
+      }
+    }
+    const onPointerMove = (e: PointerEvent) => {
+      if (!pan || e.pointerId !== pan.pointerId) return
+      const v = viewportRef.current
+      if (!v) return
+      const dx = pan.startX - e.clientX
+      const dy = pan.startY - e.clientY
+      if (!pan.moved && Math.hypot(dx, dy) < 5) return
+      pan.moved = true
+      e.preventDefault()
+      const hMax = Math.max(0, v.scrollWidth - v.clientWidth)
+      const vMax = Math.max(0, v.scrollHeight - v.clientHeight)
+      v.scrollLeft = Math.max(0, Math.min(hMax, pan.startLeft + dx))
+      v.scrollTop = Math.max(0, Math.min(vMax, pan.startTop + dy))
+    }
+    const endPan = (e: PointerEvent) => {
+      if (pan?.pointerId === e.pointerId) pan = null
+    }
+    host.addEventListener("pointerdown", onPointerDown)
+    host.addEventListener("pointermove", onPointerMove, { passive: false })
+    host.addEventListener("pointerup", endPan)
+    host.addEventListener("pointercancel", endPan)
+    return () => {
+      host.removeEventListener("pointerdown", onPointerDown)
+      host.removeEventListener("pointermove", onPointerMove)
+      host.removeEventListener("pointerup", endPan)
+      host.removeEventListener("pointercancel", endPan)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!selectedId) return
+    const panelKey = nodeToPanelKey.get(selectedId)
+    if (!panelKey) return
+    if (!expansion.isExpanded(panelKey)) expansion.toggle(panelKey)
+    const raf = requestAnimationFrame(() => {
+      const host = hostRef.current
+      const transform = transformRef.current
+      const viewport = viewportRef.current
+      if (!host || !transform || !viewport) return
+      const escaped =
+        typeof CSS !== "undefined" && CSS.escape
+          ? CSS.escape(selectedId)
+          : selectedId.replace(/(["\\])/g, "\\$1")
+      const el = transform.querySelector<HTMLElement>(
+        `[data-node-id="${escaped}"]`
+      )
+      if (!el) return
+      const tRect = transform.getBoundingClientRect()
+      const eRect = el.getBoundingClientRect()
+      const naturalLeft = eRect.left - tRect.left
+      const naturalTop = eRect.top - tRect.top
+      const viewW = host.clientWidth
+      const viewH = host.clientHeight
+      const hMax = Math.max(0, viewport.scrollWidth - viewport.clientWidth)
+      const vMax = Math.max(0, viewport.scrollHeight - viewport.clientHeight)
+      const targetLeft = Math.max(
+        0,
+        Math.min(hMax, naturalLeft + eRect.width / 2 - viewW / 2)
+      )
+      const targetTop = Math.max(
+        0,
+        Math.min(vMax, naturalTop + eRect.height / 2 - viewH / 2)
+      )
+      viewport.scrollLeft = targetLeft
+      viewport.scrollTop = targetTop
+    })
+    return () => cancelAnimationFrame(raf)
+    // Re-running only on selectedId change is intentional: rerunning on
+    // nodeToPanelKey / expansion changes would yank the viewport back to the
+    // selected node every time the user hovers or expands a panel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId])
+
+  const activePanel =
+    activePanelKey != null
+      ? panels.find((p) => p.key === activePanelKey)
+      : null
+
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div
+      ref={hostRef}
+      className="relative h-full min-h-0 flex-1 touch-none overflow-hidden"
+    >
       <svg width="0" height="0" className="pointer-events-none absolute">
         <defs>
           <marker
@@ -340,11 +498,11 @@ function SyncedHorizontalSections({
           </marker>
         </defs>
       </svg>
-      <div
-        ref={wheelHostRef}
-        className="min-h-0 flex-1 overflow-y-auto"
-      >
-        <div className="flex flex-col">
+      <div className="absolute inset-0 overflow-hidden">
+        <div
+          ref={transformRef}
+          className="absolute top-0 left-0 flex w-max flex-col will-change-transform"
+        >
           {panels.map((panel) => (
             <DomainPanelView
               key={panel.key}
@@ -356,59 +514,66 @@ function SyncedHorizontalSections({
               relatedIds={relatedIds}
               onSelect={onSelect}
               onHover={onHover}
-              registerViewport={registerViewport}
-              onViewportScroll={handleScroll}
+              registerPanelEl={registerPanelEl}
             />
           ))}
         </div>
       </div>
-      {maxWidth > 0 && (
-        <GlobalHorizontalScrollbar
-          maxWidth={maxWidth}
-          registerViewport={registerViewport}
-          onViewportScroll={handleScroll}
-        />
-      )}
+      <div
+        ref={stickyHeaderRef}
+        className="pointer-events-none absolute top-0 right-0 left-0 z-10 will-change-transform"
+        style={{ visibility: activePanel ? "visible" : "hidden" }}
+      >
+        {activePanel && (
+          <div className="pointer-events-auto bg-background px-6">
+            <DomainHeader
+              label={activePanel.domain.label}
+              expanded={expansion.isExpanded(activePanel.key)}
+              onToggle={() => expansion.toggle(activePanel.key)}
+              meta={panelMeta(activePanel)}
+            />
+          </div>
+        )}
+      </div>
+      <div className="pointer-events-none absolute inset-0">
+        <ScrollAreaPrimitive.Root className="pointer-events-none size-full">
+          <ScrollAreaPrimitive.Viewport
+            ref={viewportRef}
+            onScroll={handleViewportScroll}
+            className="pointer-events-none size-full"
+          >
+            <div
+              style={{
+                width: contentSize.w,
+                height: contentSize.h,
+                pointerEvents: "none",
+              }}
+            />
+          </ScrollAreaPrimitive.Viewport>
+          <ScrollAreaPrimitive.Scrollbar
+            orientation="horizontal"
+            className="pointer-events-auto flex h-3 touch-none border-t border-t-transparent bg-muted/40 p-px transition-colors select-none"
+          >
+            <ScrollAreaPrimitive.Thumb className="h-full rounded-full bg-border hover:bg-muted-foreground/60" />
+          </ScrollAreaPrimitive.Scrollbar>
+          <ScrollAreaPrimitive.Scrollbar
+            orientation="vertical"
+            className="pointer-events-auto flex w-3 touch-none border-l border-l-transparent bg-muted/40 p-px transition-colors select-none"
+          >
+            <ScrollAreaPrimitive.Thumb className="w-full rounded-full bg-border hover:bg-muted-foreground/60" />
+          </ScrollAreaPrimitive.Scrollbar>
+          <ScrollAreaPrimitive.Corner className="bg-muted/40" />
+        </ScrollAreaPrimitive.Root>
+      </div>
     </div>
   )
 }
 
-function GlobalHorizontalScrollbar({
-  maxWidth,
-  registerViewport,
-  onViewportScroll,
-}: {
-  maxWidth: number
-  registerViewport: (key: string, el: HTMLDivElement | null) => void
-  onViewportScroll: (el: HTMLDivElement) => void
-}) {
-  const viewportRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    registerViewport("__global__", viewportRef.current)
-    return () => registerViewport("__global__", null)
-  }, [registerViewport])
-  const handleScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => onViewportScroll(e.currentTarget),
-    [onViewportScroll]
-  )
-  return (
-    <ScrollAreaPrimitive.Root className="relative shrink-0 border-t bg-background">
-      <ScrollAreaPrimitive.Viewport
-        ref={viewportRef}
-        onScroll={handleScroll}
-        className="size-full"
-        style={{ height: 1 }}
-      >
-        <div style={{ width: maxWidth, height: 1 }} />
-      </ScrollAreaPrimitive.Viewport>
-      <ScrollAreaPrimitive.Scrollbar
-        orientation="horizontal"
-        className="flex h-3 touch-none border-t border-t-transparent bg-muted/40 p-px transition-colors select-none"
-      >
-        <ScrollAreaPrimitive.Thumb className="h-full rounded-full bg-border hover:bg-muted-foreground/60" />
-      </ScrollAreaPrimitive.Scrollbar>
-    </ScrollAreaPrimitive.Root>
-  )
+function panelMeta(panel: DomainPanel): string {
+  const { totals, components } = panel
+  return `${totals.nodes} node${totals.nodes === 1 ? "" : "s"} · ${totals.edges} edge${totals.edges === 1 ? "" : "s"}${
+    components.length > 1 ? ` · ${components.length} graphs` : ""
+  }`
 }
 
 function DomainPanelView({
@@ -420,8 +585,7 @@ function DomainPanelView({
   relatedIds,
   onSelect,
   onHover,
-  registerViewport,
-  onViewportScroll,
+  registerPanelEl,
 }: {
   panel: DomainPanel
   expanded: boolean
@@ -431,17 +595,18 @@ function DomainPanelView({
   relatedIds: ReadonlySet<string> | null
   onSelect: (id: NodeId) => void
   onHover: (id: NodeId | null) => void
-  registerViewport: (key: string, el: HTMLDivElement | null) => void
-  onViewportScroll: (el: HTMLDivElement) => void
+  registerPanelEl: (key: string, el: HTMLDivElement | null) => void
 }) {
-  const { domain, totals, components } = panel
+  const { key, domain, components } = panel
   const domainPrefix = domainPrefixFromLabel(domain.label)
-  const meta = `${totals.nodes} node${totals.nodes === 1 ? "" : "s"} · ${totals.edges} edge${totals.edges === 1 ? "" : "s"}${
-    components.length > 1 ? ` · ${components.length} graphs` : ""
-  }`
+  const meta = panelMeta(panel)
+  const setRef = useCallback(
+    (el: HTMLDivElement | null) => registerPanelEl(key, el),
+    [registerPanelEl, key]
+  )
   return (
-    <section className="flex flex-col">
-      <div className="sticky top-0 z-20 bg-background px-6">
+    <section ref={setRef} className="flex flex-col">
+      <div className="bg-background px-6">
         <DomainHeader
           label={domain.label}
           expanded={expanded}
@@ -461,8 +626,6 @@ function DomainPanelView({
               relatedIds={relatedIds}
               onSelect={onSelect}
               onHover={onHover}
-              registerViewport={registerViewport}
-              onViewportScroll={onViewportScroll}
             />
           ))}
         </div>
@@ -479,8 +642,6 @@ function ComponentPlot({
   relatedIds,
   onSelect,
   onHover,
-  registerViewport,
-  onViewportScroll,
 }: {
   section: ComponentSection
   settings: Settings
@@ -489,26 +650,18 @@ function ComponentPlot({
   relatedIds: ReadonlySet<string> | null
   onSelect: (id: NodeId) => void
   onHover: (id: NodeId | null) => void
-  registerViewport: (key: string, el: HTMLDivElement | null) => void
-  onViewportScroll: (el: HTMLDivElement) => void
 }) {
-  const { key, laid } = section
-  const setRef = useCallback(
-    (el: HTMLDivElement | null) => registerViewport(key, el),
-    [registerViewport, key]
-  )
-  const handleScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => onViewportScroll(e.currentTarget),
-    [onViewportScroll]
-  )
+  const { laid } = section
   const isEdgeRelated = (edge: LaidOutEdge) =>
     !relatedIds || (relatedIds.has(edge.fromId) && relatedIds.has(edge.toId))
   const isNodeRelated = (id: NodeId) => !relatedIds || relatedIds.has(id)
+  const contentWidth = laid.width + 48
   return (
     <div
-      ref={setRef}
-      onScroll={handleScroll}
-      className="scrollbar-hidden overflow-x-auto px-6"
+      className="px-6 will-change-transform"
+      style={{
+        transform: `translateX(calc(-1 * min(var(--graph-scroll-x, 0px), max(0px, ${contentWidth}px - var(--graph-viewport-w, 0px)))))`,
+      }}
     >
       <div
         className="relative"
