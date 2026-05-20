@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from "react"
+import { memo, useCallback, useMemo, useState } from "react"
 import { CaretRightIcon, DotsThreeIcon } from "@phosphor-icons/react"
 import {
   defaultRangeExtractor,
@@ -56,7 +56,31 @@ interface TreeViewProps {
   onSelect: (id: NodeId) => void
 }
 
-export function TreeView({
+export function TreeView(props: TreeViewProps) {
+  const reveal = useReveal()
+  const rowHeight = ROW_HEIGHT_BY_FONT[props.settings.fontSize]
+  const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null)
+
+  return (
+    <ScrollArea ref={setScrollRoot} className="h-full">
+      <TreeViewBody
+        key={rowHeight}
+        {...props}
+        reveal={reveal}
+        rowHeight={rowHeight}
+        scrollRoot={scrollRoot}
+      />
+    </ScrollArea>
+  )
+}
+
+interface TreeViewBodyProps extends TreeViewProps {
+  reveal: RevealApi
+  rowHeight: number
+  scrollRoot: HTMLDivElement | null
+}
+
+function TreeViewBody({
   index,
   visibleNodes,
   domains,
@@ -65,10 +89,10 @@ export function TreeView({
   expansion,
   selectedId,
   onSelect,
-}: TreeViewProps) {
-  const reveal = useReveal()
-  const rowHeight = ROW_HEIGHT_BY_FONT[settings.fontSize]
-
+  reveal,
+  rowHeight,
+  scrollRoot,
+}: TreeViewBodyProps) {
   const visibleIds = useMemo(
     () => new Set(visibleNodes.map((n) => `${n.type}:${n.name}` as NodeId)),
     [visibleNodes]
@@ -96,8 +120,6 @@ export function TreeView({
     [index, groups, direction, visibleIds, expansion, reveal, rowHeight]
   )
 
-  const parentRef = useRef<HTMLDivElement>(null)
-
   const rangeExtractor = useCallback(
     (range: Range) => {
       const first = rows[range.startIndex]
@@ -114,14 +136,13 @@ export function TreeView({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () =>
-      parentRef.current?.querySelector<HTMLElement>(
+      scrollRoot?.querySelector<HTMLElement>(
         '[data-slot="scroll-area-viewport"]'
-      ) ?? parentRef.current,
+      ) ?? scrollRoot,
     estimateSize: () => rowHeight,
-    overscan: 8,
+    overscan: 20,
     rangeExtractor,
   })
-  useEffect(() => virtualizer.measure(), [rowHeight])
 
   const scrollOffset = virtualizer.scrollOffset ?? 0
   const virtualItems = virtualizer.getVirtualItems()
@@ -140,40 +161,35 @@ export function TreeView({
     }
   }
 
+  if (rows.length === 0) {
+    return (
+      <p className="px-6 py-4 text-sm text-muted-foreground">
+        No matching roots.
+      </p>
+    )
+  }
+
   return (
-    <ScrollArea ref={parentRef} className="h-full">
-      {rows.length === 0 ? (
-        <p className="px-6 py-4 text-sm text-muted-foreground">
-          No matching roots.
-        </p>
-      ) : (
-        <div className="overflow-x-clip px-6 pb-4">
-          <div
-            className="relative"
-            style={{ height: virtualizer.getTotalSize() }}
-          >
-            {virtualItems.map((virtualRow) => (
-              <FlatRowSlot
-                key={virtualRow.key}
-                row={rows[virtualRow.index]}
-                naturalY={virtualRow.start}
-                size={virtualRow.size}
-                rowHeight={rowHeight}
-                isPinnedBottom={
-                  rows[virtualRow.index].path === pinnedBottomPath
-                }
-                direction={direction}
-                settings={settings}
-                selectedId={selectedId}
-                onSelect={onSelect}
-                expansion={expansion}
-                reveal={reveal}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-    </ScrollArea>
+    <div className="overflow-x-clip px-6 pb-4">
+      <div className="relative" style={{ height: virtualizer.getTotalSize() }}>
+        {virtualItems.map((virtualRow) => (
+          <FlatRowSlot
+            key={virtualRow.key}
+            row={rows[virtualRow.index]}
+            naturalY={virtualRow.start}
+            size={virtualRow.size}
+            rowHeight={rowHeight}
+            isPinnedBottom={rows[virtualRow.index].path === pinnedBottomPath}
+            direction={direction}
+            settings={settings}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            expansion={expansion}
+            reveal={reveal}
+          />
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -194,7 +210,6 @@ interface FlatRowSlotProps {
 const FlatRowSlot = memo(function FlatRowSlot({
   row,
   naturalY,
-  size,
   rowHeight,
   isPinnedBottom,
   direction,
