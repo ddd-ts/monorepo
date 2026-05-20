@@ -1,28 +1,28 @@
-import { useMemo } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { NodeBadge } from "@/components/node-badge";
-import { NODE_KINDS, type Node, type NodeKind } from "@/domain/node";
-import { nodeId, type NodeId } from "@/domain/graph";
+import { useMemo } from "react"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Button } from "@/components/ui/button"
+import { NodeBadge } from "@/components/node-badge"
+import { NODE_KINDS, type Node, type NodeKind } from "@/domain/node"
+import { nodeId, type NodeId } from "@/domain/graph"
 
 interface ListViewProps {
-  nodes: Node[];
-  selectedId: NodeId | null;
-  onSelect: (id: NodeId) => void;
+  nodes: Node[]
+  selectedId: NodeId | null
+  onSelect: (id: NodeId) => void
 }
 
 export function ListView({ nodes, selectedId, onSelect }: ListViewProps) {
-  const grouped = useMemo(() => groupByKind(nodes), [nodes]);
+  const grouped = useMemo(() => groupByKind(nodes), [nodes])
 
   return (
     <ScrollArea className="h-full">
       <div className="flex flex-col gap-4 px-6 py-4">
         {NODE_KINDS.map((kind) => {
-          const items = grouped.get(kind) ?? [];
-          if (!items.length) return null;
+          const items = grouped.get(kind) ?? []
+          if (!items.length) return null
           return (
             <section key={kind} className="flex flex-col gap-2">
-              <h2 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+              <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 {kind} ({items.length})
               </h2>
               <ul className="flex flex-col gap-1">
@@ -36,14 +36,14 @@ export function ListView({ nodes, selectedId, onSelect }: ListViewProps) {
                 ))}
               </ul>
             </section>
-          );
+          )
         })}
         {!nodes.length && (
-          <p className="text-muted-foreground text-sm">No matching nodes.</p>
+          <p className="text-sm text-muted-foreground">No matching nodes.</p>
         )}
       </div>
     </ScrollArea>
-  );
+  )
 }
 
 function NodeRow({
@@ -51,11 +51,11 @@ function NodeRow({
   selected,
   onSelect,
 }: {
-  node: Node;
-  selected: boolean;
-  onSelect: (id: NodeId) => void;
+  node: Node
+  selected: boolean
+  onSelect: (id: NodeId) => void
 }) {
-  const id = nodeId(node.type, node.name);
+  const id = nodeId(node.type, node.name)
   return (
     <li>
       <Button
@@ -69,22 +69,24 @@ function NodeRow({
       >
         <NodeBadge kind={node.type} />
         <span className="font-medium">{node.name}</span>
-        {"meta" in node && "alias" in node.meta && node.meta.alias !== node.name && (
-          <span className="text-muted-foreground font-mono text-xs">
-            {node.meta.alias}
-          </span>
-        )}
+        {"meta" in node &&
+          "alias" in node.meta &&
+          node.meta.alias !== node.name && (
+            <span className="font-mono text-xs text-muted-foreground">
+              {node.meta.alias}
+            </span>
+          )}
       </Button>
     </li>
-  );
+  )
 }
 
 function groupByKind(nodes: Node[]): Map<NodeKind, Node[]> {
-  const out = new Map<NodeKind, Node[]>();
+  const out = new Map<NodeKind, Node[]>()
   for (const node of nodes) {
-    const list = out.get(node.type) ?? [];
-    list.push(node);
-    out.set(node.type, list);
+    const list = out.get(node.type) ?? []
+    list.push(node)
+    out.set(node.type, list)
   }
-  return out;
+  return out
 }

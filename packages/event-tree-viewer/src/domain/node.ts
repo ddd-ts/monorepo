@@ -1,13 +1,23 @@
-type Source = { file: string; start: number };
+type Source = { file: string; start: number }
 
 export type Node =
-  | { type: "event"; name: string; meta: { alias: string; base: string }; source: Source }
+  | {
+      type: "event"
+      name: string
+      meta: { alias: string; base: string }
+      source: Source
+    }
   | { type: "command"; name: string; meta: { base: string }; source: Source }
   | { type: "saga"; name: string; source: Source }
   | { type: "aggregate"; name: string; source: Source }
-  | { type: "projection"; name: string; meta: { alias: string }; source: Source };
+  | {
+      type: "projection"
+      name: string
+      meta: { alias: string }
+      source: Source
+    }
 
-export type NodeKind = Node["type"];
+export type NodeKind = Node["type"]
 
 export const NODE_KINDS = [
   "event",
@@ -15,4 +25,4 @@ export const NODE_KINDS = [
   "saga",
   "aggregate",
   "projection",
-] as const satisfies readonly NodeKind[];
+] as const satisfies readonly NodeKind[]

@@ -1,14 +1,18 @@
-import { CaretDownIcon } from "@phosphor-icons/react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { NodeBadge } from "@/components/node-badge";
-import { NODE_KINDS, type NodeKind } from "@/domain/node";
-import type { FiltersApi } from "@/application/use-filters";
+import { CaretDownIcon } from "@phosphor-icons/react"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { NodeBadge } from "@/components/node-badge"
+import { NODE_KINDS, type NodeKind } from "@/domain/node"
+import type { FiltersApi } from "@/application/use-filters"
 
 export function KindFilter({ filters }: { filters: FiltersApi }) {
-  const selected = filters.filter.kinds;
-  const label = buildLabel(selected);
+  const selected = filters.filter.kinds
+  const label = buildLabel(selected)
 
   return (
     <Popover>
@@ -34,7 +38,7 @@ export function KindFilter({ filters }: { filters: FiltersApi }) {
         </ul>
       </PopoverContent>
     </Popover>
-  );
+  )
 }
 
 function KindOption({
@@ -42,25 +46,25 @@ function KindOption({
   checked,
   onToggle,
 }: {
-  kind: NodeKind;
-  checked: boolean;
-  onToggle: () => void;
+  kind: NodeKind
+  checked: boolean
+  onToggle: () => void
 }) {
   return (
-    <label className="hover:bg-muted hover:text-foreground flex cursor-pointer items-center gap-2 px-2 py-1.5 text-sm transition-colors">
+    <label className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-sm transition-colors hover:bg-muted hover:text-foreground">
       <Checkbox checked={checked} onCheckedChange={onToggle} />
       <NodeBadge kind={kind} />
       <span className="capitalize">{kind}</span>
     </label>
-  );
+  )
 }
 
 function buildLabel(selected: ReadonlySet<NodeKind>): string {
-  if (selected.size === NODE_KINDS.length) return "All kinds";
-  if (selected.size === 0) return "No kinds";
+  if (selected.size === NODE_KINDS.length) return "All kinds"
+  if (selected.size === 0) return "No kinds"
   if (selected.size === 1) {
-    const only = [...selected][0];
-    return only[0].toUpperCase() + only.slice(1);
+    const only = [...selected][0]
+    return only[0].toUpperCase() + only.slice(1)
   }
-  return `${selected.size} kinds`;
+  return `${selected.size} kinds`
 }

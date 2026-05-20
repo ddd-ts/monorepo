@@ -1,6 +1,6 @@
-import { Input } from "@/components/ui/input";
-import { KindFilter } from "@/components/kind-filter";
-import type { FiltersApi } from "@/application/use-filters";
+import { Input } from "@/components/ui/input"
+import { KindFilter } from "@/components/kind-filter"
+import type { FiltersApi } from "@/application/use-filters"
 
 export function FilterBar({ filters }: { filters: FiltersApi }) {
   return (
@@ -13,5 +13,5 @@ export function FilterBar({ filters }: { filters: FiltersApi }) {
       />
       <KindFilter filters={filters} />
     </div>
-  );
+  )
 }

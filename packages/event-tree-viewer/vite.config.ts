@@ -4,9 +4,7 @@ import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 import { trpcPlugin } from "./src/server/vite-plugin"
 
-const SCAN_ROOT = path.resolve(
-  process.env.EVENTVIZ_SCAN_ROOT ?? process.cwd(),
-)
+const SCAN_ROOT = path.resolve(process.env.EVENTVIZ_SCAN_ROOT ?? process.cwd())
 
 // https://vite.dev/config/
 export default defineConfig({

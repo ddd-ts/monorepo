@@ -1,44 +1,49 @@
-import { useMemo } from "react";
-import { ArrowSquareOutIcon } from "@phosphor-icons/react";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { NodeBadge } from "@/components/node-badge";
-import { nodeId, type GraphIndex, type NodeId } from "@/domain/graph";
-import type { Node } from "@/domain/node";
-import { edgeKind, type Edge } from "@/domain/edge";
-import { trpc } from "@/application/trpc-client";
+import { useMemo } from "react"
+import { ArrowSquareOutIcon } from "@phosphor-icons/react"
+import { Separator } from "@/components/ui/separator"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Button } from "@/components/ui/button"
+import { NodeBadge } from "@/components/node-badge"
+import { nodeId, type GraphIndex, type NodeId } from "@/domain/graph"
+import type { Node } from "@/domain/node"
+import { edgeKind, type Edge } from "@/domain/edge"
+import { trpc } from "@/application/trpc-client"
 
 async function openInEditor(source: { file: string; start: number }) {
   try {
-    await trpc.editor.open.mutate({ file: source.file, offset: source.start });
+    await trpc.editor.open.mutate({ file: source.file, offset: source.start })
   } catch (error) {
-    console.warn(`[open-in-editor] ${(error as Error).message}`);
+    console.warn(`[open-in-editor] ${(error as Error).message}`)
   }
 }
 
 interface InspectorProps {
-  index: GraphIndex;
-  selectedId: NodeId;
-  onSelect: (id: NodeId) => void;
-  onClose: () => void;
+  index: GraphIndex
+  selectedId: NodeId
+  onSelect: (id: NodeId) => void
+  onClose: () => void
 }
 
-export function Inspector({ index, selectedId, onSelect, onClose }: InspectorProps) {
-  const node = index.nodesById.get(selectedId);
+export function Inspector({
+  index,
+  selectedId,
+  onSelect,
+  onClose,
+}: InspectorProps) {
+  const node = index.nodesById.get(selectedId)
   const outgoing = useMemo(
     () => index.outgoing.get(selectedId) ?? [],
-    [index, selectedId],
-  );
+    [index, selectedId]
+  )
   const incoming = useMemo(
     () => index.incoming.get(selectedId) ?? [],
-    [index, selectedId],
-  );
+    [index, selectedId]
+  )
 
-  if (!node) return null;
+  if (!node) return null
 
   return (
-    <aside className="bg-card surface-elevated flex w-96 flex-col border-l">
+    <aside className="surface-elevated flex w-96 flex-col border-l bg-card">
       <header className="flex items-center justify-between border-b px-5 py-3">
         <div className="flex items-center gap-2">
           <NodeBadge kind={node.type} />
@@ -78,7 +83,7 @@ export function Inspector({ index, selectedId, onSelect, onClose }: InspectorPro
         </div>
       </ScrollArea>
     </aside>
-  );
+  )
 }
 
 function Meta({ node }: { node: Node }) {
@@ -103,7 +108,7 @@ function Meta({ node }: { node: Node }) {
       <dt className="text-muted-foreground">Offset</dt>
       <dd className="font-mono text-xs">{node.source.start}</dd>
     </dl>
-  );
+  )
 }
 
 function Section({
@@ -112,17 +117,19 @@ function Section({
   direction,
   onSelect,
 }: {
-  title: string;
-  edges: Edge[];
-  direction: "in" | "out";
-  onSelect: (id: NodeId) => void;
+  title: string
+  edges: Edge[]
+  direction: "in" | "out"
+  onSelect: (id: NodeId) => void
 }) {
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+      <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
         {title}
       </h3>
-      {edges.length === 0 && <p className="text-muted-foreground text-sm">None</p>}
+      {edges.length === 0 && (
+        <p className="text-sm text-muted-foreground">None</p>
+      )}
       <ul className="flex flex-col gap-1">
         {edges.map((edge, idx) => (
           <li key={idx}>
@@ -131,7 +138,7 @@ function Section({
         ))}
       </ul>
     </section>
-  );
+  )
 }
 
 function EdgeRow({
@@ -139,13 +146,13 @@ function EdgeRow({
   direction,
   onSelect,
 }: {
-  edge: Edge;
-  direction: "in" | "out";
-  onSelect: (id: NodeId) => void;
+  edge: Edge
+  direction: "in" | "out"
+  onSelect: (id: NodeId) => void
 }) {
-  const peer = direction === "in" ? edge.from : edge.to;
-  const peerId = nodeId(peer.type, peer.name);
-  const method = "method" in peer ? peer.method : null;
+  const peer = direction === "in" ? edge.from : edge.to
+  const peerId = nodeId(peer.type, peer.name)
+  const method = "method" in peer ? peer.method : null
 
   return (
     <Button
@@ -154,12 +161,18 @@ function EdgeRow({
       onClick={() => onSelect(peerId)}
       className="h-auto w-full justify-start gap-2 px-2 py-1.5 text-sm font-normal"
     >
-      <span className="text-muted-foreground font-mono text-xs">{edgeKind(edge)}</span>
+      <span className="font-mono text-xs text-muted-foreground">
+        {edgeKind(edge)}
+      </span>
       <NodeBadge kind={peer.type} />
       <span>
         <span className="font-medium">{peer.name}</span>
-        {method && <span className="text-muted-foreground font-mono text-xs">.{method}</span>}
+        {method && (
+          <span className="font-mono text-xs text-muted-foreground">
+            .{method}
+          </span>
+        )}
       </span>
     </Button>
-  );
+  )
 }

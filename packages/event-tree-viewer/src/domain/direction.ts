@@ -1,1 +1,1 @@
-export type Direction = "forward" | "reverse";
+export type Direction = "forward" | "reverse"
