@@ -269,6 +269,39 @@ function SyncedHorizontalSections({
   }, [])
 
   const wheelHostRef = useRef<HTMLDivElement>(null)
+
+  const nodeToPanelKey = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const panel of panels) {
+      for (const component of panel.components) {
+        for (const node of component.laid.nodes) {
+          if (!map.has(node.id)) map.set(node.id, panel.key)
+        }
+      }
+    }
+    return map
+  }, [panels])
+
+  useEffect(() => {
+    if (!selectedId) return
+    const panelKey = nodeToPanelKey.get(selectedId)
+    if (!panelKey) return
+    if (!expansion.isExpanded(panelKey)) expansion.toggle(panelKey)
+    const raf = requestAnimationFrame(() => {
+      const host = wheelHostRef.current
+      if (!host) return
+      const escaped =
+        typeof CSS !== "undefined" && CSS.escape
+          ? CSS.escape(selectedId)
+          : selectedId.replace(/(["\\])/g, "\\$1")
+      const el = host.querySelector<HTMLElement>(
+        `[data-node-id="${escaped}"]`
+      )
+      el?.scrollIntoView({ block: "center", inline: "center", behavior: "auto" })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [selectedId, nodeToPanelKey, expansion])
+
   useEffect(() => {
     const host = wheelHostRef.current
     if (!host) return
@@ -561,6 +594,7 @@ function NodeBox({
       onMouseEnter={() => onHover(node.id)}
       onMouseLeave={() => onHover(null)}
       aria-pressed={selected}
+      data-node-id={node.id}
       className={`absolute justify-start gap-2 overflow-hidden bg-background px-3 py-2 text-sm font-normal transition-opacity ${
         selected ? "ring-2 ring-ring" : ""
       } ${dimmed ? "opacity-25" : ""}`}

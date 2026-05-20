@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import { CaretRightIcon } from "@phosphor-icons/react"
 import {
   defaultRangeExtractor,
@@ -141,6 +141,45 @@ function TreeViewBody({
     overscan: 20,
     rangeExtractor,
   })
+
+  useEffect(() => {
+    if (!selectedId) return
+    const index = rows.findIndex(
+      (r) => r.kind === "trace-row" && r.trace.id === selectedId
+    )
+    if (index < 0) {
+      const domain = domains.get(selectedId)
+      if (!domain) return
+      const sectionPath = `domain:${domain.key}`
+      if (!expansion.isExpanded(sectionPath)) {
+        expansion.toggle(sectionPath)
+      }
+      return
+    }
+    const raf = requestAnimationFrame(() => {
+      const vp = scrollRoot?.querySelector<HTMLElement>(
+        '[data-slot="scroll-area-viewport"]'
+      )
+      if (!vp) {
+        virtualizer.scrollToIndex(index, { align: "center" })
+        return
+      }
+      const targetTop = Math.max(
+        0,
+        index * rowHeight - vp.clientHeight / 2 + rowHeight / 2
+      )
+      vp.scrollTop = targetTop
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [
+    selectedId,
+    rows,
+    virtualizer,
+    domains,
+    expansion,
+    rowHeight,
+    scrollRoot,
+  ])
 
   const scrollOffset = virtualizer.scrollOffset ?? 0
   const virtualItems = virtualizer.getVirtualItems()
