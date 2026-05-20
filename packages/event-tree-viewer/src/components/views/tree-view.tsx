@@ -19,7 +19,7 @@ import {
   isJustKind,
 } from "@/domain/domain-grouping";
 import { flattenTree, type FlatRow } from "@/domain/flatten-tree";
-import { useExpansion, type ExpansionApi } from "@/application/use-expansion";
+import { type ExpansionApi } from "@/application/use-expansion";
 import { useReveal, type RevealApi } from "@/application/use-reveal";
 import type { DomainMap } from "@/application/use-domains";
 import type { FontSize, Settings } from "@/application/use-settings";
@@ -48,6 +48,7 @@ interface TreeViewProps {
   domains: DomainMap;
   direction: Direction;
   settings: Settings;
+  expansion: ExpansionApi;
   selectedId: NodeId | null;
   onSelect: (id: NodeId) => void;
 }
@@ -58,10 +59,10 @@ export function TreeView({
   domains,
   direction,
   settings,
+  expansion,
   selectedId,
   onSelect,
 }: TreeViewProps) {
-  const expansion = useExpansion();
   const reveal = useReveal();
   const rowHeight = ROW_HEIGHT_BY_FONT[settings.fontSize];
 

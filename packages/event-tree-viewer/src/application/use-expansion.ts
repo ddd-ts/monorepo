@@ -3,21 +3,40 @@ import { useCallback, useMemo, useState } from "react";
 export interface ExpansionApi {
   isExpanded: (path: string) => boolean;
   toggle: (path: string) => void;
+  expandAll: () => void;
+  collapseAll: () => void;
 }
 
-export function useExpansion(): ExpansionApi {
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+type State = { mode: "expanded" | "collapsed"; overrides: Set<string> };
 
-  const isExpanded = useCallback((path: string) => !collapsed.has(path), [collapsed]);
+const EXPANDED: State = { mode: "expanded", overrides: new Set() };
+const COLLAPSED: State = { mode: "collapsed", overrides: new Set() };
+
+export function useExpansion(): ExpansionApi {
+  const [state, setState] = useState<State>(EXPANDED);
+
+  const isExpanded = useCallback(
+    (path: string) => {
+      const overridden = state.overrides.has(path);
+      return state.mode === "expanded" ? !overridden : overridden;
+    },
+    [state],
+  );
 
   const toggle = useCallback((path: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
+    setState((prev) => {
+      const next = new Set(prev.overrides);
       if (next.has(path)) next.delete(path);
       else next.add(path);
-      return next;
+      return { mode: prev.mode, overrides: next };
     });
   }, []);
 
-  return useMemo(() => ({ isExpanded, toggle }), [isExpanded, toggle]);
+  const expandAll = useCallback(() => setState(EXPANDED), []);
+  const collapseAll = useCallback(() => setState(COLLAPSED), []);
+
+  return useMemo(
+    () => ({ isExpanded, toggle, expandAll, collapseAll }),
+    [isExpanded, toggle, expandAll, collapseAll],
+  );
 }

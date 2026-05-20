@@ -5,6 +5,8 @@ import { useViewMode } from "@/application/use-view-mode";
 import { useDirection } from "@/application/use-direction";
 import { useDomains } from "@/application/use-domains";
 import { useSettings } from "@/application/use-settings";
+import { useExpansion } from "@/application/use-expansion";
+import { Button } from "@/components/ui/button";
 import { Header } from "@/components/header";
 import { FilterBar } from "@/components/filter-bar";
 import { ViewSwitcher } from "@/components/view-switcher";
@@ -21,6 +23,7 @@ export function App() {
   const viewMode = useViewMode();
   const direction = useDirection();
   const settings = useSettings();
+  const expansion = useExpansion();
 
   return (
     <div className="bg-background flex h-svh flex-col">
@@ -28,7 +31,27 @@ export function App() {
       <FilterBar filters={filters} />
       <div className="flex items-center justify-between gap-3 border-b px-6 py-2">
         <ViewSwitcher view={viewMode} />
-        {viewMode.view === "tree" && <DirectionToggle direction={direction} />}
+        {viewMode.view === "tree" && (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center -space-x-px">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={expansion.expandAll}
+              >
+                Expand
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={expansion.collapseAll}
+              >
+                Collapse
+              </Button>
+            </div>
+            <DirectionToggle direction={direction} />
+          </div>
+        )}
       </div>
 
       <main className="flex min-h-0 flex-1">
@@ -62,6 +85,7 @@ export function App() {
               domains={domains}
               direction={direction.direction}
               settings={settings.settings}
+              expansion={expansion}
               selectedId={selection.selectedId}
               onSelect={selection.select}
             />
