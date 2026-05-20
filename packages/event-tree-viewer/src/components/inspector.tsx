@@ -43,18 +43,23 @@ export function Inspector({
   if (!node) return null
 
   return (
-    <aside className="surface-elevated flex w-96 flex-col border-l bg-card">
-      <header className="flex items-center justify-between border-b px-5 py-3">
-        <div className="flex items-center gap-2">
+    <aside className="surface-elevated flex h-full w-96 shrink-0 flex-col border-l bg-card">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b px-5 py-3">
+        <div className="flex min-w-0 items-center gap-2">
           <NodeBadge kind={node.type} />
-          <span className="text-sm font-semibold">{node.name}</span>
+          <span className="truncate text-sm font-semibold">{node.name}</span>
         </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+          className="shrink-0"
+        >
           Close
         </Button>
       </header>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-4 px-5 py-4">
           <Meta node={node} />
           <Button
@@ -88,23 +93,23 @@ export function Inspector({
 
 function Meta({ node }: { node: Node }) {
   return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
       <dt className="text-muted-foreground">Name</dt>
-      <dd className="font-mono">{node.name}</dd>
+      <dd className="font-mono break-all">{node.name}</dd>
       {"meta" in node && "alias" in node.meta && (
         <>
           <dt className="text-muted-foreground">Alias</dt>
-          <dd className="font-mono">{node.meta.alias}</dd>
+          <dd className="font-mono break-all">{node.meta.alias}</dd>
         </>
       )}
       {"meta" in node && "base" in node.meta && (
         <>
           <dt className="text-muted-foreground">Base</dt>
-          <dd className="font-mono">{node.meta.base}</dd>
+          <dd className="font-mono break-all">{node.meta.base}</dd>
         </>
       )}
       <dt className="text-muted-foreground">File</dt>
-      <dd className="font-mono text-xs">{node.source.file}</dd>
+      <dd className="font-mono text-xs break-all">{node.source.file}</dd>
       <dt className="text-muted-foreground">Offset</dt>
       <dd className="font-mono text-xs">{node.source.start}</dd>
     </dl>
@@ -159,13 +164,13 @@ function EdgeRow({
       variant="ghost"
       size="sm"
       onClick={() => onSelect(peerId)}
-      className="h-auto w-full justify-start gap-2 px-2 py-1.5 text-sm font-normal"
+      className="h-auto w-full justify-start gap-2 overflow-hidden px-2 py-1.5 text-sm font-normal"
     >
-      <span className="font-mono text-xs text-muted-foreground">
+      <span className="shrink-0 font-mono text-xs text-muted-foreground">
         {edgeKind(edge)}
       </span>
       <NodeBadge kind={peer.type} />
-      <span>
+      <span className="min-w-0 truncate">
         <span className="font-medium">{peer.name}</span>
         {method && (
           <span className="font-mono text-xs text-muted-foreground">
