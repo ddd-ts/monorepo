@@ -195,14 +195,3 @@
   }
 }
 
-@property --graph-scroll-x {
-  syntax: "<length>";
-  initial-value: 0px;
-  inherits: true;
-}
-
-@property --graph-viewport-w {
-  syntax: "<length>";
-  initial-value: 0px;
-  inherits: true;
-}

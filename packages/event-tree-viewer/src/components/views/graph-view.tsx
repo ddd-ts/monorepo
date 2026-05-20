@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import ELK from "elkjs/lib/elk.bundled.js"
 import type { ElkExtendedEdge, ElkNode } from "elkjs/lib/elk-api"
 import { ScrollArea as ScrollAreaPrimitive } from "@base-ui/react/scroll-area"
@@ -89,12 +89,6 @@ export function GraphView({
     () => buildComponentGroups(index, visibleNodes, domains, direction),
     [index, visibleNodes, domains, direction]
   )
-  const [hoveredId, setHoveredId] = useState<NodeId | null>(null)
-  const focusedId = selectedId ?? hoveredId
-  const relatedIds = useMemo(
-    () => computeRelatedIds(index, focusedId),
-    [index, focusedId]
-  )
   const [sections, setSections] = useState<ComponentSection[] | null>(null)
   const [status, setStatus] = useState<"idle" | "laying" | "error">("idle")
   const [error, setError] = useState<string | null>(null)
@@ -164,12 +158,11 @@ export function GraphView({
   return (
     <SyncedHorizontalSectionsMemoed
       sections={sections}
+      index={index}
       expansion={expansion}
       settings={settings}
       selectedId={selectedId}
-      relatedIds={relatedIds}
       onSelect={onSelect}
-      onHover={setHoveredId}
     />
   )
 }
@@ -179,12 +172,11 @@ function SyncedHorizontalSectionsMemoed({
   ...rest
 }: {
   sections: ComponentSection[]
+  index: GraphIndex
   expansion: ExpansionApi
   settings: Settings
   selectedId: NodeId | null
-  relatedIds: ReadonlySet<string> | null
   onSelect: (id: NodeId) => void
-  onHover: (id: NodeId | null) => void
 }) {
   const panels = useMemo(() => groupByDomainPanel(sections), [sections])
   return <SyncedHorizontalSections panels={panels} {...rest} />
@@ -216,32 +208,76 @@ const STICKY_HEADER_H = 36
 
 function SyncedHorizontalSections({
   panels,
+  index,
   expansion,
   settings,
   selectedId,
-  relatedIds,
   onSelect,
-  onHover,
 }: {
   panels: DomainPanel[]
+  index: GraphIndex
   expansion: ExpansionApi
   settings: Settings
   selectedId: NodeId | null
-  relatedIds: ReadonlySet<string> | null
   onSelect: (id: NodeId) => void
-  onHover: (id: NodeId | null) => void
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const transformRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const stickyHeaderRef = useRef<HTMLDivElement>(null)
   const panelEls = useRef(new Map<string, HTMLDivElement>())
+  const panelOffsets = useRef<
+    { key: string; top: number; bottom: number }[]
+  >([])
+  const plotEls = useRef(new Map<string, { el: HTMLDivElement; width: number }>())
+  const hoveredIdRef = useRef<NodeId | null>(null)
   const [contentSize, setContentSize] = useState<{ w: number; h: number }>({
     w: 0,
     h: 0,
   })
   const [activePanelKey, setActivePanelKey] = useState<string | null>(null)
   const activePanelKeyRef = useRef<string | null>(null)
+  const viewportWRef = useRef(0)
+
+  const applyDimming = useCallback(() => {
+    const root = transformRef.current
+    if (!root) return
+    const focused = selectedId ?? hoveredIdRef.current
+    const related = focused ? computeRelatedIds(index, focused) : null
+    for (const el of root.querySelectorAll<HTMLElement>("[data-node-id]")) {
+      const id = el.getAttribute("data-node-id")!
+      const dimmed = related !== null && !related.has(id)
+      el.classList.toggle("opacity-25", dimmed)
+      const selected = id === selectedId
+      el.classList.toggle("ring-2", selected)
+      el.classList.toggle("ring-ring", selected)
+      el.setAttribute("aria-pressed", selected ? "true" : "false")
+    }
+    for (const el of root.querySelectorAll<SVGPathElement>("[data-edge]")) {
+      const from = el.getAttribute("data-from")!
+      const to = el.getAttribute("data-to")!
+      const dimmed =
+        related !== null && !(related.has(from) && related.has(to))
+      el.classList.toggle("opacity-15", dimmed)
+    }
+    for (const el of root.querySelectorAll<HTMLDivElement>(
+      "[data-edge-label]"
+    )) {
+      const from = el.getAttribute("data-from")!
+      const to = el.getAttribute("data-to")!
+      const dimmed =
+        related !== null && !(related.has(from) && related.has(to))
+      el.classList.toggle("opacity-25", dimmed)
+    }
+  }, [index, selectedId])
+
+  const handleHover = useCallback(
+    (id: NodeId | null) => {
+      hoveredIdRef.current = id
+      applyDimming()
+    },
+    [applyDimming]
+  )
 
   const registerPanelEl = useCallback(
     (key: string, el: HTMLDivElement | null) => {
@@ -251,54 +287,71 @@ function SyncedHorizontalSections({
     []
   )
 
-  const updateSticky = useCallback(
-    (ty: number) => {
-      let activeKey: string | null = null
-      let nextTop: number | null = null
-      let activeFound = false
-      for (const panel of panels) {
-        const el = panelEls.current.get(panel.key)
-        if (!el) continue
-        const top = el.offsetTop
-        const height = el.offsetHeight
-        if (!activeFound) {
-          if (top <= ty && ty < top + height) {
-            activeKey = panel.key
-            activeFound = true
-          }
-        } else {
-          nextTop = top
-          break
-        }
-      }
-      let overlayY = 0
-      if (activeKey && nextTop !== null) {
-        const nextTopInViewport = nextTop - ty
-        if (nextTopInViewport < STICKY_HEADER_H) {
-          overlayY = nextTopInViewport - STICKY_HEADER_H
-        }
-      }
-      const overlay = stickyHeaderRef.current
-      if (overlay) {
-        overlay.style.transform = `translateY(${overlayY}px)`
-      }
-      if (activeKey !== activePanelKeyRef.current) {
-        activePanelKeyRef.current = activeKey
-        setActivePanelKey(activeKey)
-      }
+  const registerPlotEl = useCallback(
+    (key: string, el: HTMLDivElement | null, width: number) => {
+      if (el) plotEls.current.set(key, { el, width })
+      else plotEls.current.delete(key)
     },
-    [panels]
+    []
   )
+
+  const rebuildPanelOffsetsCache = useCallback(() => {
+    const offsets: { key: string; top: number; bottom: number }[] = []
+    for (const panel of panels) {
+      const el = panelEls.current.get(panel.key)
+      if (!el) continue
+      const top = el.offsetTop
+      offsets.push({ key: panel.key, top, bottom: top + el.offsetHeight })
+    }
+    panelOffsets.current = offsets
+  }, [panels])
+
+  const updateSticky = useCallback((ty: number) => {
+    const offsets = panelOffsets.current
+    let activeKey: string | null = null
+    let nextTop: number | null = null
+    for (let i = 0; i < offsets.length; i++) {
+      const o = offsets[i]
+      if (o.top <= ty && ty < o.bottom) {
+        activeKey = o.key
+        nextTop = offsets[i + 1]?.top ?? null
+        break
+      }
+    }
+    let overlayY = 0
+    if (activeKey && nextTop !== null) {
+      const nextTopInViewport = nextTop - ty
+      if (nextTopInViewport < STICKY_HEADER_H) {
+        overlayY = nextTopInViewport - STICKY_HEADER_H
+      }
+    }
+    const overlay = stickyHeaderRef.current
+    if (overlay) {
+      overlay.style.transform = `translate3d(0, ${overlayY}px, 0)`
+    }
+    if (activeKey !== activePanelKeyRef.current) {
+      activePanelKeyRef.current = activeKey
+      setActivePanelKey(activeKey)
+    }
+  }, [])
+
+  const applyPlotTransforms = useCallback((left: number) => {
+    const vw = viewportWRef.current
+    for (const { el, width } of plotEls.current.values()) {
+      const max = width > vw ? width - vw : 0
+      const clamped = left < max ? left : max
+      el.style.transform = `translate3d(${-clamped}px, 0, 0)`
+    }
+  }, [])
 
   const applyTransform = useCallback(
     (left: number, top: number) => {
       const t = transformRef.current
       if (t) t.style.transform = `translate3d(0, ${-top}px, 0)`
-      const host = hostRef.current
-      if (host) host.style.setProperty("--graph-scroll-x", `${left}px`)
+      applyPlotTransforms(left)
       updateSticky(top)
     },
-    [updateSticky]
+    [applyPlotTransforms, updateSticky]
   )
 
   const handleViewportScroll = useCallback(
@@ -327,21 +380,23 @@ function SyncedHorizontalSections({
     const ro = new ResizeObserver(([entry]) => {
       const r = entry.contentRect
       setContentSize({ w: Math.ceil(r.width), h: Math.ceil(r.height) })
+      rebuildPanelOffsetsCache()
     })
     ro.observe(el)
     return () => ro.disconnect()
-  }, [])
+  }, [rebuildPanelOffsetsCache])
 
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
     const ro = new ResizeObserver(([entry]) => {
-      const w = entry.contentRect.width
-      host.style.setProperty("--graph-viewport-w", `${w}px`)
+      viewportWRef.current = entry.contentRect.width
+      const v = viewportRef.current
+      if (v) applyPlotTransforms(v.scrollLeft)
     })
     ro.observe(host)
     return () => ro.disconnect()
-  }, [])
+  }, [applyPlotTransforms])
 
   useEffect(() => {
     const v = viewportRef.current
@@ -427,6 +482,10 @@ function SyncedHorizontalSections({
   }, [])
 
   useEffect(() => {
+    applyDimming()
+  }, [applyDimming, panels])
+
+  useEffect(() => {
     if (!selectedId) return
     const panelKey = nodeToPanelKey.get(selectedId)
     if (!panelKey) return
@@ -510,11 +569,10 @@ function SyncedHorizontalSections({
               expanded={expansion.isExpanded(panel.key)}
               onToggle={() => expansion.toggle(panel.key)}
               settings={settings}
-              selectedId={selectedId}
-              relatedIds={relatedIds}
               onSelect={onSelect}
-              onHover={onHover}
+              onHover={handleHover}
               registerPanelEl={registerPanelEl}
+              registerPlotEl={registerPlotEl}
             />
           ))}
         </div>
@@ -576,26 +634,31 @@ function panelMeta(panel: DomainPanel): string {
   }`
 }
 
-function DomainPanelView({
+const DomainPanelView = memo(function DomainPanelView({
   panel,
   expanded,
   onToggle,
   settings,
-  selectedId,
-  relatedIds,
   onSelect,
   onHover,
   registerPanelEl,
+  registerPlotEl,
+  registerNodeEl,
+  registerEdgePath,
+  registerEdgeLabel,
 }: {
   panel: DomainPanel
   expanded: boolean
   onToggle: () => void
   settings: Settings
-  selectedId: NodeId | null
-  relatedIds: ReadonlySet<string> | null
   onSelect: (id: NodeId) => void
   onHover: (id: NodeId | null) => void
   registerPanelEl: (key: string, el: HTMLDivElement | null) => void
+  registerPlotEl: (
+    key: string,
+    el: HTMLDivElement | null,
+    width: number
+  ) => void
 }) {
   const { key, domain, components } = panel
   const domainPrefix = domainPrefixFromLabel(domain.label)
@@ -622,45 +685,49 @@ function DomainPanelView({
               section={component}
               settings={settings}
               domainPrefix={domainPrefix}
-              selectedId={selectedId}
-              relatedIds={relatedIds}
               onSelect={onSelect}
               onHover={onHover}
+              registerPlotEl={registerPlotEl}
             />
           ))}
         </div>
       )}
     </section>
   )
-}
+})
 
-function ComponentPlot({
+const ComponentPlot = memo(function ComponentPlot({
   section,
   settings,
   domainPrefix,
-  selectedId,
-  relatedIds,
   onSelect,
   onHover,
+  registerPlotEl,
 }: {
   section: ComponentSection
   settings: Settings
   domainPrefix: string
-  selectedId: NodeId | null
-  relatedIds: ReadonlySet<string> | null
   onSelect: (id: NodeId) => void
   onHover: (id: NodeId | null) => void
+  registerPlotEl: (
+    key: string,
+    el: HTMLDivElement | null,
+    width: number
+  ) => void
 }) {
-  const { laid } = section
-  const isEdgeRelated = (edge: LaidOutEdge) =>
-    !relatedIds || (relatedIds.has(edge.fromId) && relatedIds.has(edge.toId))
-  const isNodeRelated = (id: NodeId) => !relatedIds || relatedIds.has(id)
+  const { key, laid } = section
   const contentWidth = laid.width + 48
+  const setRef = useCallback(
+    (el: HTMLDivElement | null) => registerPlotEl(key, el, contentWidth),
+    [registerPlotEl, key, contentWidth]
+  )
   return (
     <div
+      ref={setRef}
       className="px-6 will-change-transform"
       style={{
-        transform: `translateX(calc(-1 * min(var(--graph-scroll-x, 0px), max(0px, ${contentWidth}px - var(--graph-viewport-w, 0px)))))`,
+        contentVisibility: "auto",
+        containIntrinsicSize: `${contentWidth}px ${laid.height}px`,
       }}
     >
       <div
@@ -675,11 +742,12 @@ function ComponentPlot({
           {laid.edges.map((edge) => (
             <path
               key={edge.id}
+              data-edge
+              data-from={edge.fromId}
+              data-to={edge.toId}
               d={edge.path}
               fill="none"
-              className={`stroke-muted-foreground/60 transition-opacity ${
-                isEdgeRelated(edge) ? "" : "opacity-15"
-              }`}
+              className="stroke-muted-foreground/60 transition-opacity"
               strokeWidth={1.25}
               markerEnd="url(#graph-arrow)"
             />
@@ -689,9 +757,10 @@ function ComponentPlot({
           edge.label ? (
             <div
               key={`${edge.id}-label`}
-              className={`pointer-events-none absolute rounded bg-background px-1 font-mono text-[10px] tracking-wide text-muted-foreground uppercase transition-opacity ${
-                isEdgeRelated(edge) ? "" : "opacity-25"
-              }`}
+              data-edge-label
+              data-from={edge.fromId}
+              data-to={edge.toId}
+              className="pointer-events-none absolute rounded bg-background px-1 font-mono text-[10px] tracking-wide text-muted-foreground uppercase transition-opacity"
               style={{
                 left: edge.label.x,
                 top: edge.label.y,
@@ -711,8 +780,6 @@ function ComponentPlot({
             node={n}
             hideDomainPrefix={settings.hideDomainPrefix}
             domainPrefix={domainPrefix}
-            selected={selectedId === n.id}
-            dimmed={!isNodeRelated(n.id)}
             onSelect={onSelect}
             onHover={onHover}
           />
@@ -720,22 +787,18 @@ function ComponentPlot({
       </div>
     </div>
   )
-}
+})
 
-function NodeBox({
+const NodeBox = memo(function NodeBox({
   node,
   hideDomainPrefix,
   domainPrefix,
-  selected,
-  dimmed,
   onSelect,
   onHover,
 }: {
   node: LaidOutNode
   hideDomainPrefix: boolean
   domainPrefix: string
-  selected: boolean
-  dimmed: boolean
   onSelect: (id: NodeId) => void
   onHover: (id: NodeId | null) => void
 }) {
@@ -746,11 +809,9 @@ function NodeBox({
       onClick={() => onSelect(node.id)}
       onMouseEnter={() => onHover(node.id)}
       onMouseLeave={() => onHover(null)}
-      aria-pressed={selected}
+      aria-pressed="false"
       data-node-id={node.id}
-      className={`absolute justify-start gap-2 overflow-hidden bg-background px-3 py-2 text-sm font-normal transition-opacity ${
-        selected ? "ring-2 ring-ring" : ""
-      } ${dimmed ? "opacity-25" : ""}`}
+      className="absolute justify-start gap-2 overflow-hidden bg-background px-3 py-2 text-sm font-normal transition-opacity"
       style={{
         left: node.x,
         top: node.y,
@@ -769,7 +830,7 @@ function NodeBox({
       </span>
     </Button>
   )
-}
+})
 
 async function layoutGraph(
   nodes: Node[],
