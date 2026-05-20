@@ -1,11 +1,14 @@
 {
-  "name": "event-tree-viewer",
+  "name": "@ddd-ts/event-tree-viewer",
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "bin": {
+    "event-tree-viewer": "./src/cli.ts"
+  },
+  "files": ["./src", "./vite.config.ts"],
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
