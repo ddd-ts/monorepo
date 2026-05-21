@@ -18,10 +18,17 @@ function scan(root: string): Graph {
   if (cache && cache.root === root) return cache.graph
   engine.reset()
   engine.run(root)
-  const graph: Graph = {
-    nodes: [...engine.getNodes()],
-    edges: [...engine.getEdges()],
-  }
+  const toRel = (file: string) =>
+    path.isAbsolute(file) ? path.relative(root, file) : file
+  const nodes = engine.getNodes().map((n) => ({
+    ...n,
+    source: { ...n.source, file: toRel(n.source.file) },
+  })) as Node[]
+  const edges = engine.getEdges().map((e) => ({
+    ...e,
+    source: { ...e.source, file: toRel(e.source.file) },
+  })) as Edge[]
+  const graph: Graph = { nodes, edges }
   cache = { root, graph }
   return graph
 }

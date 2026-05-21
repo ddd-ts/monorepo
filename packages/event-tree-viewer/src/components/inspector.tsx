@@ -110,8 +110,6 @@ function Meta({ node }: { node: Node }) {
       )}
       <dt className="text-muted-foreground">File</dt>
       <dd className="font-mono text-xs break-all">{node.source.file}</dd>
-      <dt className="text-muted-foreground">Offset</dt>
-      <dd className="font-mono text-xs">{node.source.start}</dd>
     </dl>
   )
 }
