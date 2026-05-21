@@ -29,7 +29,11 @@ export function App() {
 
   return (
     <div className="flex h-svh flex-col bg-background">
-      <Header index={index} settings={settings} />
+      <Header
+        index={index}
+        visibleNodes={filters.visibleNodes}
+        settings={settings}
+      />
       <FilterBar filters={filters} />
       <div className="flex items-center justify-between gap-3 border-b px-6 py-2">
         <ViewSwitcher view={viewMode} />

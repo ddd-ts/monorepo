@@ -1,12 +1,16 @@
+import { ExportDialog } from "@/components/export-dialog"
 import { SettingsMenu } from "@/components/settings-menu"
 import type { GraphIndex } from "@/domain/graph"
+import type { Node } from "@/domain/node"
 import type { SettingsApi } from "@/application/use-settings"
 
 export function Header({
   index,
+  visibleNodes,
   settings,
 }: {
   index: GraphIndex
+  visibleNodes: Node[]
   settings: SettingsApi
 }) {
   const { graph } = index
@@ -25,6 +29,7 @@ export function Header({
         <span className="font-mono text-xs tracking-wide text-muted-foreground">
           {graph.nodes.length} nodes · {graph.edges.length} edges
         </span>
+        <ExportDialog index={index} visibleNodes={visibleNodes} />
         <SettingsMenu settings={settings} />
       </div>
     </header>
