@@ -30,21 +30,26 @@ engine.on((node, parent, ctx, file) => {
   }
 
   const className = node.id.name;
-  engine.saveNode({
-    type: "projection",
-    name: className,
-    meta: { alias: alias ?? className },
-    source: { file, start: node.start },
-  });
+  const projectionAlias = alias ?? className;
 
   for (const method of classMethods(node)) {
     const name = methodName(method);
     if (!name) continue;
     const events = reactorEvents(method.decorators, REACTOR_DECORATORS);
+    if (!events.length) continue;
+
+    const handlerName = `${className}.${name}`;
+    engine.saveNode({
+      type: "projection",
+      name: handlerName,
+      meta: { alias: `${projectionAlias}.${name}` },
+      source: { file, start: method.start },
+    });
+
     for (const event of events) {
       engine.saveEdge({
         from: { type: "event", name: event },
-        to: { type: "projection", name: className, method: name },
+        to: { type: "projection", name: handlerName },
         source: { file, start: method.start },
       });
     }

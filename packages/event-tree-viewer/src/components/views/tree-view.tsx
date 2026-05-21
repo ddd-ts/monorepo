@@ -397,9 +397,6 @@ function TraceItem({
   expansion: ExpansionApi
 }) {
   const { trace, depth, hasChildren, expanded, domainPrefix } = row
-  const followedByMethod = trace.edge
-    ? hasMethodOnPeer(trace.edge, direction)
-    : false
   const selected = selectedId === trace.id
   const text = ROW_TEXT_BY_FONT[settings.fontSize]
 
@@ -446,16 +443,8 @@ function TraceItem({
             kind={trace.node.type}
             domainPrefix={domainPrefix}
             hide={settings.hideDomainPrefix}
-            allowEmpty={followedByMethod}
+            metaClass={text.meta}
           />
-          {trace.edge && (
-            <MethodTag
-              edge={trace.edge}
-              target={trace.node.name}
-              direction={direction}
-              metaClass={text.meta}
-            />
-          )}
         </span>
       </Button>
     </div>
@@ -477,11 +466,6 @@ function IndentGuides({ depth }: { depth: number }) {
   )
 }
 
-function hasMethodOnPeer(edge: Edge, direction: Direction): boolean {
-  const peer = direction === "forward" ? edge.to : edge.from
-  return "method" in peer
-}
-
 function EdgeLabel({
   edge,
   direction,
@@ -498,26 +482,4 @@ function EdgeLabel({
       {verbFor(direction, edgeKind(edge))}
     </span>
   )
-}
-
-function MethodTag({
-  edge,
-  target,
-  direction,
-  metaClass,
-}: {
-  edge: Edge
-  target: string
-  direction: Direction
-  metaClass: string
-}) {
-  const peer = direction === "forward" ? edge.to : edge.from
-  if ("method" in peer && peer.name === target) {
-    return (
-      <span className={`font-mono text-muted-foreground ${metaClass}`}>
-        .{peer.method}
-      </span>
-    )
-  }
-  return null
 }

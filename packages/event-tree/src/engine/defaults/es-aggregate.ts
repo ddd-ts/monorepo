@@ -23,11 +23,6 @@ engine.on((node, parent, ctx, file) => {
   }
 
   const className = node.id.name;
-  engine.saveNode({
-    type: "aggregate",
-    name: className,
-    source: { file, start: node.start },
-  });
 
   for (const method of classMethods(node)) {
     const name = methodName(method);
@@ -36,10 +31,17 @@ engine.on((node, parent, ctx, file) => {
     const events = reactorEvents(method.decorators, REACTOR_DECORATORS);
     if (!events.length) continue;
 
+    const handlerName = `${className}.${name}`;
+    engine.saveNode({
+      type: "aggregate",
+      name: handlerName,
+      source: { file, start: method.start },
+    });
+
     for (const event of events) {
       engine.saveEdge({
         from: { type: "event", name: event },
-        to: { type: "aggregate", name: className, method: name },
+        to: { type: "aggregate", name: handlerName },
         source: { file, start: method.start },
       });
     }
@@ -47,14 +49,14 @@ engine.on((node, parent, ctx, file) => {
     const effects = methodEffects(method);
     for (const command of effects.sends) {
       engine.saveEdge({
-        from: { type: "aggregate", name: className, method: name },
+        from: { type: "aggregate", name: handlerName },
         to: { type: "command", name: command },
         source: { file, start: method.start },
       });
     }
     for (const event of effects.emits) {
       engine.saveEdge({
-        from: { type: "aggregate", name: className, method: name },
+        from: { type: "aggregate", name: handlerName },
         to: { type: "event", name: event },
         source: { file, start: method.start },
       });

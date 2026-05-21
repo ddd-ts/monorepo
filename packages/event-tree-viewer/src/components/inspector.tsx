@@ -157,7 +157,9 @@ function EdgeRow({
 }) {
   const peer = direction === "in" ? edge.from : edge.to
   const peerId = nodeId(peer.type, peer.name)
-  const method = "method" in peer ? peer.method : null
+  const dotIdx = peer.name.indexOf(".")
+  const head = dotIdx >= 0 ? peer.name.slice(0, dotIdx) : peer.name
+  const tail = dotIdx >= 0 ? peer.name.slice(dotIdx) : ""
 
   return (
     <Button
@@ -171,10 +173,10 @@ function EdgeRow({
       </span>
       <NodeBadge kind={peer.type} />
       <span className="min-w-0 truncate">
-        <span className="font-medium">{peer.name}</span>
-        {method && (
+        <span className="font-medium">{head}</span>
+        {tail && (
           <span className="font-mono text-xs text-muted-foreground">
-            .{method}
+            {tail}
           </span>
         )}
       </span>

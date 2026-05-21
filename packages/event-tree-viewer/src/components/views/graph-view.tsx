@@ -643,9 +643,6 @@ const DomainPanelView = memo(function DomainPanelView({
   onHover,
   registerPanelEl,
   registerPlotEl,
-  registerNodeEl,
-  registerEdgePath,
-  registerEdgeLabel,
 }: {
   panel: DomainPanel
   expanded: boolean
@@ -811,7 +808,7 @@ const NodeBox = memo(function NodeBox({
       onMouseLeave={() => onHover(null)}
       aria-pressed="false"
       data-node-id={node.id}
-      className="absolute justify-start gap-2 overflow-hidden bg-background px-3 py-2 text-sm font-normal transition-opacity"
+      className="group/nodebox absolute justify-start gap-2 overflow-hidden bg-background px-3 py-2 text-sm font-normal transition-opacity hover:z-10 hover:overflow-visible"
       style={{
         left: node.x,
         top: node.y,
@@ -820,7 +817,7 @@ const NodeBox = memo(function NodeBox({
       }}
     >
       <NodeBadge kind={node.node.type} />
-      <span className="truncate">
+      <span className="truncate group-hover/nodebox:overflow-visible">
         <NodeName
           name={node.node.name}
           kind={node.node.type}

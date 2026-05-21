@@ -5,9 +5,8 @@ type CommandRef = { type: "command"; name: string }
 type Reactor = {
   type: "saga" | "aggregate" | "projection"
   name: string
-  method: string
 }
-type Sender = { type: "saga" | "aggregate"; name: string; method: string }
+type Sender = { type: "saga" | "aggregate"; name: string }
 
 type Source = { file: string; start: number }
 
