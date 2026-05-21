@@ -21,7 +21,7 @@ export function App() {
   const { index, status, error, refetch } = useGraph()
   const domains = useDomains(index)
   const direction = useDirection()
-  const filters = useFilters(index, direction.direction)
+  const filters = useFilters(index)
   const selection = useSelection()
   const viewMode = useViewMode()
   const settings = useSettings()
