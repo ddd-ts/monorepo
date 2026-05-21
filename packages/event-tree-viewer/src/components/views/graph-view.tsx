@@ -344,34 +344,53 @@ function SyncedHorizontalSections({
     panelOffsets.current = offsets
   }, [panels])
 
-  const updateSticky = useCallback((ty: number) => {
+  const applyStickyTransform = useCallback(() => {
+    const v = viewportRef.current
+    if (!v) return
+    const ty = v.scrollTop
     const offsets = panelOffsets.current
-    let activeKey: string | null = null
-    let nextTop: number | null = null
+    let overlayY = 0
     for (let i = 0; i < offsets.length; i++) {
       const o = offsets[i]
       if (o.top <= ty && ty < o.bottom) {
-        activeKey = o.key
-        nextTop = offsets[i + 1]?.top ?? null
+        const nextTop = offsets[i + 1]?.top ?? null
+        if (nextTop !== null) {
+          const nextTopInViewport = nextTop - ty
+          if (nextTopInViewport < STICKY_HEADER_H) {
+            overlayY = nextTopInViewport - STICKY_HEADER_H
+          }
+        }
         break
-      }
-    }
-    let overlayY = 0
-    if (activeKey && nextTop !== null) {
-      const nextTopInViewport = nextTop - ty
-      if (nextTopInViewport < STICKY_HEADER_H) {
-        overlayY = nextTopInViewport - STICKY_HEADER_H
       }
     }
     const overlay = stickyHeaderRef.current
     if (overlay) {
       overlay.style.transform = `translate3d(0, ${overlayY}px, 0)`
     }
-    if (activeKey !== activePanelKeyRef.current) {
-      activePanelKeyRef.current = activeKey
-      setActivePanelKey(activeKey)
-    }
   }, [])
+
+  const updateSticky = useCallback(
+    (ty: number) => {
+      const offsets = panelOffsets.current
+      let activeKey: string | null = null
+      for (let i = 0; i < offsets.length; i++) {
+        const o = offsets[i]
+        if (o.top <= ty && ty < o.bottom) {
+          activeKey = o.key
+          break
+        }
+      }
+      if (activeKey !== activePanelKeyRef.current) {
+        activePanelKeyRef.current = activeKey
+        setActivePanelKey(activeKey)
+        // Transform will be re-applied by the keyed inner element's ref
+        // callback once React commits the new label.
+      } else {
+        applyStickyTransform()
+      }
+    },
+    [applyStickyTransform]
+  )
 
   const applyPlotTransforms = useCallback((left: number) => {
     const vw = viewportWRef.current
@@ -621,7 +640,13 @@ function SyncedHorizontalSections({
         style={{ visibility: activePanel ? "visible" : "hidden" }}
       >
         {activePanel && (
-          <div className="pointer-events-auto bg-background px-6">
+          <div
+            key={activePanel.key}
+            ref={(el) => {
+              if (el) applyStickyTransform()
+            }}
+            className="pointer-events-auto bg-background px-6"
+          >
             <DomainHeader
               label={activePanel.domain.label}
               expanded={expansion.isExpanded(activePanel.key)}
@@ -631,7 +656,7 @@ function SyncedHorizontalSections({
           </div>
         )}
       </div>
-      <div className="pointer-events-none absolute inset-0">
+      <div className="pointer-events-none absolute inset-0 z-20">
         <ScrollAreaPrimitive.Root className="pointer-events-none size-full">
           <ScrollAreaPrimitive.Viewport
             ref={viewportRef}
