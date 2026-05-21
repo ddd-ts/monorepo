@@ -80,13 +80,9 @@ const EMIT_MEMBERS = new Set(["publish", "emit"]);
 export function methodEffects(method: MethodDefinition) {
   const sends = new Set<string>();
   const emits = new Set<string>();
-  walkSubtree(method.value.body, (n) => {
-    if (n.type === "NewExpression") {
-      const id = identifierName(n.callee);
-      if (id) emits.add(id);
-      return;
-    }
+  const consumedNew = new WeakSet<object>();
 
+  walkSubtree(method.value.body, (n) => {
     if (n.type !== "CallExpression") return;
 
     const a0 = n.arguments[0];
@@ -99,9 +95,22 @@ export function methodEffects(method: MethodDefinition) {
     const member = identifierName(n.callee.property);
     if (!member) return;
 
-    if (SEND_MEMBERS.has(member)) sends.add(arg0New);
-    else if (EMIT_MEMBERS.has(member)) emits.add(arg0New);
+    if (SEND_MEMBERS.has(member)) {
+      sends.add(arg0New);
+      if (a0?.type === "NewExpression") consumedNew.add(a0);
+    } else if (EMIT_MEMBERS.has(member)) {
+      emits.add(arg0New);
+      if (a0?.type === "NewExpression") consumedNew.add(a0);
+    }
   });
+
+  walkSubtree(method.value.body, (n) => {
+    if (n.type !== "NewExpression") return;
+    if (consumedNew.has(n)) return;
+    const id = identifierName(n.callee);
+    if (id) emits.add(id);
+  });
+
   return { sends: [...sends], emits: [...emits] };
 }
 
