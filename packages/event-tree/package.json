@@ -11,7 +11,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsdown --config node_modules/@ddd-ts/tools/tsdown.config.js src/server/index.ts"
+    "build": "tsdown --config node_modules/@ddd-ts/tools/tsdown.config.js -f esm src/server/index.ts"
   },
   "dependencies": {
     "oxc-parser": "^0.128.0",
@@ -27,13 +27,8 @@
   },
   "publishConfig": {
     "exports": {
-      ".": {
-        "import": "./dist/server/index.mjs",
-        "require": "./dist/server/index.js"
-      },
+      ".": "./dist/index.mjs",
       "./package.json": "./package.json"
     }
-  },
-  "main": "./dist/server/index.js",
-  "module": "./dist/server/index.mjs"
+  }
 }

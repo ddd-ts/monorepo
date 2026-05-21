@@ -5,7 +5,7 @@
     "rootDir": "src",
     "jsx": "react-jsx",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "types": ["node", "vite/client"],
+    "types": ["node"],
     "module": "esnext",
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": false
