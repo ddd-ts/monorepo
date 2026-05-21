@@ -253,13 +253,36 @@ function SyncedHorizontalSections({
       el.classList.toggle("ring-ring", selected)
       el.setAttribute("aria-pressed", selected ? "true" : "false")
     }
+    const sortedEdges = new Map<
+      Element,
+      { dimmed: SVGPathElement[]; normal: SVGPathElement[] }
+    >()
     for (const el of root.querySelectorAll<SVGPathElement>("[data-edge]")) {
       const from = el.getAttribute("data-from")!
       const to = el.getAttribute("data-to")!
       const dimmed =
         related !== null && !(related.has(from) && related.has(to))
-      el.classList.toggle("opacity-15", dimmed)
+      el.classList.toggle("stroke-graph-dim", dimmed)
+      el.classList.toggle("stroke-graph-edge", !dimmed)
+      const parent = el.parentElement
+      if (!parent) continue
+      let group = sortedEdges.get(parent)
+      if (!group) {
+        group = { dimmed: [], normal: [] }
+        sortedEdges.set(parent, group)
+      }
+      ;(dimmed ? group.dimmed : group.normal).push(el)
     }
+    if (related !== null) {
+      for (const [parent, group] of sortedEdges) {
+        for (const el of group.dimmed) parent.appendChild(el)
+        for (const el of group.normal) parent.appendChild(el)
+      }
+    }
+    const sortedLabels = new Map<
+      Element,
+      { dimmed: HTMLDivElement[]; normal: HTMLDivElement[] }
+    >()
     for (const el of root.querySelectorAll<HTMLDivElement>(
       "[data-edge-label]"
     )) {
@@ -267,7 +290,22 @@ function SyncedHorizontalSections({
       const to = el.getAttribute("data-to")!
       const dimmed =
         related !== null && !(related.has(from) && related.has(to))
-      el.classList.toggle("opacity-25", dimmed)
+      el.classList.toggle("text-graph-dim", dimmed)
+      el.classList.toggle("text-muted-foreground", !dimmed)
+      const parent = el.parentElement
+      if (!parent) continue
+      let group = sortedLabels.get(parent)
+      if (!group) {
+        group = { dimmed: [], normal: [] }
+        sortedLabels.set(parent, group)
+      }
+      ;(dimmed ? group.dimmed : group.normal).push(el)
+    }
+    if (related !== null) {
+      for (const [parent, group] of sortedLabels) {
+        for (const el of group.dimmed) parent.appendChild(el)
+        for (const el of group.normal) parent.appendChild(el)
+      }
     }
   }, [index, selectedId])
 
@@ -744,7 +782,7 @@ const ComponentPlot = memo(function ComponentPlot({
               data-to={edge.toId}
               d={edge.path}
               fill="none"
-              className="stroke-muted-foreground/60 transition-opacity"
+              className="stroke-graph-edge transition-colors"
               strokeWidth={1.25}
               markerEnd="url(#graph-arrow)"
             />
@@ -757,7 +795,7 @@ const ComponentPlot = memo(function ComponentPlot({
               data-edge-label
               data-from={edge.fromId}
               data-to={edge.toId}
-              className="pointer-events-none absolute rounded bg-background px-1 font-mono text-[10px] tracking-wide text-muted-foreground uppercase transition-opacity"
+              className="pointer-events-none absolute rounded bg-background px-1 font-mono text-[10px] tracking-wide text-muted-foreground uppercase transition-colors"
               style={{
                 left: edge.label.x,
                 top: edge.label.y,
