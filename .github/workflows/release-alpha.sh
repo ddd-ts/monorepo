@@ -10,6 +10,11 @@ npm --version
 branch=${BRANCH_NAME:-$(git branch --show-current)}
 branch_slug=$(slugify $branch)
 
+if [ -z "$branch_slug" ]; then
+  echo "ERROR: branch '$branch' slugifies to an empty string" >&2
+  exit 1
+fi
+
 case "$branch_slug" in
   latest|next|beta|alpha|canary|rc|stable)
     echo "ERROR: branch slug '$branch_slug' collides with a reserved npm dist-tag" >&2
