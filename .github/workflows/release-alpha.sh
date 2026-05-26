@@ -10,6 +10,13 @@ npm --version
 branch=${BRANCH_NAME:-$(git branch --show-current)}
 branch_slug=$(slugify $branch)
 
+case "$branch_slug" in
+  latest|next|beta|alpha|canary|rc|stable)
+    echo "ERROR: branch slug '$branch_slug' collides with a reserved npm dist-tag" >&2
+    exit 1
+    ;;
+esac
+
 latest_upstream=$(npm view @ddd-ts/shape "dist-tags.$branch_slug" | awk -F'[.]' '{ print $NF }')
 latest_upstream="${latest_upstream:="0"}"
 

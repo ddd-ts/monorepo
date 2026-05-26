@@ -6,13 +6,15 @@ on:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   test:
+    if: github.event_name != 'pull_request_target'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,19 +22,36 @@ jobs:
 
       - run: pnpm test
 
-  release:
+  release-main:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
 
       - name: Release main
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: sh .github/workflows/release-main.sh
 
+  release-alpha:
+    if: >-
+      github.event_name == 'pull_request_target' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: release-alpha
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: ./.github/actions/setup
+
       - name: Release alpha
-        if: github.event_name == 'pull_request'
         run: sh .github/workflows/release-alpha.sh
         env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
