@@ -12,6 +12,8 @@ minimumReleaseAgeExclude:
 
 blockExoticSubdeps: true
 
+trustPolicy: no-downgrade
+
 allowBuilds:
   "@biomejs/biome": true
   "@firebase/util": true
