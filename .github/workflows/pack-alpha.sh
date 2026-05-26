@@ -29,8 +29,8 @@ next_version_suffix=$(echo $latest_upstream | awk -F'[.-]' '{ print $1+1 }')
 next_version="0.0.0-$branch_slug.$next_version_suffix"
 
 echo $next_version
-pnpm --filter "@ddd-ts/*" exec cat package.json
 pnpm --filter "@ddd-ts/*" exec npm pkg set version=$next_version
 pnpm --filter "@ddd-ts/*" exec sed -i "s'workspace:\*'$next_version'g" package.json
 
-pnpm publish --access public -r --no-git-checks --provenance --tag $branch_slug
+mkdir -p "$GITHUB_WORKSPACE/tarballs"
+pnpm --filter "@ddd-ts/*" exec pnpm pack --pack-destination "$GITHUB_WORKSPACE/tarballs"
