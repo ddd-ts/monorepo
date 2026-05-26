@@ -9,3 +9,9 @@ patchedDependencies:
 minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - "@ddd-ts/*"
+
+allowBuilds:
+  "@biomejs/biome": true
+  "@firebase/util": true
+  "@swc/core": true
+  protobufjs: true
