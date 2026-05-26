@@ -10,6 +10,8 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - "@ddd-ts/*"
 
+blockExoticSubdeps: true
+
 allowBuilds:
   "@biomejs/biome": true
   "@firebase/util": true
