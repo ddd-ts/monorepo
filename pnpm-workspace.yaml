@@ -2,3 +2,10 @@ packages:
   - packages/*
   - tests
   - tools
+
+patchedDependencies:
+  "@jest/core@29.7.0": patches/@jest__core@29.7.0.patch
+
+minimumReleaseAge: 4320
+minimumReleaseAgeExclude:
+  - "@ddd-ts/*"
