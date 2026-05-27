@@ -53,6 +53,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [pack-main]
     runs-on: ubuntu-latest
+    environment: release
     permissions:
       contents: read
       id-token: write
@@ -110,7 +111,7 @@ jobs:
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
     needs: [pack-alpha]
     runs-on: ubuntu-latest
-    environment: release-alpha
+    environment: release
     permissions:
       contents: read
       id-token: write
