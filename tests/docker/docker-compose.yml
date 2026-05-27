@@ -2,7 +2,7 @@ version: "3.4"
 
 services:
   firebase:
-    image: andreysenov/firebase-tools
+    image: andreysenov/firebase-tools:15.18.0@sha256:77cd461afb8d22e316ff65564ff958ea6986074158dc880d3dd3efe6d0fdb3e5
     command: firebase emulators:start --project demo-es --only firestore
     volumes:
       - "./firebase.json:/home/node/firebase.json"

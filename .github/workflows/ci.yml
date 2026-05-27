@@ -6,33 +6,136 @@ on:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   test:
+    if: github.event_name != 'pull_request_target'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
 
       - run: pnpm test
 
-  release:
-    needs: test
+  audit:
+    if: github.event_name != 'pull_request_target'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
 
-      - name: Release main
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: sh .github/workflows/release-main.sh
+      - run: pnpm audit --audit-level=high
 
-      - name: Release alpha
-        if: github.event_name == 'pull_request'
-        run: sh .github/workflows/release-alpha.sh
+  pack-main:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, audit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Pack main
+        run: bash .github/workflows/pack-main.sh
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tarballs-main
+          path: tarballs/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-main:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [pack-main]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          sparse-checkout: .github/workflows/publish-main.sh
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org/
+          scope: "@ddd-ts"
+
+      - name: Install npm
+        run: npm i -g npm@11
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: tarballs-main
+          path: tarballs/
+
+      - name: Publish main
+        run: bash .github/workflows/publish-main.sh
+
+  pack-alpha:
+    if: >-
+      github.event_name == 'pull_request_target' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: ./.github/actions/setup
+
+      - name: Pack alpha
+        run: bash .github/workflows/pack-alpha.sh
         env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tarballs-alpha
+          path: tarballs/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-alpha:
+    if: >-
+      github.event_name == 'pull_request_target' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    needs: [pack-alpha]
+    runs-on: ubuntu-latest
+    environment: release-alpha
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: .github/workflows/publish-alpha.sh
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org/
+          scope: "@ddd-ts"
+
+      - name: Install npm
+        run: npm i -g npm@11
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: tarballs-alpha
+          path: tarballs/
+
+      - name: Publish alpha
+        run: bash .github/workflows/publish-alpha.sh
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
