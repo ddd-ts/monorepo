@@ -21,7 +21,15 @@ esac
 
 cd "$RUNNER_TEMP"
 
-for tgz in "$GITHUB_WORKSPACE"/tarballs/*.tgz; do
+shopt -s nullglob
+
+tgzs=("$GITHUB_WORKSPACE"/tarballs/*.tgz)
+if [ ${#tgzs[@]} -eq 0 ]; then
+  echo "ERROR: no tarballs found to publish" >&2
+  exit 1
+fi
+
+for tgz in "${tgzs[@]}"; do
   name=$(tar -xzOf "$tgz" package/package.json | jq -r .name)
   case "$name" in
     @ddd-ts/*) ;;
