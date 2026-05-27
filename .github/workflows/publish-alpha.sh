@@ -2,7 +2,7 @@
 set -e
 
 slugify() {
-  echo $1 | iconv -t ascii//TRANSLIT | sed -E -e 's/[^[:alnum:]]+/-/g' -e 's/^-+|-+$//g' | tr '[:upper:]' '[:lower:]'
+  printf '%s' "$1" | iconv -t ascii//TRANSLIT | sed -E -e 's/[^[:alnum:]]+/-/g' -e 's/^-+|-+$//g' | tr '[:upper:]' '[:lower:]'
 }
 
 branch_slug=$(slugify "$BRANCH_NAME")

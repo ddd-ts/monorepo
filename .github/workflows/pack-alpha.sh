@@ -2,13 +2,13 @@
 set -e
 
 slugify() {
-  echo $1 | iconv -t ascii//TRANSLIT | sed -E -e 's/[^[:alnum:]]+/-/g' -e 's/^-+|-+$//g' | tr '[:upper:]' '[:lower:]'
+  printf '%s' "$1" | iconv -t ascii//TRANSLIT | sed -E -e 's/[^[:alnum:]]+/-/g' -e 's/^-+|-+$//g' | tr '[:upper:]' '[:lower:]'
 }
 
 npm --version
 
 branch=${BRANCH_NAME:-$(git branch --show-current)}
-branch_slug=$(slugify $branch)
+branch_slug=$(slugify "$branch")
 
 if [ -z "$branch_slug" ]; then
   echo "ERROR: branch '$branch' slugifies to an empty string" >&2
