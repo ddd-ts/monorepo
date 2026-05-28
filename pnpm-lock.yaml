@@ -193,6 +193,9 @@ importers:
       '@trpc/server':
         specifier: ^11
         version: 11.17.0(typescript@5.9.3)
+      '@vitejs/plugin-react':
+        specifier: ^5.2.0
+        version: 5.2.0(vite@7.3.3(@types/node@24.12.4)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -202,6 +205,12 @@ importers:
       elkjs:
         specifier: ^0.11.1
         version: 0.11.1
+      globals:
+        specifier: ^16.5.0
+        version: 16.5.0
+      launch-editor:
+        specifier: ^2.13.2
+        version: 2.13.2
       react:
         specifier: ^19.2.4
         version: 19.2.6
@@ -220,6 +229,9 @@ importers:
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.3(@types/node@24.12.4)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -239,9 +251,6 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.15)
-      '@vitejs/plugin-react':
-        specifier: ^5.2.0
-        version: 5.2.0(vite@7.3.3(@types/node@24.12.4)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))
       eslint:
         specifier: ^9.39.4
         version: 9.39.4(jiti@2.7.0)
@@ -251,12 +260,6 @@ importers:
       eslint-plugin-react-refresh:
         specifier: ^0.5.2
         version: 0.5.2(eslint@9.39.4(jiti@2.7.0))
-      globals:
-        specifier: ^16.5.0
-        version: 16.5.0
-      launch-editor:
-        specifier: ^2.13.2
-        version: 2.13.2
       prettier:
         specifier: ^3.8.1
         version: 3.8.1
@@ -269,9 +272,6 @@ importers:
       typescript-eslint:
         specifier: ^8.57.1
         version: 8.59.4(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)
-      vite:
-        specifier: ^7.3.1
-        version: 7.3.3(@types/node@24.12.4)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
 
   packages/freeze:
     dependencies:
