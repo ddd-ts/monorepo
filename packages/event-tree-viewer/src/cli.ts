@@ -12,6 +12,7 @@ const dirname =
 const vite = await createServer({
   root: path.resolve(dirname, "../"),
   configFile: path.resolve(dirname, "../vite.config.ts"),
+  logLevel: "error",
 })
 
 const server = await vite.listen(20031)
