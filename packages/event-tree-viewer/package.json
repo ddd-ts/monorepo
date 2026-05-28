@@ -2,6 +2,10 @@
   "name": "@ddd-ts/event-tree-viewer",
   "version": "0.0.1",
   "type": "module",
+  "license": "MIT",
+  "repository": {
+    "url": "git+https://github.com/ddd-ts/monorepo"
+  },
   "bin": {
     "event-tree-viewer": "./src/cli.ts"
   },
