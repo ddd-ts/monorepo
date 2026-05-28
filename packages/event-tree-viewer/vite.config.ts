@@ -14,4 +14,23 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    include: [
+      "use-sync-external-store/shim",
+      "use-sync-external-store/shim/with-selector",
+      "elkjs/lib/elk.bundled.js",
+      "@base-ui/react/button",
+      "@base-ui/react/checkbox",
+      "@base-ui/react/dialog",
+      "@base-ui/react/input",
+      "@base-ui/react/merge-props",
+      "@base-ui/react/popover",
+      "@base-ui/react/scroll-area",
+      "@base-ui/react/select",
+      "@base-ui/react/separator",
+      "@base-ui/react/toggle",
+      "@base-ui/react/toggle-group",
+      "@base-ui/react/use-render",
+    ],
+  },
 })
