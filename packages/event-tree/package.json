@@ -1,7 +1,6 @@
 {
   "name": "@ddd-ts/event-tree",
   "version": "0.0.1",
-  "private": true,
   "types": "dist/server/index.d.ts",
   "license": "MIT",
   "repository": {
@@ -26,6 +25,7 @@
     "./package.json": "./package.json"
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       ".": "./dist/index.mjs",
       "./package.json": "./package.json"
