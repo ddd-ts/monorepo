@@ -20,11 +20,34 @@ export function getPrettyType(type: Type, contextNode: Node): {
   const sf = project.createSourceFile(
     fileName,
     `
-      type DeepPretty<T> = T extends object
-        ? T extends Function
-          ? T
-          : { [K in keyof T]: DeepPretty<T[K]> } & {}
-        : T;
+      type UnknownArray = readonly unknown[];
+      type MapsSetsOrArrays = ReadonlyMap<unknown, unknown> | WeakMap<WeakKey, unknown> | ReadonlySet<unknown> | WeakSet<WeakKey> | UnknownArray;
+      type Primitive =
+        | null
+        | undefined
+        | string
+        | number
+        | boolean
+        | symbol
+        | bigint;
+      type IsNever<T> = [T] extends [never] ? true : false;
+      type BuiltIns = Primitive | void | Date | RegExp;
+      type NonRecursiveType = BuiltIns | Function | (new (...arguments_: any[]) => unknown) | Promise<unknown>;
+      type IsPlainObject<T> =
+        IsNever<T> extends true
+          ? false
+          : T extends NonRecursiveType | MapsSetsOrArrays
+            ? false
+            : T extends object
+              ? true
+              : false;
+      // the code above is from type-fest. it's an extract of the IsPlainObject type with all the dependencies it has
+
+      type DeepPretty<T> = IsPlainObject<T> extends true
+        ? { [K in keyof T]: DeepPretty<T[K]> } & {}
+        : T extends (infer U)[]
+          ? DeepPretty<U>[] & {}
+          : T;
       declare const __v: ${typeTextForEmbedding};
       export type __X = DeepPretty<typeof __v>;
     `,
