@@ -5,8 +5,8 @@ import type { INamed } from "../interfaces/named";
 export function getHandler(target: any, name: any): Function | undefined {
   return (
     target?.[Symbol.metadata]?.handlers?.get(name) ||
-    target.prototype?.[Symbol.metadata]?.handlers?.get(name) ||
-    target.constructor?.[Symbol.metadata]?.handlers?.get(name)
+    target.constructor?.[Symbol.metadata]?.handlers?.get(name) ||
+    target.prototype?.[Symbol.metadata]?.handlers?.get(name)
   )
 }
 
