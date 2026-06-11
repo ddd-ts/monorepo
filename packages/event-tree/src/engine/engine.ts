@@ -41,6 +41,51 @@ export class Engine {
     return this.nodes;
   }
 
+  /**
+   * Edge targets discovered from `new X()` calls are speculative: when a walker
+   * records them it only knows the constructor name, not whether `X` is a
+   * command, an event, or something unrelated (an error, `Date`, ...). It
+   * therefore guesses a kind (e.g. command handlers assume every instantiation
+   * is an emitted event). Once every file has been walked we know the full set
+   * of commands and events, so we reconcile each command/event-targeted edge
+   * against it: keep the guess when it matches a real node, correct the kind
+   * when the target turns out to be the other kind (e.g. a command handler that
+   * dispatches another command), and drop edges that point at a class which is
+   * neither a command nor an event.
+   */
+  private resolveEdges() {
+    const commands = new Set<string>();
+    const events = new Set<string>();
+    for (const node of this.nodes) {
+      if (node.type === "command") commands.add(node.name);
+      else if (node.type === "event") events.add(node.name);
+    }
+
+    this.edges = this.edges.flatMap((edge) => {
+      // Reactor targets (saga/aggregate/projection) come from reliable
+      // declarations, not from instantiations — leave them untouched.
+      if (edge.to.type !== "command" && edge.to.type !== "event") return [edge];
+
+      const isCommand = commands.has(edge.to.name);
+      const isEvent = events.has(edge.to.name);
+      if (!isCommand && !isEvent) return [];
+
+      // Keep the assumed kind when a matching node exists, otherwise switch to
+      // the kind that actually does.
+      const resolved =
+        edge.to.type === "command"
+          ? isCommand
+            ? "command"
+            : "event"
+          : isEvent
+            ? "event"
+            : "command";
+
+      if (resolved === edge.to.type) return [edge];
+      return [{ ...edge, to: { type: resolved, name: edge.to.name } } as Edge];
+    });
+  }
+
   reset() {
     this.edges = [];
     this.nodes = [];
@@ -65,6 +110,7 @@ export class Engine {
         },
       });
     }
+    this.resolveEdges();
   }
 }
 

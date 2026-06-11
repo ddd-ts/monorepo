@@ -15,13 +15,16 @@ export type Edge =
   | { from: Sender; to: CommandRef; source: Source }
   | { from: Sender; to: EventRef; source: Source }
   | { from: CommandRef; to: EventRef; source: Source }
+  | { from: CommandRef; to: CommandRef; source: Source }
 
 export type EdgeKind = "reacts" | "sends" | "emits" | "handler-emits"
 
 export function edgeKind(edge: Edge): EdgeKind {
   if (edge.from.type === "event") return "reacts"
-  if (edge.from.type === "command") return "handler-emits"
+  // A command target is always a dispatch ("sends"), whether the sender is a
+  // saga/aggregate or another command handler.
   if (edge.to.type === "command") return "sends"
+  if (edge.from.type === "command") return "handler-emits"
   return "emits"
 }
 
