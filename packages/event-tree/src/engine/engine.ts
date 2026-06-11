@@ -42,6 +42,64 @@ export class Engine {
     return this.nodes;
   }
 
+  // Event-application methods indexed by method name, then by the class that
+  // declares them. Lets a caller be linked to a method's events without
+  // resolving the receiver's static type. Keeping the owning class lets us
+  // detect ambiguity: a method name declared in more than one class can't be
+  // attributed by name alone. Populated during the walk (see method-index).
+  private behaviours = new Map<string, Map<string, Set<string>>>();
+  indexBehaviour(method: string, owner: string, events: readonly string[]) {
+    let byOwner = this.behaviours.get(method);
+    if (!byOwner) {
+      byOwner = new Map();
+      this.behaviours.set(method, byOwner);
+    }
+    let entry = byOwner.get(owner);
+    if (!entry) {
+      entry = new Set();
+      byOwner.set(owner, entry);
+    }
+    for (const e of events) entry.add(e);
+  }
+
+  // `receiver.method(...)` calls recorded by walkers (e.g. a command handler
+  // invoking an aggregate method). Resolved against `behaviours` after the walk
+  // to attribute the callee's effects to the caller.
+  private invocations: {
+    from: { type: "command"; name: string };
+    method: string;
+    source: { file: string; start: number };
+  }[] = [];
+  saveInvocation(invocation: {
+    from: { type: "command"; name: string };
+    method: string;
+    source: { file: string; start: number };
+  }) {
+    this.invocations.push(invocation);
+  }
+
+  /**
+   * Expands recorded `receiver.method(...)` calls into edges from the caller to
+   * whatever the callee emits/sends. This links a command handler that
+   * delegates to an aggregate method (e.g. `message.destroy()` →
+   * `this.apply(SomeEvent.new(...))`) to the events it ultimately produces.
+   * Matching is by method name only — no receiver type resolution. To stay
+   * precise we attribute a method's events only when that name is declared in a
+   * single class; a name shared across classes (e.g. `enable`/`disable` on many
+   * feature aggregates) is ambiguous and skipped. Edges to unknown targets are
+   * dropped later by resolveEdges().
+   */
+  private resolveInvocations() {
+    for (const { from, method, source } of this.invocations) {
+      const byOwner = this.behaviours.get(method);
+      if (!byOwner || byOwner.size !== 1) continue;
+      const [events] = byOwner.values();
+      for (const name of events) {
+        this.edges.push({ from, to: { type: "event", name }, source });
+      }
+    }
+  }
+
   /**
    * Edge targets discovered from `new X()` calls are speculative: when a walker
    * records them it only knows the constructor name, not whether `X` is a
@@ -90,6 +148,8 @@ export class Engine {
   reset() {
     this.edges = [];
     this.nodes = [];
+    this.invocations = [];
+    this.behaviours = new Map();
   }
 
   run(root: string = process.cwd()) {
@@ -111,6 +171,7 @@ export class Engine {
         },
       });
     }
+    this.resolveInvocations();
     this.resolveEdges();
   }
 }
