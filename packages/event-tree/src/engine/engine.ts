@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { parseAndWalk, type WalkerEnter } from "oxc-walker";
 import type { Node } from "../node";
 import type { Edge } from "../edge";
+import { applyDefaults } from "./defaults";
 
 type AstWalker = (
   ...args: [...Parameters<WalkerEnter>, file: string]
@@ -114,6 +115,10 @@ export class Engine {
   }
 }
 
-export const engine = new Engine();
+export function createDefaultEngine(): Engine {
+  const engine = new Engine();
+  applyDefaults(engine);
+  return engine;
+}
 
-import("./defaults");
+export const engine = createDefaultEngine();

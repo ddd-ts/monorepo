@@ -3,7 +3,7 @@ import path from "node:path"
 import { initTRPC, TRPCError } from "@trpc/server"
 import launchEditor from "launch-editor"
 import { z } from "zod"
-import { engine, type Edge, type Node } from "@ddd-ts/event-tree"
+import { loadEngine, type Edge, type Engine, type Node } from "@ddd-ts/event-tree"
 
 const t = initTRPC.create()
 
@@ -13,9 +13,18 @@ export interface Graph {
 }
 
 let cache: { root: string; graph: Graph } | null = null
+let enginePromise: { root: string; engine: Promise<Engine> } | null = null
 
-function scan(root: string): Graph {
+function getEngine(root: string): Promise<Engine> {
+  if (!enginePromise || enginePromise.root !== root) {
+    enginePromise = { root, engine: loadEngine(root) }
+  }
+  return enginePromise.engine
+}
+
+async function scan(root: string): Promise<Graph> {
   if (cache && cache.root === root) return cache.graph
+  const engine = await getEngine(root)
   engine.reset()
   engine.run(root)
   const toRel = (file: string) =>
@@ -35,6 +44,11 @@ function scan(root: string): Graph {
 
 export function invalidate() {
   cache = null
+}
+
+export function invalidateEngine() {
+  cache = null
+  enginePromise = null
 }
 
 export function createRouter(scanRoot: string) {

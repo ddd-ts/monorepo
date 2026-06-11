@@ -55,7 +55,7 @@ export function trpcPlugin(scanRoot: string): PluginOption {
     name: "event-tree-trpc",
     apply: "serve",
     async configureServer(server: ViteDevServer) {
-      const [{ createRouter, invalidate }, { fetchRequestHandler }] =
+      const [{ createRouter, invalidate, invalidateEngine }, { fetchRequestHandler }] =
         await Promise.all([
           server.ssrLoadModule("/src/server/router.ts") as Promise<
             typeof import("./router")
@@ -88,7 +88,13 @@ export function trpcPlugin(scanRoot: string): PluginOption {
       })
 
       server.watcher.add(path.resolve(scanRoot, "**/*.ts"))
+      const configPrefix = path.resolve(scanRoot, ".config/ddd-ts/event-tree.")
+      const isConfigFile = (file: string) => file.startsWith(configPrefix)
       const onChange = (file: string) => {
+        if (isConfigFile(file)) {
+          invalidateEngine()
+          return
+        }
         if (file.startsWith(scanRoot)) invalidate()
       }
       server.watcher.on("change", onChange)

@@ -1,7 +1,9 @@
-import { engine } from "../engine";
+import type { Engine } from "../engine";
 
-engine.on((node, parent, ctx, emit) => {
-  if (node.type !== "ClassDeclaration") return;
+export function applyExampleDefaults(engine: Engine) {
+  engine.on((node, parent, ctx, file) => {
+    if (node.type !== "ClassDeclaration") return;
 
-  node.superClass
-})
+    node.superClass
+  });
+}
