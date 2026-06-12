@@ -1,0 +1,37 @@
+import { ExportDialog } from "@/components/export-dialog"
+import { SettingsMenu } from "@/components/settings-menu"
+import type { GraphIndex } from "@/domain/graph"
+import type { Node } from "@/domain/node"
+import type { SettingsApi } from "@/application/use-settings"
+
+export function Header({
+  index,
+  visibleNodes,
+  settings,
+}: {
+  index: GraphIndex
+  visibleNodes: Node[]
+  settings: SettingsApi
+}) {
+  const { graph } = index
+  return (
+    <header className="flex items-center justify-between border-b px-6 py-3">
+      <div className="flex items-baseline gap-3">
+        <span className="font-display text-base font-bold tracking-tight text-foreground">
+          DDD-TS
+        </span>
+        <span className="text-muted-foreground/70">·</span>
+        <h1 className="text-sm font-medium tracking-tight text-muted-foreground">
+          Event Tree Viewer
+        </h1>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="font-mono text-xs tracking-wide text-muted-foreground">
+          {graph.nodes.length} nodes · {graph.edges.length} edges
+        </span>
+        <ExportDialog index={index} visibleNodes={visibleNodes} />
+        <SettingsMenu settings={settings} />
+      </div>
+    </header>
+  )
+}
