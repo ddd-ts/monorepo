@@ -1,5 +1,5 @@
-import { useMemo } from "react"
-import { ArrowSquareOutIcon } from "@phosphor-icons/react"
+import { useMemo, useState } from "react"
+import { ArrowSquareOutIcon, CheckIcon, CopyIcon } from "@phosphor-icons/react"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
@@ -48,6 +48,7 @@ export function Inspector({
         <div className="flex min-w-0 items-center gap-2">
           <NodeBadge kind={node.type} />
           <span className="truncate text-sm font-semibold">{node.name}</span>
+          <CopyButton value={node.name} label="Copy name" />
         </div>
         <Button
           variant="ghost"
@@ -88,6 +89,33 @@ export function Inspector({
         </div>
       </ScrollArea>
     </aside>
+  )
+}
+
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false)
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1200)
+    } catch (error) {
+      console.warn(`[copy] ${(error as Error).message}`)
+    }
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon-xs"
+      onClick={copy}
+      aria-label={label}
+      title={label}
+      className="shrink-0 text-muted-foreground hover:text-foreground"
+    >
+      {copied ? <CheckIcon /> : <CopyIcon />}
+    </Button>
   )
 }
 
