@@ -2,6 +2,9 @@ import { type AbstractConstructor, type Constructor, type Definition, Empty } fr
 
 export type NothingShorthand = undefined;
 
+// Explicitly define the deserialization type for Nothing
+type NothingDeserializingType = void;
+
 export const Nothing = <B extends AbstractConstructor<{}> = typeof Empty>(
   config: void,
   base: B = Empty as any,
@@ -16,7 +19,7 @@ export const Nothing = <B extends AbstractConstructor<{}> = typeof Empty>(
     ): InstanceType<T> {
       return new (this as any)();
     }
-    static $deserialize() {}
+    static $deserialize(value: NothingDeserializingType): void {}
     static $serialize() {}
     static $inline: void;
   }

@@ -47,12 +47,13 @@ describe("Nothing", () => {
     }
 
     type Serialized = { longhand: void; shorthand: void };
+    type Deserializing = { longhand: void | undefined; shorthand: void | undefined };
 
     // Constructor parameters
     ex(Test).toHaveFirstParam<Serialized>().ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<Serialized>().ok;
+    ex(Test.deserialize).toHaveFirstParam<Deserializing>().ok;
     const a = Test.deserialize({ longhand: undefined, shorthand: undefined });
     ex(a).toBeInstanceOf(Test).ok;
 
@@ -88,12 +89,13 @@ describe("Nothing", () => {
     }
 
     type Serialized = { reference: void };
+    type Deserializing = { reference: void | undefined };
 
     // Constructor parameters
     ex(Test).toHaveFirstParam<{ reference: Reference }>().ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<Serialized>().ok;
+    ex(Test.deserialize).toHaveFirstParam<Deserializing>().ok;
     const a: Test = Test.deserialize({ reference: undefined });
     ex(a).toBeInstanceOf(Test).ok;
 

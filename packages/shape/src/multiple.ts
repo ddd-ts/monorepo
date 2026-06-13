@@ -15,6 +15,7 @@ export type MultipleShorthand = [any] | readonly [any];
 
 type Internal<S extends MultipleConfiguration> = {
   Serialized: ReturnType<DefinitionOf<S>["$serialize"]>[];
+  Deserializing: Parameters<DefinitionOf<S>["$deserialize"]>[0][];
   Inline: DefinitionOf<S>["$inline"][];
 };
 
@@ -228,11 +229,11 @@ export type IMultiple<
     $shape: "multiple";
     deserialize<T extends Constructor>(
       this: T,
-      value: Expand<Internal<S>["Serialized"]>,
+      value: Expand<Internal<S>["Deserializing"]>,
     ): InstanceType<T>;
     $deserialize<T extends Constructor>(
       this: T,
-      value: Internal<S>["Serialized"],
+      value: Internal<S>["Deserializing"],
     ): InstanceType<T>;
     $serialize(value: Internal<S>["Inline"]): Internal<S>["Serialized"];
     $inline: Internal<S>["Inline"];
