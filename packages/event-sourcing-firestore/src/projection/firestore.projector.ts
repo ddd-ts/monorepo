@@ -527,9 +527,7 @@ export class FirestoreProjector {
     checkpointId: CheckpointId,
     opts: { deadlineMs?: number } = {},
   ) {
-    const deadline = opts.deadlineMs
-      ? Date.now() + opts.deadlineMs
-      : undefined;
+    const deadline = opts.deadlineMs ? Date.now() + opts.deadlineMs : undefined;
 
     while (true) {
       await this.enqueueUpTo(checkpointId);
@@ -796,7 +794,7 @@ export class FirestoreQueueStore {
       batch.update(
         ref,
         {
-          /** @deprecated */ claimer: claimer.serialize(),
+          claimer: claimer.serialize(),
           /** @deprecated */ claimedAt: FieldValue.serverTimestamp(),
           [`claimsMetadata.${claimer.serialize()}`]: {
             claimedAt: FieldValue.serverTimestamp(),
@@ -876,7 +874,7 @@ export class FirestoreQueueStore {
         batch.update(
           ref,
           {
-            /** @deprecated */ claimer: FieldValue.delete(),
+            claimer: FieldValue.delete(),
             /** @deprecated */ claimedAt: FieldValue.delete(),
             claimIds: task.claimIds,
           },
@@ -895,7 +893,7 @@ export class FirestoreQueueStore {
     claimer: ClaimerId,
   ): Promise<Task<true>[]> {
     const query = this.queue(checkpointId)
-      .where("claimIds", "array-contains", claimer.serialize())
+      .where("claimer", "==", claimer.serialize())
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc")
       .orderBy("ref", "asc");
@@ -920,7 +918,7 @@ export class FirestoreQueueStore {
       batch.update(
         ref,
         {
-          /** @deprecated */ claimer: FieldValue.delete(),
+          claimer: FieldValue.delete(),
           /** @deprecated */ claimedAt: FieldValue.delete(),
           claimIds: FieldValue.arrayRemove(task.currentClaimId),
         },
@@ -1090,7 +1088,7 @@ export class FirestoreQueueStore {
       revision: Cursor.MAX.revision,
       attempts: 0,
       processed: true,
-      /** @deprecated */ claimer: undefined,
+      claimer: undefined,
       /** @deprecated */ claimedAt: undefined,
       claimsMetadata: {},
       claimIds: [],
@@ -1142,7 +1140,7 @@ export class FirestoreQueueStore {
       revision: cursor.revision,
       attempts: 0,
       processed: true,
-      /** @deprecated */ claimer: undefined,
+      claimer: undefined,
       /** @deprecated */ claimedAt: undefined,
       claimsMetadata: {},
       claimIds: [],
@@ -1175,7 +1173,11 @@ export class Task<Stored extends boolean> extends Shape({
   revision: Number,
   attempts: Number,
   processed: Boolean,
-  /** @deprecated */ claimer: Optional(String),
+  // Firestore Enterprise does not currently support usable array indexes for
+  // the claimIds array query. `claimer` is intentionally kept as the scalar
+  // indexed field for the active claim, while `claimIds` preserves tracking
+  // data for history, stats, and observability.
+  claimer: Optional(String),
   /** @deprecated */ claimedAt: Optional(MicrosecondTimestamp),
   claimsMetadata: Mapping([
     {
@@ -1216,7 +1218,7 @@ export class Task<Stored extends boolean> extends Shape({
     return new Task<false>({
       id: fact.id,
       attempts: 0,
-      /** @deprecated */ claimer: undefined,
+      claimer: undefined,
       processed: false,
       /** @deprecated */ claimedAt: undefined,
       claimsMetadata: {},
