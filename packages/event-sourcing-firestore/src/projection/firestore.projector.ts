@@ -802,6 +802,7 @@ export class FirestoreQueueStore {
           claimIds: FieldValue.arrayUnion(claimer.serialize()),
           attempts: FieldValue.increment(1),
           remaining: FieldValue.increment(-1),
+          hasRemaining: task.remaining > 1, // concurency safe because of lastUpdateTime
         },
         { lastUpdateTime: this.microsecondsToTimestamp(task.lastUpdateTime) },
       );
@@ -1098,6 +1099,7 @@ export class FirestoreQueueStore {
       skipAfter: 0,
       isolateAfter: 0,
       lastUpdateTime: undefined,
+      hasRemaining: true,
     });
     await this.queued(checkpointId, blockerId).delete();
     const serialized = task.serialize();
@@ -1150,6 +1152,7 @@ export class FirestoreQueueStore {
       skipAfter: 0,
       isolateAfter: 0,
       lastUpdateTime: undefined,
+      hasRemaining: true,
     });
 
     try {
@@ -1189,6 +1192,7 @@ export class Task<Stored extends boolean> extends Shape({
   lock: Lock,
   skipAfter: Number,
   remaining: Number,
+  hasRemaining: Boolean,
   isolateAfter: Number,
   claimTimeout: Number,
   lastUpdateTime: Optional(MicrosecondTimestamp),
@@ -1228,6 +1232,7 @@ export class Task<Stored extends boolean> extends Shape({
       skipAfter: config.skipAfter,
       isolateAfter: config.isolateAfter,
       remaining: config.skipAfter,
+      hasRemaining: config.skipAfter > 0,
       ref: fact.ref,
       revision: fact.revision,
       occurredAt: fact.occurredAt,
@@ -1281,6 +1286,7 @@ export class Task<Stored extends boolean> extends Shape({
       lastUpdateTime: timestamp as any,
       claimIds: data.claimIds || [],
       claimsMetadata: data.claimsMetadata || {},
+      hasRemaining: data.hasRemaining ?? data.remaining > 0,
     }) as Task<true>;
 
     return task;
