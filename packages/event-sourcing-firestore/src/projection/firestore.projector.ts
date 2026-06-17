@@ -840,7 +840,7 @@ export class FirestoreQueueStore {
   async unprocessed(checkpointId: CheckpointId) {
     const query = this.queue(checkpointId)
       .where("processed", "==", false)
-      .where("remaining", ">", 0)
+      .where("hasRemaining", "==", true)
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc")
       .orderBy("ref", "asc")
@@ -1002,7 +1002,7 @@ export class FirestoreQueueStore {
 
   async getTailCursor(id: CheckpointId) {
     const tail = this.queue(id)
-      .where("remaining", ">", 0)
+      .where("hasRemaining", "==", true)
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc")
       .orderBy("ref", "asc")
@@ -1034,7 +1034,7 @@ export class FirestoreQueueStore {
     const threshold = MicrosecondTimestamp.now().sub(olderThan);
 
     const query = this.queue(id)
-      .where("remaining", ">", 0)
+      .where("hasRemaining", "==", true)
       .where("occurredAt", "<", threshold.serialize())
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc")
@@ -1072,7 +1072,7 @@ export class FirestoreQueueStore {
   async hasUnprocessed(checkpointId: CheckpointId): Promise<boolean> {
     const snap = await this.queue(checkpointId)
       .where("processed", "==", false)
-      .where("remaining", ">", 0)
+      .where("hasRemaining", "==", true)
       .limit(1)
       .get();
     return !snap.empty;
