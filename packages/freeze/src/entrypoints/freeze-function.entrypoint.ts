@@ -17,7 +17,7 @@ const resolveFromDistIndex = () => {
     throw new Error(`Cannot find index.d.ts at path ${functionFilePath}`);
   }
 
-  const freezeFunction = functionFile.getExportedDeclarations().get("freeze")?.[0].asKind(ts.SyntaxKind.FunctionDeclaration);
+  const freezeFunction = functionFile.getExportedDeclarations().get("freeze")?.[0]?.asKind(ts.SyntaxKind.FunctionDeclaration);
   if (!freezeFunction) {
     throw new Error(`Cannot find function for freeze in ${functionFilePath}`);
   }
@@ -94,7 +94,7 @@ for (const ref of references) {
 
     const typeArguments = callExpression.getTypeArguments();
 
-    const freezeParameters = typeArguments[0].asKind(ts.SyntaxKind.TypeLiteral);
+    const freezeParameters = typeArguments[0]?.asKind(ts.SyntaxKind.TypeLiteral);
     const alreadyFrozen = typeArguments[1];
 
     if (!freezeParameters) {

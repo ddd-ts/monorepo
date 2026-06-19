@@ -75,11 +75,11 @@ export function EventLakeStoreSuite(config: {
     ];
 
     await transaction.perform(async (trx) => {
-      lakeStore.append(lakeId, [events[0], events[1]], trx);
+      lakeStore.append(lakeId, [events[0]!, events[1]!], trx);
     });
 
     await transaction.perform(async (trx) => {
-      lakeStore.append(lakeId, [events[2], events[3]], trx);
+      lakeStore.append(lakeId, [events[2]!, events[3]!], trx);
     });
 
     const result = await buffer(lakeStore.read(lakeId));
@@ -109,7 +109,7 @@ export function EventLakeStoreSuite(config: {
     });
 
     const result = await buffer(
-      lakeStore.read(lakeId, events[0].id, events[2].id),
+      lakeStore.read(lakeId, events[0]!.id, events[2]!.id),
     );
 
     expect(result.map((e) => `${e.name}:${e.payload.amount}`)).toEqual([

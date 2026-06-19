@@ -110,7 +110,7 @@ function exploreNativeType(
 
     let index = "";
     if (indexInfos.length > 0) {
-      const indexInfo = indexInfos[0];
+      const indexInfo = indexInfos[0]!;
       const indexType = indexInfo.keyType;
       const indexTypeString = exploreType(
         indexType,

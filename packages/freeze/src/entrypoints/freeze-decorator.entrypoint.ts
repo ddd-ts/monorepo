@@ -15,7 +15,7 @@ const resolveFromDistIndex = () => {
     throw new Error(`Cannot find index.d.ts at path ${decoratorFilePath}`);
   }
 
-  const decoratorFunction = decoratorFile.getExportedDeclarations().get("Freeze")?.[0].asKind(ts.SyntaxKind.FunctionDeclaration);
+  const decoratorFunction = decoratorFile.getExportedDeclarations().get("Freeze")?.[0]?.asKind(ts.SyntaxKind.FunctionDeclaration);
   if (!decoratorFunction) {
     throw new Error(`Cannot find function for Freeze decorator in ${decoratorFilePath}`);
   }
@@ -117,10 +117,11 @@ for (const ref of references) {
       .getTypeChecker()
       .getTypeOfSymbolAtLocation(serializeProperty, classDeclaration)
       .getCallSignatures()[0];
+    if (!serializeMethod) continue;
 
     let serialized = serializeMethod.getReturnType();
     if (serialized.getSymbol()?.getName() === "Promise") {
-      serialized = serialized.getTypeArguments()[0];
+      serialized = serialized.getTypeArguments()[0]!;
     }
 
     const version = serialized
@@ -146,7 +147,7 @@ for (const ref of references) {
     );
 
     const type = serializeMethod
-      .getParameters()[0]
+      .getParameters()[0]!
       .getTypeAtLocation(classDeclaration);
     const symbol = type.getSymbol()?.getName();
     const aliasSymbol = type.getAliasSymbol()?.getName();

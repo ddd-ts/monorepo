@@ -291,7 +291,7 @@ export class FirestoreProjector {
 
     const errors = [];
 
-    for await (const [attempt, reset] of this.breathe()) {
+    for await (const [, reset] of this.breathe()) {
       const source = this.projection.getSource(savedChange);
       const [status, message] = await this.attempt(
         source,
@@ -974,7 +974,7 @@ export class FirestoreQueueStore {
       batchWriter?: WriteBatch;
     } = {},
   ) {
-    const { transaction: trx, batchWriter } = context;
+    const { transaction: trx } = context;
 
     if (trx) {
       for (const eventId of eventIds) {

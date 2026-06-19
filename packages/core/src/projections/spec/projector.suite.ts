@@ -109,7 +109,7 @@ Deposited:
 
   async function SimpleConcurrency() {
     const n = "SimpleConcurrency";
-    const { accountStore, projection, projector, cashflowStore } = prepare();
+    const { accountStore, projection, projector } = prepare();
     const [account, opened] = Account.open(n);
     const deposit = account.deposit(100);
     const withdraw = account.withdraw(50);
@@ -342,7 +342,7 @@ Withdrawn:
 
   async function HeavyHandleConcurrency() {
     const n = "HeavyHandleConcurrency";
-    const { accountStore, projection, projector, cashflowStore } = prepare();
+    const { accountStore, projector, cashflowStore } = prepare();
 
     const [account, opened] = Account.open(n);
 
@@ -457,7 +457,7 @@ AccountRenamed:
 
   async function ComprehensiveVolumeStressTest() {
     const n = "ComprehensiveVolumeStressTest";
-    const { accountStore, projection, projector, cashflowStore } = prepare();
+    const { accountStore, projector, cashflowStore } = prepare();
 
     const [account, opened] = Account.open(n);
     await accountStore.save(account);
@@ -549,7 +549,7 @@ AccountRenamed:
   async function RealisticAccountWorkflowStressTest() {
     const stressload = 150; // Number of operations to simulate
     const n = "RealisticAccountWorkflowStressTest";
-    const { accountStore, projection, projector, cashflowStore } = prepare();
+    const { accountStore, projector, cashflowStore } = prepare();
 
     const [account, opened] = Account.open(n);
     await accountStore.save(account);
