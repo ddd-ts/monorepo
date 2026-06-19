@@ -34,17 +34,25 @@
     "@types/node": "^22.14.1"
   },
   "exports": {
-    ".": "./src/index.ts",
-    "./entrypoints/freeze.entrypoint": "./src/entrypoints/freeze.entrypoint.ts",
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./entrypoints/freeze.entrypoint": {
+      "types": "./src/entrypoints/freeze.entrypoint.ts",
+      "default": "./src/entrypoints/freeze.entrypoint.ts"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
     "exports": {
       ".": {
+        "types": "./dist/index.d.ts",
         "import": "./dist/index.mjs",
         "require": "./dist/index.js"
       },
       "./entrypoints/freeze.entrypoint": {
+        "types": "./dist/entrypoints/freeze.entrypoint.d.ts",
         "import": "./dist/entrypoints/freeze.entrypoint.mjs",
         "require": "./dist/entrypoints/freeze.entrypoint.js"
       },
