@@ -18,7 +18,7 @@
   },
   "peerDependencies": {
     "ts-morph": "^23.0.0",
-    "typescript": "^5.5.4 || ^6.0.0"
+    "typescript": "^5.5.4 || ^6.0.0 || 7.0.1-rc"
   },
   "dependencies": {
     "@ddd-ts/core": "workspace:*",
