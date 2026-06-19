@@ -1,4 +1,4 @@
-import * as ts from "typescript";
+import { ts } from "ts-morph";
 
 export function exploreType(
   type: ts.Type,

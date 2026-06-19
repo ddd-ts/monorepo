@@ -1,4 +1,4 @@
-import * as ts from "typescript";
+import { ts } from "ts-morph";
 import { exploreType } from "./utils/explore-type";
 import assert from "node:assert";
 
