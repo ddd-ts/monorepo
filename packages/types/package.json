@@ -16,12 +16,16 @@
     "@ddd-ts/tools": "workspace:*"
   },
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
     "exports": {
       ".": {
+        "types": "./dist/index.d.ts",
         "import": "./dist/index.mjs",
         "require": "./dist/index.js"
       },

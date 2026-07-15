@@ -1,4 +1,4 @@
-import { Dict, Shape, type DictShorthand } from "@ddd-ts/shape";
+import { Dict, type DictShorthand } from "@ddd-ts/shape";
 import { Trait } from "@ddd-ts/traits";
 import { ExtendsNamed } from "./named";
 

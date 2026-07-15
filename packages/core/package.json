@@ -24,8 +24,14 @@
     "@types/node": "^22.14.1"
   },
   "exports": {
-    ".": "./src/index.ts",
-    "./dist/*": "./src/*.ts",
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./dist/*": {
+      "types": "./src/*.ts",
+      "default": "./src/*.ts"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {

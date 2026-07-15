@@ -7,7 +7,6 @@ import {
   type IEventBus,
   EventStreamStore,
   EventStreamAggregateStore,
-  Named,
   type EventOf,
   type ISerializer,
   type IEventSourced,

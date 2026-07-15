@@ -8,7 +8,6 @@ import {
   Empty,
   type Constructor,
 } from "./_";
-import { Primitive } from "./primitive";
 
 type MappingLiteralKey = [
   [StringConstructor, string],
@@ -57,26 +56,18 @@ export const Mapping = <
   config: C,
   base: B = Empty as any,
 ): Mapping<C, B> => {
-  let [_key, _value] = config;
+  let [, _value] = config;
   if (config.length === 1) {
-    _key = Primitive(String);
     _value = config[0];
   }
 
-  const { $key, $value } = { $key: _key, $value: _value };
+  const $value = _value;
 
   type Definition = MappingOf<C>["value"];
   type K = MappingOf<C>["key"];
   type Key = MappingKeyRuntimeFromConstructor<K>;
   type Serialized = Record<Key, ReturnType<Definition["$serialize"]>>;
   type Inline = Record<Key, Definition["$inline"]>;
-
-  type A = {
-    Inline: Inline;
-    Serialized: Serialized;
-    Definition: Definition;
-    Deserializing: Serialized;
-  };
 
   abstract class $Mapping extends (base as any as Constructor<{}>) {
     constructor(public value: Inline) {
@@ -125,14 +116,6 @@ export const Mapping = <
 
     static $inline: Inline;
   }
-
-  type MappingConstructor = abstract new (
-    value: Expand<Inline>,
-  ) => InstanceType<B> & $Mapping;
-
-  type Mapping = Omit<B, "prototype"> &
-    Omit<typeof $Mapping, "prototype"> &
-    MappingConstructor;
 
   return $Mapping as any;
 };
