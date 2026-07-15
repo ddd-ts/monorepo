@@ -371,13 +371,11 @@ export class FirestoreProjector {
     }
 
     const unprocessed = await this.getUnprocessed(checkpointId);
-
     if (!unprocessed.length) {
       return [Status.FAILURE, "No unprocessed tasks found"] as const;
     }
 
     const batch = Task.batch(unprocessed);
-
     if (!batch.length) {
       return [
         Status.DEFERRED,
@@ -527,9 +525,7 @@ export class FirestoreProjector {
     checkpointId: CheckpointId,
     opts: { deadlineMs?: number } = {},
   ) {
-    const deadline = opts.deadlineMs
-      ? Date.now() + opts.deadlineMs
-      : undefined;
+    const deadline = opts.deadlineMs ? Date.now() + opts.deadlineMs : undefined;
 
     while (true) {
       await this.enqueueUpTo(checkpointId);
@@ -707,9 +703,9 @@ export class FirestoreProjector {
         );
       }
 
-      if (task.claimIds?.[0] !== claimer.serialize()) {
+      if (task.claimer !== claimer.serialize()) {
         throw new Error(
-          `Task ${task.id.serialize()} claimer mismatch: expected ${claimer.serialize()}, found ${task.claimIds?.[0]}`,
+          `Task ${task.id.serialize()} claimer mismatch: expected ${claimer.serialize()}, found ${task.claimer}`,
         );
       }
     }
@@ -787,23 +783,28 @@ export class FirestoreQueueStore {
     const batch = this.collection.firestore.batch();
 
     for (const task of tasks) {
-      if (task.claimIds.length > 0) {
+      if (task.claimer !== undefined) {
         throw new Error(
-          `Task ${task.id.serialize()} is already claimed by ${task.claimIds.join(", ")}`,
+          `Task ${task.id.serialize()} is already claimed by ${task.claimer}`,
         );
       }
+
       const ref = this.queued(checkpointId, task.id);
+
       batch.update(
         ref,
         {
-          /** @deprecated */ claimer: claimer.serialize(),
+          claimer: claimer.serialize(),
           /** @deprecated */ claimedAt: FieldValue.serverTimestamp(),
           [`claimsMetadata.${claimer.serialize()}`]: {
             claimedAt: FieldValue.serverTimestamp(),
           },
-          claimIds: FieldValue.arrayUnion(claimer.serialize()),
-          attempts: FieldValue.increment(1),
-          remaining: FieldValue.increment(-1),
+          /** @deprecated */ claimIds: FieldValue.arrayUnion(
+            claimer.serialize(),
+          ),
+          attempts: task.attempts + 1,
+          remaining: task.remaining - 1,
+          hasRemaining: task.remaining > 1, // concurency safe because of lastUpdateTime
         },
         { lastUpdateTime: this.microsecondsToTimestamp(task.lastUpdateTime) },
       );
@@ -841,7 +842,7 @@ export class FirestoreQueueStore {
   async unprocessed(checkpointId: CheckpointId) {
     const query = this.queue(checkpointId)
       .where("processed", "==", false)
-      .where("remaining", ">", 0)
+      .where("hasRemaining", "==", true)
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc")
       .orderBy("ref", "asc")
@@ -856,35 +857,18 @@ export class FirestoreQueueStore {
       return Task.deserializeWithLastUpdateTime(data as any, timestamp);
     });
 
-    // Check for timeouts and unclaim expired tasks
-    const expiredTasks: Task<true>[] = [];
-    for (const task of tasks) {
-      const originalClaimIds = task.claimIds;
-      task.checkTimeout();
-
-      // If timeout cleared the claimer, we need to update the database
-      if (originalClaimIds.length > task.claimIds.length) {
-        expiredTasks.push(task);
-      }
+    // Unclaim expired tasks before returning the list of unprocessed tasks
+    const expiredTasks = tasks.filter((task) => task.hasTimedOut());
+    if (expiredTasks.length === 0) {
+      return tasks;
     }
 
-    // Update expired tasks in the database
-    if (expiredTasks.length > 0) {
-      const batch = this.collection.firestore.batch();
-      for (const task of expiredTasks) {
-        const ref = this.queued(checkpointId, task.id);
-        batch.update(
-          ref,
-          {
-            /** @deprecated */ claimer: FieldValue.delete(),
-            /** @deprecated */ claimedAt: FieldValue.delete(),
-            claimIds: task.claimIds,
-          },
-          { lastUpdateTime: this.microsecondsToTimestamp(task.lastUpdateTime) },
-        );
-      }
+    await this.unclaim(checkpointId, expiredTasks);
 
-      await batch.commit();
+    for (const task of expiredTasks) {
+      task.claimIds = task.claimIds.filter((id) => id !== task.claimer);
+      task.claimer = undefined;
+      task.claimedAt = undefined;
     }
 
     return tasks;
@@ -895,21 +879,19 @@ export class FirestoreQueueStore {
     claimer: ClaimerId,
   ): Promise<Task<true>[]> {
     const query = this.queue(checkpointId)
-      .where("claimIds", "array-contains", claimer.serialize())
+      .where("claimer", "==", claimer.serialize())
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc")
       .orderBy("ref", "asc");
 
     const snapshot = await query.get();
-    return snapshot.docs
-      .map((doc) => {
-        const data = this.converter.fromFirestoreSnapshot(doc);
-        const timestamp = doc.updateTime
-          ? this.timestampToMicroseconds(doc.updateTime as Timestamp)
-          : undefined;
-        return Task.deserializeWithLastUpdateTime(data as any, timestamp);
-      })
-      .filter((task) => task.claimIds[0] === claimer.serialize());
+    return snapshot.docs.map((doc) => {
+      const data = this.converter.fromFirestoreSnapshot(doc);
+      const timestamp = doc.updateTime
+        ? this.timestampToMicroseconds(doc.updateTime as Timestamp)
+        : undefined;
+      return Task.deserializeWithLastUpdateTime(data as any, timestamp);
+    });
   }
 
   async unclaim(checkpointId: CheckpointId, tasks: Task<true>[]) {
@@ -920,9 +902,9 @@ export class FirestoreQueueStore {
       batch.update(
         ref,
         {
-          /** @deprecated */ claimer: FieldValue.delete(),
+          claimer: FieldValue.delete(),
           /** @deprecated */ claimedAt: FieldValue.delete(),
-          claimIds: FieldValue.arrayRemove(task.currentClaimId),
+          /** @deprecated */ claimIds: FieldValue.arrayRemove(task.claimer),
         },
         { lastUpdateTime: this.microsecondsToTimestamp(task.lastUpdateTime) },
       );
@@ -1003,7 +985,7 @@ export class FirestoreQueueStore {
 
   async getTailCursor(id: CheckpointId) {
     const tail = this.queue(id)
-      .where("remaining", ">", 0)
+      .where("hasRemaining", "==", true)
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc")
       .orderBy("ref", "asc")
@@ -1035,7 +1017,7 @@ export class FirestoreQueueStore {
     const threshold = MicrosecondTimestamp.now().sub(olderThan);
 
     const query = this.queue(id)
-      .where("remaining", ">", 0)
+      .where("hasRemaining", "==", true)
       .where("occurredAt", "<", threshold.serialize())
       .orderBy("occurredAt", "asc")
       .orderBy("revision", "asc")
@@ -1073,7 +1055,7 @@ export class FirestoreQueueStore {
   async hasUnprocessed(checkpointId: CheckpointId): Promise<boolean> {
     const snap = await this.queue(checkpointId)
       .where("processed", "==", false)
-      .where("remaining", ">", 0)
+      .where("hasRemaining", "==", true)
       .limit(1)
       .get();
     return !snap.empty;
@@ -1090,9 +1072,10 @@ export class FirestoreQueueStore {
       revision: Cursor.MAX.revision,
       attempts: 0,
       processed: true,
-      /** @deprecated */ claimer: undefined,
+      claimer: undefined,
       /** @deprecated */ claimedAt: undefined,
       claimsMetadata: {},
+      /** @deprecated */
       claimIds: [],
       lock: new Lock({}),
       remaining: 1,
@@ -1100,6 +1083,7 @@ export class FirestoreQueueStore {
       skipAfter: 0,
       isolateAfter: 0,
       lastUpdateTime: undefined,
+      hasRemaining: true,
     });
     await this.queued(checkpointId, blockerId).delete();
     const serialized = task.serialize();
@@ -1142,9 +1126,10 @@ export class FirestoreQueueStore {
       revision: cursor.revision,
       attempts: 0,
       processed: true,
-      /** @deprecated */ claimer: undefined,
+      claimer: undefined,
       /** @deprecated */ claimedAt: undefined,
       claimsMetadata: {},
+      /** @deprecated */
       claimIds: [],
       lock: new Lock({}),
       remaining: 1,
@@ -1152,6 +1137,7 @@ export class FirestoreQueueStore {
       skipAfter: 0,
       isolateAfter: 0,
       lastUpdateTime: undefined,
+      hasRemaining: true,
     });
 
     try {
@@ -1175,7 +1161,11 @@ export class Task<Stored extends boolean> extends Shape({
   revision: Number,
   attempts: Number,
   processed: Boolean,
-  /** @deprecated */ claimer: Optional(String),
+  // Firestore Enterprise does not currently support usable array indexes for
+  // the claimIds array query. `claimer` is intentionally kept as the scalar
+  // indexed field for the active claim, while `claimIds` preserves tracking
+  // data for history, stats, and observability.
+  claimer: Optional(String),
   /** @deprecated */ claimedAt: Optional(MicrosecondTimestamp),
   claimsMetadata: Mapping([
     {
@@ -1183,10 +1173,11 @@ export class Task<Stored extends boolean> extends Shape({
       processedAt: Optional(MicrosecondTimestamp),
     },
   ]),
-  claimIds: [String],
+  /** @deprecated */ claimIds: [String],
   lock: Lock,
   skipAfter: Number,
   remaining: Number,
+  hasRemaining: Boolean,
   isolateAfter: Number,
   claimTimeout: Number,
   lastUpdateTime: Optional(MicrosecondTimestamp),
@@ -1216,16 +1207,18 @@ export class Task<Stored extends boolean> extends Shape({
     return new Task<false>({
       id: fact.id,
       attempts: 0,
-      /** @deprecated */ claimer: undefined,
+      claimer: undefined,
       processed: false,
       /** @deprecated */ claimedAt: undefined,
       claimsMetadata: {},
+      /** @deprecated */
       claimIds: [],
       lock: config.lock,
       claimTimeout: config.claimTimeout,
       skipAfter: config.skipAfter,
       isolateAfter: config.isolateAfter,
       remaining: config.skipAfter,
+      hasRemaining: config.skipAfter > 0,
       ref: fact.ref,
       revision: fact.revision,
       occurredAt: fact.occurredAt,
@@ -1233,13 +1226,8 @@ export class Task<Stored extends boolean> extends Shape({
     });
   }
 
-  get currentClaimId() {
-    // TODO: we should check the claim metadata for the latest valid claim
-    return this.claimIds.at(-1);
-  }
-
   get isProcessing() {
-    return this.currentClaimId !== undefined;
+    return this.claimer !== undefined;
   }
 
   get isProcessed() {
@@ -1254,20 +1242,17 @@ export class Task<Stored extends boolean> extends Shape({
     return this.attempts > this.isolateAfter;
   }
 
-  checkTimeout() {
-    const claimer = this.currentClaimId;
-    if (!claimer) return;
+  hasTimedOut() {
+    if (!this.claimer) return;
 
-    const claimInfo = this.claimsMetadata[claimer];
+    const claimInfo = this.claimsMetadata[this.claimer];
     if (!claimInfo || !claimInfo.claimedAt) return;
 
     const now = MicrosecondTimestamp.now();
     const elapsedMicros = now.micros - claimInfo.claimedAt.micros;
     const timeoutMicros = BigInt(this.claimTimeout) * 1000n; // Convert ms to microseconds
 
-    if (elapsedMicros > timeoutMicros) {
-      this.claimIds = this.claimIds.filter((id) => id !== claimer);
-    }
+    return elapsedMicros > timeoutMicros;
   }
 
   static deserializeWithLastUpdateTime(
@@ -1277,8 +1262,10 @@ export class Task<Stored extends boolean> extends Shape({
     const task = Task.deserialize({
       ...data,
       lastUpdateTime: timestamp as any,
+      /** @deprecated */
       claimIds: data.claimIds || [],
       claimsMetadata: data.claimsMetadata || {},
+      hasRemaining: data.hasRemaining ?? data.remaining > 0,
     }) as Task<true>;
 
     return task;
