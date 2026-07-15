@@ -41,10 +41,12 @@
   "publishConfig": {
     "exports": {
       ".": {
+        "types": "./dist/index.d.ts",
         "import": "./dist/index.mjs",
         "require": "./dist/index.js"
       },
       "./entrypoints/freeze.entrypoint": {
+        "types": "./dist/entrypoints/freeze.entrypoint.d.ts",
         "import": "./dist/entrypoints/freeze.entrypoint.mjs",
         "require": "./dist/entrypoints/freeze.entrypoint.js"
       },
