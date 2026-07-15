@@ -6,7 +6,7 @@ import {
 } from "@ddd-ts/shape";
 import { type Constructor } from "@ddd-ts/types";
 import { EventId } from "../components/event-id";
-import { Trait, WithDerivations } from "@ddd-ts/traits";
+import { WithDerivations } from "@ddd-ts/traits";
 import { Named } from "../traits/named";
 import { Shaped } from "../traits/shaped";
 
