@@ -38,6 +38,11 @@ type TaskState = (typeof TaskState)[keyof typeof TaskState];
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+type Deadline = { readonly at: number; readonly budgetMs: number };
+
+const deadlineIn = (budgetMs: number | undefined): Deadline | undefined =>
+  budgetMs === undefined ? undefined : { at: Date.now() + budgetMs, budgetMs };
+
 const RETENTION = MicrosecondTimestamp.MONTH;
 
 export interface ProjectorLogger {
@@ -375,7 +380,17 @@ export class FirestoreProjector {
       return [Status.FAILURE, "No unprocessed tasks found"] as const;
     }
 
-    const batch = Task.batch(unprocessed);
+    const skipped: Task<true>[] = [];
+    const batch = Task.batch(unprocessed, (task) => skipped.push(task));
+    if (skipped.length) {
+      this.logger.warn(
+        `skipped: Checkpoint<${checkpointId.serialize()}> dropped ${skipped.length} task(s) past their skipAfter limit`,
+        {
+          checkpointId: checkpointId.serialize(),
+          eventIds: skipped.map((task) => task.id.serialize()),
+        },
+      );
+    }
     if (!batch.length) {
       return [
         Status.DEFERRED,
@@ -507,14 +522,38 @@ export class FirestoreProjector {
    * current head as target until no unprocessed tasks remain. Yields to
    * the event loop between iterations.
    */
-  async dequeue(checkpointId: CheckpointId) {
+  async dequeue(
+    checkpointId: CheckpointId,
+    opts: { deadlineMs?: number } = {},
+  ) {
+    return this.drain(checkpointId, deadlineIn(opts.deadlineMs));
+  }
+
+  private async drain(checkpointId: CheckpointId, deadline: Deadline | undefined) {
     const source = this.projection.getSource();
     while (await this.queue.hasUnprocessed(checkpointId)) {
+      this.ensureWithin(deadline, checkpointId);
       const head = await this.getQueueHead(checkpointId);
       if (!head) return;
       await this.attempt(source, checkpointId, head);
       await wait(10);
     }
+  }
+
+  private ensureWithin(
+    deadline: Deadline | undefined,
+    checkpointId: CheckpointId,
+  ) {
+    if (deadline && Date.now() > deadline.at) {
+      throw new Error(
+        `catchup: deadline of ${deadline.budgetMs}ms exceeded for checkpoint ${checkpointId.serialize()}`,
+      );
+    }
+  }
+
+  /** Whether the checkpoint queue still holds work, durably. */
+  async hasUnprocessed(checkpointId: CheckpointId) {
+    return this.queue.hasUnprocessed(checkpointId);
   }
 
   /**
@@ -525,17 +564,13 @@ export class FirestoreProjector {
     checkpointId: CheckpointId,
     opts: { deadlineMs?: number } = {},
   ) {
-    const deadline = opts.deadlineMs ? Date.now() + opts.deadlineMs : undefined;
+    const deadline = deadlineIn(opts.deadlineMs);
 
     while (true) {
       await this.enqueueUpTo(checkpointId);
       if (!(await this.queue.hasUnprocessed(checkpointId))) return;
-      await this.dequeue(checkpointId);
-      if (deadline !== undefined && Date.now() > deadline) {
-        throw new Error(
-          `catchup: deadline of ${opts.deadlineMs}ms exceeded for checkpoint ${checkpointId.serialize()}`,
-        );
-      }
+      await this.drain(checkpointId, deadline);
+      this.ensureWithin(deadline, checkpointId);
     }
   }
 
@@ -1271,7 +1306,10 @@ export class Task<Stored extends boolean> extends Shape({
     return task;
   }
 
-  static batch(tasks: Task<true>[]) {
+  static batch(
+    tasks: Task<true>[],
+    onSkipped?: (task: Task<true>) => void,
+  ) {
     // console.log(
     //   JSON.stringify(
     //     tasks.map((t) => t.serialize()),
@@ -1287,9 +1325,7 @@ export class Task<Stored extends boolean> extends Shape({
 
     for (const task of tasks) {
       if (task.shouldSkip) {
-        // console.log(
-        //   `Skipping task ${task.id.serialize()} due to skipAfter limit`,
-        // );
+        onSkipped?.(task);
         continue;
       }
 
