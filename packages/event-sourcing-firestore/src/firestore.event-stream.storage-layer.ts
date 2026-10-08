@@ -10,15 +10,19 @@ import {
   DefaultConverter,
   FirestoreTransaction,
 } from "@ddd-ts/store-firestore";
-import * as fb from "firebase-admin";
+import {
+  FieldValue,
+  type Firestore,
+  type QueryDocumentSnapshot,
+} from "firebase-admin/firestore";
 
-export const serverTimestamp = fb.firestore.FieldValue.serverTimestamp;
+export const serverTimestamp = FieldValue.serverTimestamp;
 
 export class FirestoreEventStreamStorageLayer
   implements EventStreamStorageLayer
 {
   constructor(
-    public readonly firestore: fb.firestore.Firestore,
+    public readonly firestore: Firestore,
     public readonly converter = new DefaultConverter(),
   ) {}
 
@@ -89,7 +93,7 @@ export class FirestoreEventStreamStorageLayer
       .orderBy("revision", "asc");
 
     for await (const event of query.stream()) {
-      const e = event as any as fb.firestore.QueryDocumentSnapshot<any>;
+      const e = event as any as QueryDocumentSnapshot<any>;
       const data = this.converter.fromFirestore(e);
       yield {
         id: data.eventId,
