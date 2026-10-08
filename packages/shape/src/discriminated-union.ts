@@ -183,6 +183,7 @@ type Internal<
 > = {
   Map: Entries<S, K>;
   Serialized: ReturnType<DefinitionOf<S[number]>["$serialize"]>;
+  Deserializing: Parameters<DefinitionOf<S[number]>["$deserialize"]>[0];
   Inline: DefinitionOf<S[number]>["$inline"];
 };
 
@@ -258,11 +259,11 @@ export type IDiscriminatedUnion<
   serialized: Internal<S, K>["Serialized"];
   deserialize<T>(
     this: T,
-    value: Expand<Internal<S, K>["Serialized"]>,
+    value: Expand<Internal<S, K>["Deserializing"]>,
   ):  T extends AbstractConstructor ? InstanceType<T> : any;
   $deserialize<T>(
     this: T,
-    value: Internal<S, K>["Serialized"],
+    value: Internal<S, K>["Deserializing"],
   ): Internal<S, K>["Inline"];
   $serialize<T extends AbstractConstructor>(
     this: T,

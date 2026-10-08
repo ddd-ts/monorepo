@@ -41,15 +41,17 @@ describe("Literal", () => {
       test = true as const;
     }
 
+    type Input = { a?: "a" };
     type Serialized = { a: "a" };
 
     // Constructor parameters
-    ex(Test).toHaveFirstParam<Serialized>().ok;
+    ex(Test).toHaveFirstParam<Input>().ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<Serialized>().ok;
+    ex(Test.deserialize).toHaveFirstParam<Input>().ok;
     const a = Test.deserialize({ a: "a" });
     ex(a).toBeInstanceOf(Test).ok;
+    Test.deserialize({});
 
     // Additional prototype on deserialization
     ex(a.test).toBe(true as const).ok;
@@ -63,6 +65,7 @@ describe("Literal", () => {
     // Instantiation
     const b = new Test({ a: "a" });
     ex(b).toBeInstanceOf(Test).ok;
+    const c = new Test({});
 
     // Additional prototype on instantiation
     ex(b.test).toBe(true as const).ok;
@@ -77,15 +80,17 @@ describe("Literal", () => {
       test = true as const;
     }
 
+    type Input = { a?: "a" };
     type Serialized = { a: "a" };
 
     // Constructor parameters
     ex(Test).toHaveFirstParam<{ a: A }>().ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<Serialized>().ok;
+    ex(Test.deserialize).toHaveFirstParam<Input>().ok;
     const a = Test.deserialize({ a: "a" });
     ex(a).toBeInstanceOf(Test).ok;
+    Test.deserialize({});
 
     // Preserve reference
     ex(a.a).toBeInstanceOf(A);
