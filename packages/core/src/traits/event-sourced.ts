@@ -1,7 +1,7 @@
 import { type HasTrait, Trait } from "@ddd-ts/traits";
 import type { Constructor } from "@ddd-ts/types";
 
-import type { IChange, IEsEvent } from "../interfaces/es-event";
+import type { IEsEvent } from "../interfaces/es-event";
 import type { IEventSourced } from "../interfaces/event-sourced";
 import { getHandler } from "../decorators/handlers";
 import type { INamed } from "../interfaces/named";

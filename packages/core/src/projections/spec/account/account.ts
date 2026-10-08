@@ -14,7 +14,6 @@ export class AccountId extends Primitive(String) {
 export class AccountOpened extends EsEvent("AccountOpened", {
   accountId: AccountId,
 }) {
-  declare static name: "AccountOpened";
   toString() {
     return `Account<${this.payload.accountId.serialize()}>:Opened()`;
   }
@@ -24,7 +23,6 @@ export class Deposited extends EsEvent("Deposited", {
   accountId: AccountId,
   amount: Number,
 }) {
-  declare static name: "Deposited";
   toString() {
     return `Account<${this.payload.accountId.serialize()}>:Deposited(${this.payload.amount})`;
   }
@@ -34,7 +32,6 @@ export class Withdrawn extends EsEvent("Withdrawn", {
   accountId: AccountId,
   amount: Number,
 }) {
-  declare static name: "Withdrawn";
   toString() {
     return `Account<${this.payload.accountId.serialize()}>:Withdrawn(${this.payload.amount})`;
   }
@@ -44,7 +41,6 @@ export class AccountRenamed extends EsEvent("AccountRenamed", {
   accountId: AccountId,
   newName: String,
 }) {
-  declare static name: "AccountRenamed";
   // id = StableEventId.generate();
   toString() {
     return `Account<${this.payload.accountId.serialize()}>:Renamed(${this.payload.newName})`;

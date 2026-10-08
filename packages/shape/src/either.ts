@@ -7,7 +7,6 @@ import {
   Empty,
 } from "./_";
 import type { ClassShorthand } from "./class";
-import type { PrimitiveShorthand } from "./primitive";
 
 type Config = { [key: string]: any };
 

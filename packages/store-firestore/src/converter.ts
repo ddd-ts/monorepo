@@ -1,4 +1,3 @@
-import { MicrosecondTimestamp } from "@ddd-ts/shape";
 import {
   FieldValue,
   type FirestoreDataConverter,

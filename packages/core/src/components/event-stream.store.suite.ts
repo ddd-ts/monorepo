@@ -78,11 +78,11 @@ export function EventStreamStoreSuite(config: {
     ];
 
     await transaction.perform(async (trx) => {
-      streamStore.append(streamId, [events[0], events[1]], -1, trx);
+      streamStore.append(streamId, [events[0]!, events[1]!], -1, trx);
     });
 
     await transaction.perform(async (trx) => {
-      streamStore.append(streamId, [events[2], events[3]], 1, trx);
+      streamStore.append(streamId, [events[2]!, events[3]!], 1, trx);
     });
 
     const result = await buffer(streamStore.read(streamId));

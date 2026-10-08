@@ -1,4 +1,4 @@
-import { type AbstractConstructor, type Concrete, type Constructor, Empty, type Expand } from "./_";
+import { type AbstractConstructor, type Constructor, Empty, type Expand } from "./_";
 
 type PrimitiveMap = [
   [StringConstructor, string],
@@ -77,14 +77,6 @@ export const Primitive = <
 
     static $inline: Expand<Inline>;
   }
-
-  type PrimitiveConstructor = abstract new (
-    value: Expand<Inline>,
-  ) => InstanceType<B> & $Primitive;
-
-  type Primitive = Omit<B, "prototype"> &
-    Omit<typeof $Primitive, "prototype"> &
-    PrimitiveConstructor;
 
   return $Primitive as any;
 };

@@ -1,9 +1,6 @@
 import type { ImplementsTrait } from "@ddd-ts/traits";
 import { CashflowOnOpenedHandler } from "./cashflow.projection.OnOpened";
-import {
-  CashflowOnFlowHandlerParallel,
-  CashflowOnFlowHandlerSequential,
-} from "./cashflow.projection.OnFlow";
+import { CashflowOnFlowHandlerParallel } from "./cashflow.projection.OnFlow";
 import { CashflowOnRenamedHandler } from "./cashflow.projection.OnRenamed";
 import {
   Account,
