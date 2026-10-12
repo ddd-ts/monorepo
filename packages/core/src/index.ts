@@ -73,6 +73,7 @@ export { Projection } from "./makers/projection";
 
 export * from "./tools/iterator";
 export * from "./tools/queue";
+export { noUnserialized } from "./tools/no-unserialized";
 
 export {
   EventSourced,

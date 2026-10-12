@@ -3,11 +3,11 @@ import type { IEvent } from "../interfaces/event";
 import type { INamed } from "../interfaces/named";
 
 export function getHandler(target: any, name: any): Function | undefined {
-  const handlers =
-    target[Symbol.metadata]?.handlers ||
-    target.constructor[Symbol.metadata]?.handlers;
-
-  return handlers?.get(name);
+  return (
+    target?.[Symbol.metadata]?.handlers?.get(name) ||
+    target.constructor?.[Symbol.metadata]?.handlers?.get(name) ||
+    target.prototype?.[Symbol.metadata]?.handlers?.get(name)
+  )
 }
 
 // The following implementation is for new TS 5 decorators API
