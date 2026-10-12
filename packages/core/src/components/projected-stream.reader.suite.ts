@@ -183,8 +183,8 @@ export function ProjectedStreamReaderSuite(config: {
       ],
     });
 
-    const startCursor = await reader.getCursor(start);
-    const endCursor = await reader.getCursor(end);
+    const startCursor = await reader.getCursor(start!);
+    const endCursor = await reader.getCursor(end!);
 
     const result = await buffer(
       reader.read(projectedStream, bankId.serialize(), startCursor, endCursor),

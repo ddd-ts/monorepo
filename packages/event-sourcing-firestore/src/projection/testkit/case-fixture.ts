@@ -24,7 +24,6 @@ import {
   FirestoreProjector,
   FirestoreQueueStore,
 } from "../firestore.projector";
-import { AccountId } from "@ddd-ts/core/dist/projections/spec/account/account";
 import { Cashflow } from "@ddd-ts/core/dist/projections/spec/cashflow/cashflow";
 
 const {

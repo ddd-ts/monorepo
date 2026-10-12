@@ -241,7 +241,11 @@ export const DiscriminatedUnion = <
     }
 
     static $serialize(value: any): any {
-      return map[(value as any)[key]].$serialize(value);
+      const definition = map[(value as any)[key]];
+      if (!definition) {
+        throw new Error("Cannot serialize DiscriminatedUnion");
+      }
+      return (definition as any).$serialize(value);
     }
   }
 

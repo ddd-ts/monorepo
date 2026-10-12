@@ -19,12 +19,18 @@ export type Transaction = {
 export abstract class TransactionPerformer<
   T extends Transaction = Transaction,
 > {
+  private readonly createTransaction: <Result>(
+    effect: TransactionEffect<Result, T>,
+  ) => Promise<Result>;
+
   constructor(
-    private readonly createTransaction: <Result>(
+    createTransaction: <Result>(
       effect: TransactionEffect<Result, T>,
       trx?: T,
     ) => Promise<Result>,
-  ) {}
+  ) {
+    this.createTransaction = createTransaction;
+  }
 
   async perform<Result>(effect: TransactionEffect<Result, T>) {
     const [result, trx] = await this.createTransaction(

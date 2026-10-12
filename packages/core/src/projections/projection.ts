@@ -75,6 +75,7 @@ function* batched<U extends string, T extends IEsEvent<U>>([
   first,
   ...rest
 ]: T[]) {
+  if (first === undefined) return;
   let current = first;
   let batch = [first];
   for (const event of rest) {

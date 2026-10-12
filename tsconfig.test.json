@@ -1,0 +1,11 @@
+{
+  "extends": "./tools/tsconfig.test.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "packages/*/src/**/*.spec.ts",
+    "packages/*/src/**/*.typecheck.spec.ts",
+    "packages/shape/src/test.ts"
+  ]
+}

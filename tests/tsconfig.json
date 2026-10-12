@@ -5,6 +5,6 @@
     "rootDir": "src",
     "strictPropertyInitialization": false,
     "noErrorTruncation": true,
-    "baseUrl": "."
+    "noUnusedLocals": false
   }
 }

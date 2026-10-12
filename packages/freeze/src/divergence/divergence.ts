@@ -119,9 +119,18 @@ type DiffBestMatchForObject<
     : never
   : never;
 
+type PreferElementMatch<Candidates> = Extract<
+  Candidates,
+  { [index: number]: { "~": unknown } }
+> extends infer Matched
+  ? [Matched] extends [never]
+    ? Candidates
+    : Matched
+  : never;
+
 type DiffBestMatch<Item, Union, BestKey, Acc extends any[]> = PopUnion<
   Item extends any[]
-    ? ArrayDivergence<Item, Extract<Union, any[]>, Acc>
+    ? PreferElementMatch<ArrayDivergence<Item, Extract<Union, any[]>, Acc>>
     : Item extends object
       ? DiffBestMatchForObject<Item, Extract<Union, object>, BestKey, Acc>
       : never

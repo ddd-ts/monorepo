@@ -1,4 +1,3 @@
-import { EventId } from "../../components/event-id";
 import { Subtrait } from "@ddd-ts/traits";
 import { BaseHandler } from "./base.handler";
 import type { Description } from "./description";

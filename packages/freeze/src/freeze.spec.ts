@@ -1,4 +1,4 @@
-import * as ts from "typescript";
+import { Project, ts } from "ts-morph";
 import { exploreType } from "./utils/explore-type";
 import assert from "node:assert";
 
@@ -15,13 +15,9 @@ function findCalls(source: ts.Node): ts.CallExpression[] {
 function testFreeze(id: string, value: any) {
   const file = __filename;
 
-  const program = ts.createProgram([file], { strictNullChecks: true });
-  const checker = program.getTypeChecker();
-
-  // biome-ignore lint/style/noNonNullAssertion: <explanation>
-  const sourceFile = program
-    .getSourceFiles()
-    .find((s) => s.fileName.includes(file))!;
+  const project = new Project({ compilerOptions: { strictNullChecks: true }});
+  const sourceFile = project.addSourceFileAtPath(file).compilerNode;
+  const checker = project.getTypeChecker().compilerObject;
 
   const test = findCalls(sourceFile).find((c) =>
     c.getText().startsWith("testFreeze") &&

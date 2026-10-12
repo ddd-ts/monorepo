@@ -1,4 +1,4 @@
-import type { AbstractConstructor, Constructor } from "@ddd-ts/types";
+import type { AbstractConstructor } from "@ddd-ts/types";
 import type { ISerializer, Serialized } from "../interfaces/serializer";
 import type { INamed } from "../interfaces/named";
 
@@ -31,7 +31,9 @@ export const AutoSerializer = <
       };
     }
 
-    deserialize(serialized: ReturnType<this["serialize"]>): Instance {
+    deserialize(
+      serialized: { version: V } & ReturnType<Instance["serialize"]>,
+    ): Instance {
       const { version, ...rest } = serialized;
       return of.deserialize(rest);
     }

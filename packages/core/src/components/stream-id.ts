@@ -8,11 +8,11 @@ export class PairId extends Primitive(String) {
   }
 
   get left() {
-    return this.value.split(this.separator)[0];
+    return this.value.split(this.separator)[0]!;
   }
 
   get right() {
-    return this.value.split(this.separator)[1];
+    return this.value.split(this.separator)[1]!;
   }
 
   static from<T extends Constructor<PairId> & { separator: string }>(

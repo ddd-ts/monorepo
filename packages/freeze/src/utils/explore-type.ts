@@ -1,4 +1,4 @@
-import * as ts from "typescript";
+import { ts } from "ts-morph";
 
 export function exploreType(
   type: ts.Type,
@@ -110,7 +110,7 @@ function exploreNativeType(
 
     let index = "";
     if (indexInfos.length > 0) {
-      const indexInfo = indexInfos[0];
+      const indexInfo = indexInfos[0]!;
       const indexType = indexInfo.keyType;
       const indexTypeString = exploreType(
         indexType,
