@@ -55,13 +55,14 @@ describe("Optional", () => {
       test = true as const;
     }
 
+    type Input = { longhand?: string | undefined };
     type Serialized = { longhand: string | undefined };
 
     // Constructor parameters
-    ex(Test).toHaveFirstParam<Serialized>().ok;
+    ex(Test).toHaveFirstParam<Input>().ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<Serialized>().ok;
+    ex(Test.deserialize).toHaveFirstParam<Input>().ok;
     const a = Test.deserialize({ longhand: "a" });
     ex(a).toBeInstanceOf(Test).ok;
 
@@ -78,6 +79,10 @@ describe("Optional", () => {
     const b: Test = new Test({ longhand: undefined });
     ex(b).toBeInstanceOf(Test);
 
+    // Instantiation with omitted key
+    const c: Test = new Test({});
+    ex(c).toBeInstanceOf(Test);
+
     // Additional prototype on instantiation
     ex(b.test).toBe(true as const).ok;
 
@@ -91,13 +96,14 @@ describe("Optional", () => {
       test = true as const;
     }
 
+    type Input = { reference?: string | undefined };
     type Serialized = { reference: string | undefined };
 
     // Constructor parameters
     ex(Test).toHaveFirstParam<{ reference: Reference }>().ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<Serialized>().ok;
+    ex(Test.deserialize).toHaveFirstParam<Input>().ok;
     const a: Test = Test.deserialize({ reference: "a" });
     ex(a).toBeInstanceOf(Test).ok;
 

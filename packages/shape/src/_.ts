@@ -107,6 +107,10 @@ export function Shape<
   );
 }
 
+export interface ShapeConfig {
+  partialSerialize: false;
+}
+
 export type Expand<T> = T extends { serialize(): any }
   ? T
   : T extends Date
@@ -114,6 +118,37 @@ export type Expand<T> = T extends { serialize(): any }
     : T extends Record<string, any>
       ? { [key in keyof T]: Expand<T[key]> }
       : T;
+
+type IsUnion<T, U = T> = T extends U ? [U] extends [T] ? false : true : never;
+
+type IsLiteral<T> =
+  IsUnion<T> extends true ? false :
+  T extends string ? string extends T ? false : true :
+  T extends number ? number extends T ? false : true :
+  false;
+
+type InferableKeys<T> = {
+  [K in keyof T]:
+    void extends T[K] ? never :
+    undefined extends T[K] ? K :
+    IsLiteral<T[K]> extends true ? K :
+    never;
+}[keyof T];
+
+export type ExpandPartial<T> = T extends { serialize(): any }
+  ? T
+  : T extends Date
+    ? T
+    : T extends Record<string, any>
+      ? { [K in Exclude<keyof T, InferableKeys<T>>]: Expand<T[K]> } &
+        { [K in InferableKeys<T>]?: Expand<T[K]> } extends infer O
+        ? { [K in keyof O]: O[K] }
+        : never
+      : T;
+
+export type ExpandOutput<T> = ShapeConfig["partialSerialize"] extends true
+  ? ExpandPartial<T>
+  : Expand<T>;
 
 export function forward<
   T extends AbstractConstructor<{ value: any }>,

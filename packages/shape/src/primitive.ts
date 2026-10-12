@@ -15,6 +15,9 @@ export type PrimitiveFromConstructor<S> = Extract<
 
 export type PrimitiveShorthand = PrimitiveConstructor;
 
+type PrimitiveDeserializing<S extends PrimitiveConstructor> =
+  S extends DateConstructor ? Date | string : PrimitiveFromConstructor<S>;
+
 export type IPrimitive<
   S extends PrimitiveConstructor,
   B extends AbstractConstructor<{}> = typeof Empty,
@@ -28,11 +31,11 @@ export type IPrimitive<
     $shape: "primitive";
     deserialize<T extends Constructor<any>>(
       this: T,
-      value: PrimitiveFromConstructor<S>,
+      value: PrimitiveDeserializing<S>,
     ): InstanceType<T>;
     $serialize(value: PrimitiveFromConstructor<S>): PrimitiveFromConstructor<S>;
     $deserialize(
-      value: PrimitiveFromConstructor<S>,
+      value: PrimitiveDeserializing<S>,
     ): PrimitiveFromConstructor<S>;
     $inline: Expand<PrimitiveFromConstructor<S>>;
   };

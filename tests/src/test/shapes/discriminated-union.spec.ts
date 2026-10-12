@@ -23,12 +23,16 @@ describe("DiscriminatedUnion", () => {
       | { type: "A"; a: string }
       | { type: "B"; b: number }
       | { type: "C"; c: boolean };
+    type Deserializing =
+      | { a: string; type?: "A" }
+      | { b: number; type?: "B" }
+      | { c: boolean; type?: "C" };
 
     // Constructor parameters
     ex(Test).toHaveFirstParam<Inlined>().ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<Serialized>().ok;
+    ex(Test.deserialize).toHaveFirstParam<Deserializing>().ok;
     const a = Test.deserialize({ type: "A", a: "test" });
     ex(a).toBeInstanceOf(Test).ok;
 
@@ -96,12 +100,13 @@ describe("DiscriminatedUnion", () => {
     }
 
     type Serialized = { type: "A"; a: string } | { type: "B"; a: string };
+    type Deserializing = { a: string; type?: "A" } | { type: "B"; a: string };
 
     // Constructor parameters
     ex(Test).toHaveFirstParam<A | B>().ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<Serialized>().ok;
+    ex(Test.deserialize).toHaveFirstParam<Deserializing>().ok;
     const a = Test.deserialize({ type: "A", a: "a" });
     ex(a).toBeInstanceOf(Test).ok;
     const b = Test.deserialize({ type: "B", a: "b" });
@@ -162,12 +167,15 @@ describe("DiscriminatedUnion", () => {
     type Serialized = {
       nested: { type: "A"; a: string } | { type: "B"; b: number };
     };
+    type Deserializing = {
+      nested: { a: string; type?: "A" } | { b: number; type?: "B" };
+    };
 
     // Constructor parameters
     ex(Test).toHaveFirstParam<Inlined>().ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<Serialized>().ok;
+    ex(Test.deserialize).toHaveFirstParam<Deserializing>().ok;
     const a: Test = Test.deserialize({ nested: { type: "A", a: "test" } });
     ex(a).toBeInstanceOf(Test).ok;
 
@@ -197,12 +205,13 @@ describe("DiscriminatedUnion", () => {
     class Test extends Dict({ nested: Union }) {}
 
     type Serialized = { nested: { type: "A" } | { type: "B" } };
+    type Deserializing = { nested: { type?: "A" } | { type?: "B" } };
 
     // Constructor parameters
     ex(Test).toHaveFirstParam<{ nested: Union }>().ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<Serialized>().ok;
+    ex(Test.deserialize).toHaveFirstParam<Deserializing>().ok;
     const a: Test = Test.deserialize({ nested: { type: "A" } });
     ex(a).toBeInstanceOf(Test).ok;
 
@@ -245,6 +254,7 @@ describe("DiscriminatedUnion", () => {
     }
 
     type Serialized = { type: "A" } | { type: "B" };
+    type Deserializing = { type?: "A" } | { type?: "B" };
 
     // Constructor parameters
     ex(Test).toHaveFirstParam<A | B>().ok;
@@ -253,7 +263,7 @@ describe("DiscriminatedUnion", () => {
     ex(Test.deep).toBe(true as const).ok;
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<Serialized>().ok;
+    ex(Test.deserialize).toHaveFirstParam<Deserializing>().ok;
     const a = Test.deserialize({ type: "A" });
     ex(a).toBeInstanceOf(Test).ok;
 
@@ -316,9 +326,10 @@ describe("DiscriminatedUnion", () => {
     ex(Test.deep).toBe(true as const).ok;
 
     type Serialized = { type: "A" } | { type: "B" };
+    type Deserializing = { type?: "A" } | { type?: "B" };
 
     // Deserialization
-    ex(Test.deserialize).toHaveFirstParam<Serialized>().ok;
+    ex(Test.deserialize).toHaveFirstParam<Deserializing>().ok;
     const a = Test.deserialize({ type: "A" });
     ex(a).toBeInstanceOf(Test).ok;
 

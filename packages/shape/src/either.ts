@@ -205,11 +205,11 @@ export type Either<
     $shape: "either";
     deserialize<T extends Constructor>(
       this: T,
-      value: Internal<S, B>["Serialized"],
+      value: Internal<S, B>["Deserializing"],
     ): InstanceType<T>;
     $deserialize<T>(
       this: T,
-      value: Internal<S, B>["Serialized"],
+      value: Internal<S, B>["Deserializing"],
     ): Internal<S, B>["Inline"];
     $serialize<T>(
       this: T,
