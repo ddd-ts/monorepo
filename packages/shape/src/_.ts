@@ -107,13 +107,18 @@ export function Shape<
   );
 }
 
-export type Expand<T> = T extends { serialize(): any }
+// Depth-limited: unbounded, the expansion of a recursive serialized type never
+// ends, and TypeScript 7.1 then refuses to write the types of classes built
+// from it into declarations (TS5088). Past the limit the type is kept as is.
+export type Expand<T, Depth extends unknown[] = []> = Depth["length"] extends 8
   ? T
-  : T extends Date
+  : T extends { serialize(): any }
     ? T
-    : T extends Record<string, any>
-      ? { [key in keyof T]: Expand<T[key]> }
-      : T;
+    : T extends Date
+      ? T
+      : T extends Record<string, any>
+        ? { [key in keyof T]: Expand<T[key], [...Depth, unknown]> }
+        : T;
 
 export function forward<
   T extends AbstractConstructor<{ value: any }>,
