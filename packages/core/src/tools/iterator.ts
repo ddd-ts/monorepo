@@ -51,7 +51,17 @@ export function closeable<T, U>(
   } as any;
 }
 
-export function mappable<T extends AsyncIterable<any>, U>(iterable: T) {
+// Named because the inferred type refers to itself through `map`, which
+// TypeScript 7.1 refuses to write into declarations (TS5088).
+export type Mappable<T extends AsyncIterable<any>, U> = T & {
+  map(
+    fn: (value: T extends AsyncIterable<infer V> ? V : never) => U,
+  ): Mappable<AsyncGenerator<Awaited<U>, void, unknown>, unknown>;
+};
+
+export function mappable<T extends AsyncIterable<any>, U>(
+  iterable: T,
+): Mappable<T, U> {
   return Object.assign(iterable, {
     map(fn: (value: T extends AsyncIterable<infer V> ? V : never) => U) {
       return mappable(map(iterable, fn));

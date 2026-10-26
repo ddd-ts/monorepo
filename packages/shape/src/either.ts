@@ -119,17 +119,16 @@ export const Either = <
       throw new Error("Non-exhaustive match");
     }
 
-    static deserialize<T extends typeof $Either>(
+    // No static here constrains `this` to `typeof $Either`: that makes the class
+    // type cyclic, which TypeScript 7.1 rejects in declarations (TS5088).
+    static deserialize<T extends abstract new (value: Inline) => unknown>(
       this: T,
       value: Expand<Serialized>,
     ): InstanceType<T> {
-      return new (this as any)(this.$deserialize(value as any)) as any;
+      return new (this as any)((this as any).$deserialize(value as any)) as any;
     }
 
-    static $deserialize<T extends typeof $Either>(
-      this: T,
-      value: Serialized,
-    ): Inline {
+    static $deserialize(value: Serialized): Inline {
       const { _key: key, ...serialized } = value as any;
       const definition = definitions[key];
       if (!definition) {
@@ -138,10 +137,7 @@ export const Either = <
       return (definition as any).$deserialize(serialized);
     }
 
-    static $serialize<T extends typeof $Either>(
-      this: T,
-      value: Inline,
-    ): Serialized {
+    static $serialize(value: Inline): Serialized {
       const key = Object.entries(of).find(
         ([_, v]) => v === ((value as any).constructor as any),
       )?.[0];

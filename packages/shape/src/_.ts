@@ -107,13 +107,19 @@ export function Shape<
   );
 }
 
-export type Expand<T> = T extends { serialize(): any }
+// Stops at a type that is already being expanded further up: on a recursive
+// serialized type the expansion would otherwise never end, and TypeScript 7.1
+// then refuses to write the types of classes built from it into declarations
+// (TS5088). The repeated type is kept as is, by name.
+export type Expand<T, Ancestors = never> = T extends { serialize(): any }
   ? T
   : T extends Date
     ? T
-    : T extends Record<string, any>
-      ? { [key in keyof T]: Expand<T[key]> }
-      : T;
+    : [T] extends [Ancestors]
+      ? T
+      : T extends Record<string, any>
+        ? { [key in keyof T]: Expand<T[key], Ancestors | T> }
+        : T;
 
 export function forward<
   T extends AbstractConstructor<{ value: any }>,
